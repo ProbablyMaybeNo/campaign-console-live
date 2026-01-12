@@ -108,8 +108,8 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       name: name.trim(),
       component_type: selectedView,
       config,
-      position_x: 100 + Math.random() * 200,
-      position_y: 100 + Math.random() * 200,
+      position_x: Math.round(100 + Math.random() * 200),
+      position_y: Math.round(100 + Math.random() * 200),
     });
 
     handleClose();
