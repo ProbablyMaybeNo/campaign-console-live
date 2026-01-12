@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { PointsTracker } from "./PointsTracker";
+import { RosterValidationPanel } from "./RosterValidationPanel";
 import { RosterUnit, useUpdateWarband } from "@/hooks/useWarband";
 import { CampaignUnit, useCampaignUnits } from "@/hooks/useCampaignUnits";
+import { validateRoster } from "@/lib/rosterValidation";
 import { Plus, Trash2, Eye, Wrench, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,6 +37,12 @@ export function WarbandRoster({
 
   const totalPoints = roster.reduce((sum, unit) => sum + unit.total_cost, 0);
 
+  // Validate roster
+  const rosterValidation = useMemo(() => 
+    validateRoster(roster, units || [], pointsLimit),
+    [roster, units, pointsLimit]
+  );
+
   const getUnitData = (unitId: string): CampaignUnit | undefined => {
     return units?.find(u => u.id === unitId);
   };
@@ -61,6 +69,13 @@ export function WarbandRoster({
       <div className="bg-card border border-primary/30 rounded p-4">
         <PointsTracker currentPoints={totalPoints} maxPoints={pointsLimit} />
       </div>
+
+      {/* Roster Validation */}
+      <RosterValidationPanel
+        validation={rosterValidation}
+        roster={roster}
+        units={units || []}
+      />
 
       {/* Roster Table */}
       <div className="bg-card border border-primary/30 rounded overflow-hidden">
