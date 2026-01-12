@@ -4,17 +4,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { DashboardComponent, useUpdateComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
 import { GripVertical, X, Maximize2 } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
-import { PlayersWidget } from "./widgets/PlayersWidget";
-import { MessagesWidget } from "./widgets/MessagesWidget";
 import { TableWidget } from "./widgets/TableWidget";
-import { NarrativeWidget } from "./widgets/NarrativeWidget";
-import { ScheduleWidget } from "./widgets/ScheduleWidget";
 import { CounterWidget } from "./widgets/CounterWidget";
 import { DiceRollerWidget } from "./widgets/DiceRollerWidget";
 import { CardWidget } from "./widgets/CardWidget";
 import { ImageWidget } from "./widgets/ImageWidget";
-import { MapWidget } from "./widgets/MapWidget";
-import { RulesWidget } from "./widgets/RulesWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -106,22 +100,16 @@ export function DraggableComponent({
 
   const getComponentIcon = () => {
     switch (component.component_type) {
-      case "rules":
-        return "📜";
       case "table":
         return "📊";
-      case "card_list":
+      case "card":
         return "🃏";
-      case "narrative":
-        return "📖";
-      case "players":
-        return "👥";
-      case "map":
-        return "🗺️";
-      case "messages":
-        return "💬";
-      case "schedule":
-        return "📅";
+      case "counter":
+        return "🔢";
+      case "image":
+        return "🖼️";
+      case "dice_roller":
+        return "🎲";
       default:
         return "📦";
     }
@@ -129,33 +117,21 @@ export function DraggableComponent({
 
   const renderComponentContent = () => {
     switch (component.component_type) {
-      case "players":
-        return <PlayersWidget campaignId={campaignId} />;
-      case "messages":
-        return <MessagesWidget campaignId={campaignId} />;
       case "table":
         return <TableWidget component={component} isGM={isGM} campaignId={campaignId} />;
-      case "narrative":
-        return <NarrativeWidget campaignId={campaignId} isGM={isGM} />;
-      case "schedule":
-        return <ScheduleWidget campaignId={campaignId} isGM={isGM} />;
       case "counter":
         return <CounterWidget component={component} isGM={isGM} />;
       case "dice_roller":
         return <DiceRollerWidget component={component} isGM={isGM} />;
       case "card":
         return <CardWidget component={component} isGM={isGM} campaignId={campaignId} />;
-      case "rules":
-        return <RulesWidget campaignId={campaignId} isGM={isGM} />;
-      case "map":
-        return <MapWidget component={component} isGM={isGM} />;
       case "image":
         return <ImageWidget component={component} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">
             <p className="font-mono">[ {component.component_type.toUpperCase()} ]</p>
-            <p className="mt-2 text-xs opacity-60">Component content placeholder</p>
+            <p className="mt-2 text-xs opacity-60">Unsupported component type</p>
           </div>
         );
     }

@@ -5,21 +5,15 @@ import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useRuleCategories, useRulesByCategory } from "@/hooks/useWargameRules";
 import { useCampaign } from "@/hooks/useCampaigns";
-import { Switch } from "@/components/ui/switch";
 import { 
-  Scroll, 
   Table, 
   LayoutList, 
-  BookOpen, 
-  Users, 
-  Map, 
-  MessageSquare, 
-  Calendar,
   Dices,
   Image,
   Hash,
   Wrench,
-  CheckSquare
+  CheckSquare,
+  GitBranch
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,26 +31,11 @@ interface AddComponentModalProps {
 }
 
 const COMPONENT_TYPES = [
-  { type: "rules", label: "Rules Panel", icon: Scroll, description: "Display game rules from repository" },
-  { type: "table", label: "Data Table", icon: Table, description: "Tabular data display" },
-  { type: "card", label: "Card List", icon: LayoutList, description: "Warband/unit cards" },
-  { type: "narrative", label: "Narrative", icon: BookOpen, description: "Campaign story events" },
-  { type: "players", label: "Players", icon: Users, description: "Player roster & stats" },
-  { type: "map", label: "Campaign Map", icon: Map, description: "Interactive territory map" },
-  { type: "messages", label: "Messages", icon: MessageSquare, description: "Real-time chat feed" },
-  { type: "schedule", label: "Schedule", icon: Calendar, description: "Game schedule & rounds" },
-  { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker" },
-  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll dice" },
-  { type: "image", label: "Image", icon: Image, description: "Display an image" },
-];
-
-const HIGHLIGHT_COLORS = [
-  { value: "green", label: "Green", color: "bg-green-500" },
-  { value: "blue", label: "Blue", color: "bg-blue-500" },
-  { value: "red", label: "Red", color: "bg-red-500" },
-  { value: "yellow", label: "Yellow", color: "bg-yellow-500" },
-  { value: "purple", label: "Purple", color: "bg-purple-500" },
-  { value: "none", label: "None", color: "bg-transparent border border-border" },
+  { type: "table", label: "Table", icon: Table, description: "Data table with rows and columns", supportsRules: true },
+  { type: "card", label: "Card", icon: LayoutList, description: "Card list with expandable items", supportsRules: true },
+  { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
+  { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
+  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -65,12 +44,6 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
   const [manualSetup, setManualSetup] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedRuleKey, setSelectedRuleKey] = useState<string>("");
-  
-  // Configuration options
-  const [filterable, setFilterable] = useState(false);
-  const [sortable, setSortable] = useState(false);
-  const [collapsible, setCollapsible] = useState(false);
-  const [highlightColor, setHighlightColor] = useState<string>("none");
   
   const createComponent = useCreateComponent();
   const { data: campaign } = useCampaign(campaignId);
@@ -85,40 +58,51 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     [selectedType]
   );
 
+  const supportsRules = selectedTypeData?.supportsRules ?? false;
+
   const handleTypeSelect = (type: string) => {
     setSelectedType(type);
-    
-    // Pre-populate name based on type
     const typeData = COMPONENT_TYPES.find(v => v.type === type);
     if (typeData) {
       setName(`New ${typeData.label}`);
     }
+    // Reset rules selection when changing type
+    setManualSetup(false);
+    setSelectedCategory("");
+    setSelectedRuleKey("");
   };
 
   const handleCreate = async () => {
     if (!selectedType || !name.trim()) return;
 
     // Build config based on selections
-    const config: Record<string, string | boolean | null> = {
-      manual_setup: manualSetup,
-      filterable,
-      sortable,
-      collapsible,
-      highlight_color: highlightColor,
-      rule_category: null,
-      rule_key: null,
-      rule_title: null,
+    const config: Record<string, string | boolean | number | null> = {
+      manual_setup: manualSetup || !supportsRules,
     };
 
-    if (!manualSetup && selectedCategory && selectedRuleKey) {
+    // Add rules linking if applicable
+    if (supportsRules && !manualSetup && selectedCategory && selectedRuleKey) {
       config.rule_category = selectedCategory;
       config.rule_key = selectedRuleKey;
       
-      // Find the selected rule data
       const selectedRule = categoryRules?.find(r => r.rule_key === selectedRuleKey);
       if (selectedRule) {
         config.rule_title = selectedRule.title;
       }
+    }
+
+    // Add default config based on type
+    if (selectedType === "counter") {
+      config.value = 0;
+      config.min = 0;
+      config.max = 100;
+      config.step = 1;
+      config.label = name;
+    }
+
+    if (selectedType === "dice_roller") {
+      config.sides = 6;
+      config.count = 1;
     }
 
     await createComponent.mutateAsync({
@@ -128,6 +112,8 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       config,
       position_x: Math.round(100 + Math.random() * 200),
       position_y: Math.round(100 + Math.random() * 200),
+      width: selectedType === "counter" || selectedType === "dice_roller" ? 200 : 350,
+      height: selectedType === "counter" || selectedType === "dice_roller" ? 200 : 300,
     });
 
     handleClose();
@@ -139,16 +125,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     setManualSetup(false);
     setSelectedCategory("");
     setSelectedRuleKey("");
-    setFilterable(false);
-    setSortable(false);
-    setCollapsible(false);
-    setHighlightColor("none");
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="bg-card border-primary/30 max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-primary/30 max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-primary font-mono uppercase tracking-wider flex items-center gap-2">
             <span className="text-lg">{">"}</span>
@@ -162,28 +144,27 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
             <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
               Select Component Type
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div className="grid grid-cols-5 gap-2">
               {COMPONENT_TYPES.map(({ type, label, icon: Icon, description }) => (
                 <button
                   key={type}
                   onClick={() => handleTypeSelect(type)}
-                  className={`p-3 border rounded text-left transition-all ${
+                  className={`p-3 border rounded text-center transition-all ${
                     selectedType === type
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border hover:border-primary/50 hover:bg-accent"
                   }`}
                 >
-                  <Icon className={`w-5 h-5 mb-2 ${selectedType === type ? "text-primary" : "text-muted-foreground"}`} />
+                  <Icon className={`w-6 h-6 mx-auto mb-2 ${selectedType === type ? "text-primary" : "text-muted-foreground"}`} />
                   <p className="text-xs font-mono uppercase">{label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{description}</p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Configuration Section - Only show when type is selected */}
+          {/* Configuration Section */}
           {selectedType && selectedTypeData && (
-            <div className="space-y-4 border-t border-border pt-4">
+            <div className="space-y-4 border-t border-border pt-4 animate-fade-in">
               {/* Component Name */}
               <TerminalInput
                 label="Component Name"
@@ -192,16 +173,15 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                 placeholder="Enter component name..."
               />
 
-              {/* Rules Set Section - Only for applicable component types */}
-              {hasRulesRepo && ["table", "card", "rules"].includes(selectedType) && (
-                <div className="space-y-3 border border-border/50 p-4 bg-muted/20 rounded">
+              {/* Rules Integration - Only for table and card */}
+              {supportsRules && hasRulesRepo && (
+                <div className="space-y-3 border border-primary/30 p-4 bg-primary/5 rounded">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2">
-                      <Scroll className="w-3 h-3" />
-                      Rule Set Linked
+                    <label className="text-xs uppercase tracking-wider text-primary font-medium flex items-center gap-2">
+                      <GitBranch className="w-3 h-3" />
+                      Auto-Populate from Rules
                     </label>
                     
-                    {/* Manual Setup Toggle */}
                     <div className="flex items-center gap-2">
                       <Checkbox
                         id="manual-setup"
@@ -219,14 +199,13 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                         className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
                       >
                         <Wrench className="w-3 h-3" />
-                        Custom (Manual)
+                        Manual Setup
                       </label>
                     </div>
                   </div>
 
                   {!manualSetup && hasRulesData && (
-                    <div className="grid grid-cols-2 gap-3 animate-fade-in">
-                      {/* Category Dropdown */}
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                           Rule Category
@@ -251,7 +230,6 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                         </Select>
                       </div>
 
-                      {/* Rule Selection Dropdown */}
                       <div className="space-y-1.5">
                         <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                           Rule Set
@@ -264,7 +242,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                           <SelectTrigger className="w-full bg-input border-border">
                             <SelectValue placeholder="Select rule set..." />
                           </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
+                          <SelectContent className="bg-card border-border max-h-48">
                             {categoryRules?.map((rule) => (
                               <SelectItem key={rule.rule_key} value={rule.rule_key}>
                                 {rule.title}
@@ -278,59 +256,41 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
 
                   {!manualSetup && !hasRulesData && (
                     <p className="text-xs text-yellow-400">
-                      No rules found. Try re-syncing in campaign settings or check your repository.
+                      No rules synced. Go to Campaign Settings to sync your rules repository.
                     </p>
                   )}
 
-                  {selectedRuleKey && (
+                  {!manualSetup && selectedRuleKey && (
                     <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
                       <CheckSquare className="w-4 h-4" />
-                      <span>Component will auto-populate with selected rules</span>
+                      <span>Component will auto-populate with "{categoryRules?.find(r => r.rule_key === selectedRuleKey)?.title}"</span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Component Options */}
-              {["table", "card", "rules"].includes(selectedType) && (
-                <div className="grid grid-cols-3 gap-4 border border-border/50 p-4 bg-muted/20 rounded">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-muted-foreground">Filterable</label>
-                    <Switch checked={filterable} onCheckedChange={setFilterable} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-muted-foreground">Sortable</label>
-                    <Switch checked={sortable} onCheckedChange={setSortable} />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-muted-foreground">Collapsible</label>
-                    <Switch checked={collapsible} onCheckedChange={setCollapsible} />
-                  </div>
-                </div>
+              {/* Type-specific hints */}
+              {selectedType === "counter" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Counter starts at 0. You can configure min, max, step, and label after adding.
+                </p>
               )}
 
-              {/* Highlight Color */}
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Highlight Row Color
-                </label>
-                <div className="flex gap-2">
-                  {HIGHLIGHT_COLORS.map(({ value, label, color }) => (
-                    <button
-                      key={value}
-                      onClick={() => setHighlightColor(value)}
-                      className={`w-8 h-8 rounded ${color} ${
-                        highlightColor === value ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-                      }`}
-                      title={label}
-                    />
-                  ))}
-                </div>
-              </div>
+              {selectedType === "dice_roller" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Defaults to 1d6. You can configure dice type and count after adding.
+                </p>
+              )}
 
-              {/* Component Preview */}
+              {selectedType === "image" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Upload an image or paste a URL after adding the component.
+                </p>
+              )}
+
+              {/* Preview */}
               <div className="border border-dashed border-border/50 p-4 bg-muted/10 rounded">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Component Preview</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Preview</p>
                 <div className="flex items-center gap-3 p-3 bg-card border border-primary/30 rounded">
                   <selectedTypeData.icon className="w-6 h-6 text-primary" />
                   <div>
@@ -352,7 +312,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
             onClick={handleCreate}
             disabled={!selectedType || !name.trim() || createComponent.isPending}
           >
-            {createComponent.isPending ? "Adding..." : "Add Component"}
+            {createComponent.isPending ? "Adding..." : "[ Add Component ]"}
           </TerminalButton>
         </div>
       </DialogContent>
