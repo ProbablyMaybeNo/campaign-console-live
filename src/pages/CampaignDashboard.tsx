@@ -1,43 +1,50 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
+import { useDashboardComponents, DashboardComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
 import { TerminalButton } from "@/components/ui/TerminalButton";
-import { TerminalCard } from "@/components/ui/TerminalCard";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
-import { ArrowLeft, Settings, Users, Map, Scroll, Swords, MessageSquare, Calendar } from "lucide-react";
+import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
+import { AddComponentModal } from "@/components/dashboard/AddComponentModal";
+import { ArrowLeft, Settings, Users, Map, Scroll, Swords, MessageSquare, Calendar, Plus } from "lucide-react";
 
 export default function CampaignDashboard() {
   const { campaignId } = useParams<{ campaignId: string }>();
-  const { data: campaign, isLoading, error } = useCampaign(campaignId);
+  const { data: campaign, isLoading: campaignLoading, error: campaignError } = useCampaign(campaignId);
+  const { data: components = [], isLoading: componentsLoading } = useDashboardComponents(campaignId);
   const { user, signOut } = useAuth();
   const isGM = useIsGM(campaignId);
+
+  const [selectedComponent, setSelectedComponent] = useState<DashboardComponent | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  const isLoading = campaignLoading || componentsLoading;
 
   if (isLoading) {
     return <FullScreenLoader text="Loading campaign" />;
   }
 
-  if (error || !campaign) {
+  if (campaignError || !campaign) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <TerminalCard title="Error">
-          <div className="text-center py-8">
-            <p className="text-destructive">[ERROR] Campaign not found</p>
-            <Link to="/campaigns" className="mt-4 inline-block">
-              <TerminalButton variant="outline" size="sm">
-                {"<"} Back to Campaigns
-              </TerminalButton>
-            </Link>
-          </div>
-        </TerminalCard>
+        <div className="bg-card border border-primary/30 rounded p-8 text-center">
+          <p className="text-destructive mb-4">[ERROR] Campaign not found</p>
+          <Link to="/campaigns">
+            <TerminalButton variant="outline" size="sm">
+              {"<"} Back to Campaigns
+            </TerminalButton>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header Bar */}
-      <header className="border-b border-primary/20 bg-card/50 px-4 py-3">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
+      <header className="border-b border-primary/20 bg-card/50 px-4 py-3 flex-shrink-0">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/campaigns">
               <TerminalButton variant="ghost" size="sm">
@@ -68,9 +75,9 @@ export default function CampaignDashboard() {
       </header>
 
       {/* Main Content */}
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation */}
-        <aside className="w-56 border-r border-primary/20 bg-sidebar min-h-[calc(100vh-57px)] p-4 hidden md:block">
+        <aside className="w-56 border-r border-primary/20 bg-sidebar flex-shrink-0 p-4 hidden md:block">
           <nav className="space-y-1">
             <NavItem icon={<Map className="w-4 h-4" />} label="Dashboard" active />
             <NavItem icon={<Users className="w-4 h-4" />} label="Players" />
@@ -87,32 +94,36 @@ export default function CampaignDashboard() {
           </nav>
         </aside>
 
-        {/* Dashboard Canvas Placeholder */}
-        <main className="flex-1 p-6 relative">
-          <TerminalCard title="Infinite Whiteboard">
-            <div className="min-h-[60vh] flex items-center justify-center text-muted-foreground">
-              <div className="text-center space-y-4">
-                <p className="text-sm">Dashboard canvas coming soon</p>
-                <p className="text-xs">
-                  {isGM 
-                    ? "As GM, you'll be able to add and arrange components here"
-                    : "Components added by the GM will appear here"
-                  }
-                </p>
-              </div>
-            </div>
-          </TerminalCard>
+        {/* Dashboard Canvas */}
+        <main className="flex-1 p-4 overflow-hidden relative">
+          <InfiniteCanvas
+            components={components}
+            isGM={isGM}
+            campaignId={campaignId!}
+            selectedComponentId={selectedComponent?.id || null}
+            onComponentSelect={setSelectedComponent}
+          />
 
           {/* Floating Add Button (GM only) */}
           {isGM && (
-            <div className="fixed bottom-8 right-8">
-              <TerminalButton className="h-14 w-14 rounded-full glow-primary animate-pulse-glow">
-                +
+            <div className="fixed bottom-8 right-8 z-50">
+              <TerminalButton
+                className="h-14 w-14 rounded-full glow-primary text-xl"
+                onClick={() => setShowAddModal(true)}
+              >
+                <Plus className="w-6 h-6" />
               </TerminalButton>
             </div>
           )}
         </main>
       </div>
+
+      {/* Add Component Modal */}
+      <AddComponentModal
+        open={showAddModal}
+        onOpenChange={setShowAddModal}
+        campaignId={campaignId!}
+      />
     </div>
   );
 }
