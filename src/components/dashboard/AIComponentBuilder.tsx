@@ -139,6 +139,7 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
       const { data, error } = await supabase.functions.invoke("ai-component-builder", {
         body: {
           prompt: trimmedInput,
+          campaignId, // Pass campaign ID for live data access
           conversationHistory,
           sourceContent: sourceContent || undefined,
           sourceUrl: sourceUrl || undefined,
