@@ -10,6 +10,7 @@ import { CreateWarbandModal } from "@/components/warband/CreateWarbandModal";
 import { WarbandRoster } from "@/components/warband/WarbandRoster";
 import { AddUnitOverlay } from "@/components/warband/AddUnitOverlay";
 import { UnitDatasheet } from "@/components/warband/UnitDatasheet";
+import { EquipmentEditor } from "@/components/warband/EquipmentEditor";
 import { 
   ArrowLeft, 
   Swords, 
@@ -71,7 +72,29 @@ export default function WarbandBuilder() {
 
   const handleEditUnit = (rosterIndex: number) => {
     setEditingRosterIndex(rosterIndex);
-    // TODO: Implement equipment editor modal
+  };
+
+  const handleSaveEquipment = async (updatedUnit: RosterUnit) => {
+    if (!warband || editingRosterIndex === null) return;
+
+    const newRoster = [...warband.roster];
+    newRoster[editingRosterIndex] = updatedUnit;
+
+    await updateWarband.mutateAsync({
+      id: warband.id,
+      campaign_id: warband.campaign_id,
+      roster: newRoster,
+    });
+
+    await refetchWarband();
+    setEditingRosterIndex(null);
+  };
+
+  const getEditingUnit = (): CampaignUnit | null => {
+    if (editingRosterIndex === null || !warband) return null;
+    const rosterUnit = warband.roster[editingRosterIndex];
+    if (!rosterUnit) return null;
+    return units?.find(u => u.id === rosterUnit.unit_id) || null;
   };
 
   if (isLoading) {
@@ -254,6 +277,17 @@ export default function WarbandBuilder() {
         open={!!viewingUnit}
         onOpenChange={(open) => !open && setViewingUnit(null)}
       />
+
+      {/* Equipment Editor */}
+      {editingRosterIndex !== null && warband && getEditingUnit() && (
+        <EquipmentEditor
+          open={true}
+          onOpenChange={(open) => !open && setEditingRosterIndex(null)}
+          unit={getEditingUnit()!}
+          rosterUnit={warband.roster[editingRosterIndex]}
+          onSave={handleSaveEquipment}
+        />
+      )}
     </div>
   );
 }
