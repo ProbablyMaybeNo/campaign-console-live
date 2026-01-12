@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { useWargameRules, WargameRule } from "@/hooks/useWargameRules";
 import { useCampaignUnits, CampaignUnit, useFactions } from "@/hooks/useCampaignUnits";
-import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RulesImporter } from "@/components/campaigns/RulesImporter";
 import { 
   Search, 
   Filter, 
@@ -14,7 +15,8 @@ import {
   ChevronDown, 
   ChevronRight,
   X,
-  Tag
+  Tag,
+  FileUp
 } from "lucide-react";
 
 interface RulesLibraryProps {
@@ -33,6 +35,7 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [showImporter, setShowImporter] = useState(false);
 
   // Extract unique categories from rules
   const categories = useMemo(() => {
@@ -144,6 +147,32 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
 
   return (
     <div className="space-y-4">
+      {/* PDF Import Section */}
+      <Collapsible open={showImporter} onOpenChange={setShowImporter}>
+        <CollapsibleTrigger asChild>
+          <TerminalButton
+            variant={showImporter ? "default" : "outline"}
+            className="w-full justify-start"
+          >
+            <FileUp className="w-4 h-4 mr-2" />
+            {showImporter ? "Close PDF Importer" : "Import from PDF"}
+            {showImporter ? (
+              <ChevronDown className="w-4 h-4 ml-auto" />
+            ) : (
+              <ChevronRight className="w-4 h-4 ml-auto" />
+            )}
+          </TerminalButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <div className="border border-border bg-card p-4 rounded">
+            <RulesImporter 
+              campaignId={campaignId} 
+              onComplete={() => setShowImporter(false)}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
       {/* Search & Filter Bar */}
       <div className="flex flex-col gap-3">
         <div className="flex gap-2">
