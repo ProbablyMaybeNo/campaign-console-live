@@ -5,6 +5,7 @@ import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useRuleCategories, useRulesByCategory } from "@/hooks/useWargameRules";
 import { useCampaign } from "@/hooks/useCampaigns";
+import { Switch } from "@/components/ui/switch";
 import { 
   Scroll, 
   Table, 
@@ -18,7 +19,6 @@ import {
   Image,
   Hash,
   Wrench,
-  ChevronDown,
   CheckSquare
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,27 +36,41 @@ interface AddComponentModalProps {
   campaignId: string;
 }
 
-const COMPONENT_VIEWS = [
-  { type: "table", label: "Table", icon: Table, description: "Tabular data with rows & columns" },
-  { type: "card", label: "Card", icon: LayoutList, description: "Information card with text content" },
-  { type: "map", label: "Map", icon: Map, description: "Interactive territory or battle map" },
-  { type: "counter", label: "Counter", icon: Hash, description: "Numeric counter with +/- controls" },
-  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll dice with customizable sides" },
-  { type: "image", label: "Image", icon: Image, description: "Display an image or gallery" },
-  { type: "rules", label: "Rules Panel", icon: Scroll, description: "Display game rules reference" },
-  { type: "narrative", label: "Narrative", icon: BookOpen, description: "Campaign story and events" },
+const COMPONENT_TYPES = [
+  { type: "rules", label: "Rules Panel", icon: Scroll, description: "Display game rules from repository" },
+  { type: "table", label: "Data Table", icon: Table, description: "Tabular data display" },
+  { type: "card", label: "Card List", icon: LayoutList, description: "Warband/unit cards" },
+  { type: "narrative", label: "Narrative", icon: BookOpen, description: "Campaign story events" },
   { type: "players", label: "Players", icon: Users, description: "Player roster & stats" },
+  { type: "map", label: "Campaign Map", icon: Map, description: "Interactive territory map" },
   { type: "messages", label: "Messages", icon: MessageSquare, description: "Real-time chat feed" },
   { type: "schedule", label: "Schedule", icon: Calendar, description: "Game schedule & rounds" },
+  { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker" },
+  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll dice" },
+  { type: "image", label: "Image", icon: Image, description: "Display an image" },
+];
+
+const HIGHLIGHT_COLORS = [
+  { value: "green", label: "Green", color: "bg-green-500" },
+  { value: "blue", label: "Blue", color: "bg-blue-500" },
+  { value: "red", label: "Red", color: "bg-red-500" },
+  { value: "yellow", label: "Yellow", color: "bg-yellow-500" },
+  { value: "purple", label: "Purple", color: "bg-purple-500" },
+  { value: "none", label: "None", color: "bg-transparent border border-border" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
-  const [step, setStep] = useState<"view" | "config">("view");
-  const [selectedView, setSelectedView] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [manualSetup, setManualSetup] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedRuleKey, setSelectedRuleKey] = useState<string>("");
+  
+  // Configuration options
+  const [filterable, setFilterable] = useState(false);
+  const [sortable, setSortable] = useState(false);
+  const [collapsible, setCollapsible] = useState(false);
+  const [highlightColor, setHighlightColor] = useState<string>("none");
   
   const createComponent = useCreateComponent();
   const { data: campaign } = useCampaign(campaignId);
@@ -64,29 +78,33 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
   const { data: categoryRules } = useRulesByCategory(campaignId, selectedCategory);
 
   const hasRulesRepo = !!campaign?.rules_repo_url;
+  const hasRulesData = ruleCategories.length > 0;
   
-  const selectedViewData = useMemo(() => 
-    COMPONENT_VIEWS.find(v => v.type === selectedView), 
-    [selectedView]
+  const selectedTypeData = useMemo(() => 
+    COMPONENT_TYPES.find(v => v.type === selectedType), 
+    [selectedType]
   );
 
-  const handleViewSelect = (viewType: string) => {
-    setSelectedView(viewType);
-    setStep("config");
+  const handleTypeSelect = (type: string) => {
+    setSelectedType(type);
     
-    // Pre-populate name based on view type
-    const view = COMPONENT_VIEWS.find(v => v.type === viewType);
-    if (view) {
-      setName(`New ${view.label}`);
+    // Pre-populate name based on type
+    const typeData = COMPONENT_TYPES.find(v => v.type === type);
+    if (typeData) {
+      setName(`New ${typeData.label}`);
     }
   };
 
   const handleCreate = async () => {
-    if (!selectedView || !name.trim()) return;
+    if (!selectedType || !name.trim()) return;
 
     // Build config based on selections
     const config: Record<string, string | boolean | null> = {
       manual_setup: manualSetup,
+      filterable,
+      sortable,
+      collapsible,
+      highlight_color: highlightColor,
       rule_category: null,
       rule_key: null,
       rule_title: null,
@@ -106,7 +124,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     await createComponent.mutateAsync({
       campaign_id: campaignId,
       name: name.trim(),
-      component_type: selectedView,
+      component_type: selectedType,
       config,
       position_x: Math.round(100 + Math.random() * 200),
       position_y: Math.round(100 + Math.random() * 200),
@@ -116,142 +134,138 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
   };
 
   const handleClose = () => {
-    setStep("view");
-    setSelectedView(null);
+    setSelectedType(null);
     setName("");
     setManualSetup(false);
     setSelectedCategory("");
     setSelectedRuleKey("");
+    setFilterable(false);
+    setSortable(false);
+    setCollapsible(false);
+    setHighlightColor("none");
     onOpenChange(false);
-  };
-
-  const handleBack = () => {
-    setStep("view");
-    setSelectedView(null);
-    setName("");
-    setManualSetup(false);
-    setSelectedCategory("");
-    setSelectedRuleKey("");
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="bg-card border-primary/30 max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-card border-primary/30 max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-primary font-mono uppercase tracking-wider flex items-center gap-2">
-            <span>{">"}</span>
-            {step === "view" ? "Choose Component View" : "Configure Component"}
+            <span className="text-lg">{">"}</span>
+            Add Component
           </DialogTitle>
         </DialogHeader>
 
-        {step === "view" && (
-          <div className="py-4">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-              {COMPONENT_VIEWS.map(({ type, label, icon: Icon, description }) => (
+        <div className="space-y-6 py-4">
+          {/* Component Type Selection */}
+          <div className="space-y-2">
+            <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+              Select Component Type
+            </label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {COMPONENT_TYPES.map(({ type, label, icon: Icon, description }) => (
                 <button
                   key={type}
-                  onClick={() => handleViewSelect(type)}
-                  className="p-3 border border-border rounded text-left transition-all hover:border-primary/50 hover:bg-accent group"
+                  onClick={() => handleTypeSelect(type)}
+                  className={`p-3 border rounded text-left transition-all ${
+                    selectedType === type
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50 hover:bg-accent"
+                  }`}
                 >
-                  <Icon className="w-5 h-5 mb-2 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <Icon className={`w-5 h-5 mb-2 ${selectedType === type ? "text-primary" : "text-muted-foreground"}`} />
                   <p className="text-xs font-mono uppercase">{label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{description}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{description}</p>
                 </button>
               ))}
             </div>
           </div>
-        )}
 
-        {step === "config" && selectedViewData && (
-          <div className="space-y-5 py-4">
-            {/* Selected View Preview */}
-            <div className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/30 rounded">
-              <selectedViewData.icon className="w-6 h-6 text-primary" />
-              <div>
-                <p className="text-sm font-mono uppercase text-primary">{selectedViewData.label}</p>
-                <p className="text-xs text-muted-foreground">{selectedViewData.description}</p>
-              </div>
-            </div>
+          {/* Configuration Section - Only show when type is selected */}
+          {selectedType && selectedTypeData && (
+            <div className="space-y-4 border-t border-border pt-4">
+              {/* Component Name */}
+              <TerminalInput
+                label="Component Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter component name..."
+              />
 
-            {/* Component Name */}
-            <TerminalInput
-              label="Component Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter component name..."
-            />
-
-            {/* Rules Set Section */}
-            {hasRulesRepo && ruleCategories.length > 0 && (
-              <div className="space-y-3 border border-border/50 p-4 bg-muted/20 rounded">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2">
-                    <Scroll className="w-3 h-3" />
-                    Rules Set
-                  </label>
-                  
-                  {/* Manual Setup Checkbox */}
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="manual-setup"
-                      checked={manualSetup}
-                      onCheckedChange={(checked) => {
-                        setManualSetup(checked === true);
-                        if (checked) {
-                          setSelectedCategory("");
-                          setSelectedRuleKey("");
-                        }
-                      }}
-                    />
-                    <label 
-                      htmlFor="manual-setup" 
-                      className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
-                    >
-                      <Wrench className="w-3 h-3" />
-                      Manual Setup
+              {/* Rules Set Section - Only for applicable component types */}
+              {hasRulesRepo && ["table", "card", "rules"].includes(selectedType) && (
+                <div className="space-y-3 border border-border/50 p-4 bg-muted/20 rounded">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2">
+                      <Scroll className="w-3 h-3" />
+                      Rule Set Linked
                     </label>
-                  </div>
-                </div>
-
-                {!manualSetup && (
-                  <div className="space-y-3 animate-fade-in">
-                    {/* Category Dropdown */}
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Rule Category
-                      </label>
-                      <Select 
-                        value={selectedCategory} 
-                        onValueChange={(val) => {
-                          setSelectedCategory(val);
-                          setSelectedRuleKey("");
+                    
+                    {/* Manual Setup Toggle */}
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="manual-setup"
+                        checked={manualSetup}
+                        onCheckedChange={(checked) => {
+                          setManualSetup(checked === true);
+                          if (checked) {
+                            setSelectedCategory("");
+                            setSelectedRuleKey("");
+                          }
                         }}
+                      />
+                      <label 
+                        htmlFor="manual-setup" 
+                        className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
                       >
-                        <SelectTrigger className="w-full bg-input border-border">
-                          <SelectValue placeholder="Select a category..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ruleCategories.map(({ category }) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <Wrench className="w-3 h-3" />
+                        Custom (Manual)
+                      </label>
                     </div>
+                  </div>
 
-                    {/* Rule Selection Dropdown */}
-                    {selectedCategory && categoryRules && categoryRules.length > 0 && (
-                      <div className="space-y-1.5 animate-fade-in">
+                  {!manualSetup && hasRulesData && (
+                    <div className="grid grid-cols-2 gap-3 animate-fade-in">
+                      {/* Category Dropdown */}
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Rule Category
+                        </label>
+                        <Select 
+                          value={selectedCategory} 
+                          onValueChange={(val) => {
+                            setSelectedCategory(val);
+                            setSelectedRuleKey("");
+                          }}
+                        >
+                          <SelectTrigger className="w-full bg-input border-border">
+                            <SelectValue placeholder="Select category..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            {ruleCategories.map(({ category }) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Rule Selection Dropdown */}
+                      <div className="space-y-1.5">
                         <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                           Rule Set
                         </label>
-                        <Select value={selectedRuleKey} onValueChange={setSelectedRuleKey}>
+                        <Select 
+                          value={selectedRuleKey} 
+                          onValueChange={setSelectedRuleKey}
+                          disabled={!selectedCategory || !categoryRules?.length}
+                        >
                           <SelectTrigger className="w-full bg-input border-border">
-                            <SelectValue placeholder="Select a rule set..." />
+                            <SelectValue placeholder="Select rule set..." />
                           </SelectTrigger>
-                          <SelectContent>
-                            {categoryRules.map((rule) => (
+                          <SelectContent className="bg-card border-border">
+                            {categoryRules?.map((rule) => (
                               <SelectItem key={rule.rule_key} value={rule.rule_key}>
                                 {rule.title}
                               </SelectItem>
@@ -259,60 +273,87 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
+                    </div>
+                  )}
 
-                    {selectedRuleKey && (
-                      <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
-                        <CheckSquare className="w-4 h-4" />
-                        <span>Component will auto-populate with selected rules</span>
-                      </div>
-                    )}
+                  {!manualSetup && !hasRulesData && (
+                    <p className="text-xs text-yellow-400">
+                      No rules found. Try re-syncing in campaign settings or check your repository.
+                    </p>
+                  )}
+
+                  {selectedRuleKey && (
+                    <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
+                      <CheckSquare className="w-4 h-4" />
+                      <span>Component will auto-populate with selected rules</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Component Options */}
+              {["table", "card", "rules"].includes(selectedType) && (
+                <div className="grid grid-cols-3 gap-4 border border-border/50 p-4 bg-muted/20 rounded">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground">Filterable</label>
+                    <Switch checked={filterable} onCheckedChange={setFilterable} />
                   </div>
-                )}
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground">Sortable</label>
+                    <Switch checked={sortable} onCheckedChange={setSortable} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground">Collapsible</label>
+                    <Switch checked={collapsible} onCheckedChange={setCollapsible} />
+                  </div>
+                </div>
+              )}
 
-                {manualSetup && (
-                  <p className="text-xs text-muted-foreground italic">
-                    You'll be able to manually add content after creating the component.
-                  </p>
-                )}
+              {/* Highlight Color */}
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Highlight Row Color
+                </label>
+                <div className="flex gap-2">
+                  {HIGHLIGHT_COLORS.map(({ value, label, color }) => (
+                    <button
+                      key={value}
+                      onClick={() => setHighlightColor(value)}
+                      className={`w-8 h-8 rounded ${color} ${
+                        highlightColor === value ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+                      }`}
+                      title={label}
+                    />
+                  ))}
+                </div>
               </div>
-            )}
 
-            {/* No Rules Repo Message */}
-            {!hasRulesRepo && (
-              <div className="p-4 border border-border/50 bg-muted/20 rounded">
-                <p className="text-xs text-muted-foreground flex items-center gap-2">
-                  <Wrench className="w-4 h-4" />
-                  <span>
-                    No rules repository configured. Content will be set up manually.
-                    You can add a GitHub rules repo in campaign settings.
-                  </span>
-                </p>
+              {/* Component Preview */}
+              <div className="border border-dashed border-border/50 p-4 bg-muted/10 rounded">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Component Preview</p>
+                <div className="flex items-center gap-3 p-3 bg-card border border-primary/30 rounded">
+                  <selectedTypeData.icon className="w-6 h-6 text-primary" />
+                  <div>
+                    <p className="text-sm font-mono text-primary">{name || "New Component"}</p>
+                    <p className="text-xs text-muted-foreground">{selectedTypeData.description}</p>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
         {/* Actions */}
-        <div className="flex justify-between gap-3 pt-4 border-t border-border">
-          {step === "config" && (
-            <TerminalButton variant="outline" onClick={handleBack}>
-              ← Back
-            </TerminalButton>
-          )}
-          <div className="flex gap-3 ml-auto">
-            <TerminalButton variant="outline" onClick={handleClose}>
-              Cancel
-            </TerminalButton>
-            {step === "config" && (
-              <TerminalButton
-                onClick={handleCreate}
-                disabled={!selectedView || !name.trim() || createComponent.isPending}
-              >
-                {createComponent.isPending ? "Creating..." : "Create Component"}
-              </TerminalButton>
-            )}
-          </div>
+        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+          <TerminalButton variant="outline" onClick={handleClose}>
+            Cancel
+          </TerminalButton>
+          <TerminalButton
+            onClick={handleCreate}
+            disabled={!selectedType || !name.trim() || createComponent.isPending}
+          >
+            {createComponent.isPending ? "Adding..." : "Add Component"}
+          </TerminalButton>
         </div>
       </DialogContent>
     </Dialog>

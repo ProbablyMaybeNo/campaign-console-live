@@ -4,7 +4,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useCreateCampaign } from "@/hooks/useCampaigns";
-import { useDiscoverRepoRules } from "@/hooks/useWargameRules";
+import { useDiscoverRepoRules, useSyncRepoRules } from "@/hooks/useWargameRules";
 import { GitBranch, CheckCircle, AlertCircle, Gamepad2 } from "lucide-react";
 
 interface CreateCampaignModalProps {
@@ -25,9 +25,11 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   const [repoUrl, setRepoUrl] = useState("");
   const [repoValidated, setRepoValidated] = useState<boolean | null>(null);
   const [repoCategories, setRepoCategories] = useState<string[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const createCampaign = useCreateCampaign();
   const discoverRules = useDiscoverRepoRules();
+  const syncRules = useSyncRepoRules();
 
   const handleValidateRepo = async () => {
     if (!repoUrl.trim()) return;
@@ -46,12 +48,28 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    await createCampaign.mutateAsync({
+    // Create the campaign first
+    const campaign = await createCampaign.mutateAsync({
       name,
       description: description || undefined,
       points_limit: parseInt(pointsLimit) || 1000,
       rules_repo_url: wargameOption === "github" && repoValidated ? repoUrl : undefined,
     });
+    
+    // If we have a validated repo, sync the rules immediately after creating
+    if (wargameOption === "github" && repoValidated && repoUrl && campaign) {
+      setIsSyncing(true);
+      try {
+        await syncRules.mutateAsync({
+          repoUrl,
+          campaignId: campaign.id,
+        });
+      } catch (error) {
+        console.error("Failed to sync rules:", error);
+        // Don't block campaign creation if sync fails
+      }
+      setIsSyncing(false);
+    }
     
     // Reset form and close
     resetForm();
@@ -66,12 +84,15 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     setRepoUrl("");
     setRepoValidated(null);
     setRepoCategories([]);
+    setIsSyncing(false);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
   };
+
+  const isCreating = createCampaign.isPending || isSyncing;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -187,6 +208,9 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
                     <p className="text-green-400/70 mt-1">
                       Found {repoCategories.length} rule categories: {repoCategories.join(", ")}
                     </p>
+                    <p className="text-green-400/60 mt-1 text-[10px]">
+                      Rules will be synced when you create the campaign.
+                    </p>
                   </div>
                 </div>
               )}
@@ -194,7 +218,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               {repoValidated === false && (
                 <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 border border-destructive/30">
                   <AlertCircle className="w-4 h-4" />
-                  <span>Could not access repository. Check the URL and try again.</span>
+                  <span>Could not access repository. Check the URL and ensure it's public.</span>
                 </div>
               )}
             </div>
@@ -206,6 +230,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               variant="outline"
               onClick={handleClose}
               className="flex-1"
+              disabled={isCreating}
             >
               Cancel
             </TerminalButton>
@@ -214,12 +239,12 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               className="flex-1"
               disabled={
                 !name.trim() || 
-                createCampaign.isPending ||
+                isCreating ||
                 (wargameOption === "github" && !repoValidated)
               }
             >
-              {createCampaign.isPending ? (
-                <TerminalLoader text="Creating" size="sm" />
+              {isCreating ? (
+                <TerminalLoader text={isSyncing ? "Syncing Rules" : "Creating"} size="sm" />
               ) : (
                 "Create Campaign"
               )}
