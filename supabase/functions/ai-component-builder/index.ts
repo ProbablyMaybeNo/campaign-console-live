@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,7 @@ interface BuilderRequest {
   conversationHistory?: ConversationMessage[];
   sourceContent?: string;
   sourceUrl?: string;
+  campaignId?: string;
 }
 
 interface ComponentData {
@@ -30,6 +32,7 @@ interface ComponentData {
       properties?: Record<string, string>;
     }>;
   };
+  dataSource?: string; // 'live:players', 'live:warbands', etc.
 }
 
 serve(async (req) => {
@@ -43,9 +46,106 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { prompt, conversationHistory = [], sourceContent, sourceUrl } = await req.json() as BuilderRequest;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Build context for the AI
+    const { prompt, conversationHistory = [], sourceContent, sourceUrl, campaignId } = await req.json() as BuilderRequest;
+
+    // Fetch campaign data if campaignId is provided
+    let campaignContext = "";
+    let liveDataAvailable: Record<string, unknown[]> = {};
+
+    if (campaignId) {
+      console.log("Fetching campaign data for:", campaignId);
+
+      // Fetch players with profiles
+      const { data: players } = await supabase
+        .from("campaign_players")
+        .select(`
+          user_id,
+          role,
+          joined_at,
+          profiles:user_id (display_name, avatar_url)
+        `)
+        .eq("campaign_id", campaignId);
+
+      // Fetch warbands
+      const { data: warbands } = await supabase
+        .from("warbands")
+        .select("id, name, faction, sub_faction, points_total, owner_id, narrative")
+        .eq("campaign_id", campaignId);
+
+      // Fetch narrative events
+      const { data: narrativeEvents } = await supabase
+        .from("narrative_events")
+        .select("id, title, content, event_type, event_date, author_id, visibility")
+        .eq("campaign_id", campaignId)
+        .order("event_date", { ascending: false });
+
+      // Fetch schedule entries
+      const { data: scheduleEntries } = await supabase
+        .from("schedule_entries")
+        .select("id, title, round_number, scheduled_date, status, scenario")
+        .eq("campaign_id", campaignId)
+        .order("round_number", { ascending: true });
+
+      // Fetch wargame rules
+      const { data: rules } = await supabase
+        .from("wargame_rules")
+        .select("id, title, category, rule_key, content")
+        .eq("campaign_id", campaignId);
+
+      // Store live data for reference
+      liveDataAvailable = {
+        players: players || [],
+        warbands: warbands || [],
+        narrativeEvents: narrativeEvents || [],
+        scheduleEntries: scheduleEntries || [],
+        rules: rules || [],
+      };
+
+      // Create context string for AI
+      campaignContext = `
+
+LIVE CAMPAIGN DATA AVAILABLE:
+You have access to real-time data from this campaign's database. When the user asks for components using campaign data, extract from the following:
+
+PLAYERS (${players?.length || 0}):
+${JSON.stringify(players?.map(p => {
+  const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+  return {
+    user_id: p.user_id,
+    display_name: profile?.display_name || "Unknown",
+    role: p.role,
+    joined_at: p.joined_at
+  };
+}) || [], null, 2)}
+  role: p.role,
+  joined_at: p.joined_at
+})) || [], null, 2)}
+
+WARBANDS (${warbands?.length || 0}):
+${JSON.stringify(warbands || [], null, 2)}
+
+NARRATIVE EVENTS (${narrativeEvents?.length || 0}):
+${JSON.stringify(narrativeEvents?.slice(0, 20) || [], null, 2)}
+
+SCHEDULE ENTRIES (${scheduleEntries?.length || 0}):
+${JSON.stringify(scheduleEntries || [], null, 2)}
+
+WARGAME RULES CATEGORIES:
+${[...new Set(rules?.map(r => r.category) || [])].join(", ") || "None synced"}
+
+When creating components from live data:
+- For player lists: include display_name, faction (from their warband), warband link, narrative link
+- For warband lists: include name, faction, points_total, owner name
+- For schedule tables: include round_number, title, scheduled_date, status
+- Mark data as coming from the database so the component can update dynamically
+`;
+    }
+
+    // Build content context
     let contentContext = "";
     
     if (sourceContent) {
@@ -56,11 +156,13 @@ serve(async (req) => {
       contentContext += `\n\nThe user has provided this source URL: ${sourceUrl}`;
     }
 
-    const systemPrompt = `You are an AI assistant helping users create dashboard components for a wargaming campaign management app. You can create TABLE and CARD components by extracting data from source content (PDFs, text files, or URLs) that users provide.
+    const systemPrompt = `You are an AI assistant helping users create dashboard components for a wargaming campaign management app. You can create TABLE and CARD components by:
+1. Extracting data from source content (PDFs, text files, or URLs)
+2. Using LIVE DATA from the campaign database (players, warbands, narrative events, schedule, rules)
 
 IMPORTANT: You are having a conversation with the user. You can:
-1. Answer questions about the content they've uploaded
-2. List tables, sections, or data you find in the source
+1. Answer questions about the content they've uploaded OR the campaign data
+2. List tables, sections, or data you find in any source
 3. Create one or multiple components when they ask
 
 When the user asks you to CREATE components, you MUST respond with a JSON object in this EXACT format:
@@ -73,24 +175,19 @@ When the user asks you to CREATE components, you MUST respond with a JSON object
         "title": "Component Title",
         "columns": ["Column1", "Column2"],
         "rows": [{"Column1": "value", "Column2": "value"}]
-      }
-    },
-    {
-      "type": "card",
-      "data": {
-        "title": "Cards Title",
-        "cards": [
-          {
-            "id": "unique-id",
-            "name": "Card Name",
-            "description": "Description text",
-            "properties": {"key": "value"}
-          }
-        ]
-      }
+      },
+      "dataSource": "live:players"
     }
   ]
 }
+
+DATA SOURCE OPTIONS:
+- "static" - Data is embedded in the component (from PDFs, URLs, or manual entry)
+- "live:players" - Component shows campaign player data
+- "live:warbands" - Component shows warband data
+- "live:narrative" - Component shows narrative events
+- "live:schedule" - Component shows schedule entries
+- "live:rules" - Component shows wargame rules
 
 When the user is just asking questions or exploring (NOT creating):
 {
@@ -100,12 +197,12 @@ When the user is just asking questions or exploring (NOT creating):
 
 Guidelines:
 - Be conversational and helpful
-- When listing what you find, be specific about table names, sections, page references
-- When creating components, extract ACCURATE data from the source
-- You can create MULTIPLE components at once (e.g., 3 separate tables)
+- When creating player lists: match player user_ids to their warbands to show faction info
+- When creating links: use format "[View](/campaign/{campaignId}/warband/{id})" for warbands
+- You can create MULTIPLE components at once
 - Each component should be self-contained with all its data
-- For wargames: look for injury tables, advancement charts, exploration results, weapon stats, ability lists, etc.
-- If source doesn't contain requested data, explain what you could find instead
+- For wargames: injury tables, advancement charts, weapon stats, ability lists
+- If data doesn't exist yet, explain what's available
 
 ALWAYS RESPOND WITH VALID JSON. The response must be parseable JSON with "message" and "components" fields.`;
 
@@ -113,10 +210,10 @@ ALWAYS RESPOND WITH VALID JSON. The response must be parseable JSON with "messag
     const messages = [
       { role: "system", content: systemPrompt },
       ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
-      { role: "user", content: `${prompt}${contentContext}` }
+      { role: "user", content: `${prompt}${campaignContext}${contentContext}` }
     ];
 
-    console.log("Sending to AI with history length:", conversationHistory.length);
+    console.log("Sending to AI with campaign context:", !!campaignId, "history length:", conversationHistory.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -163,13 +260,11 @@ ALWAYS RESPOND WITH VALID JSON. The response must be parseable JSON with "messag
     // Try to parse the JSON from the response
     let parsedData: { message: string; components: ComponentData[] };
     try {
-      // Extract JSON from potential markdown code blocks
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim();
       parsedData = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", content);
-      // If parsing fails, treat the whole content as a message with no components
       parsedData = {
         message: content,
         components: []
