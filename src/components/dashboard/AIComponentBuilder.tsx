@@ -2,9 +2,17 @@ import { useState, useRef, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { useCampaignDocuments, useUploadCampaignDocument, getDocumentContent } from "@/hooks/useCampaignDocuments";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Bot, 
   Upload, 
@@ -16,7 +24,8 @@ import {
   User,
   CheckCircle,
   Table,
-  LayoutList
+  LayoutList,
+  FolderOpen
 } from "lucide-react";
 
 interface AIComponentBuilderProps {
@@ -61,12 +70,18 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourceContent, setSourceContent] = useState("");
   const [fileName, setFileName] = useState("");
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingDocument, setIsLoadingDocument] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const createComponent = useCreateComponent();
+  
+  // Fetch saved campaign documents
+  const { data: campaignDocuments = [] } = useCampaignDocuments(campaignId);
+  const uploadDocument = useUploadCampaignDocument(campaignId);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -84,26 +99,60 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setFileName(file.name);
-
-    if (file.type === "text/plain" || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
-      const text = await file.text();
-      setSourceContent(text);
-      toast.success(`Loaded ${file.name}`);
+    // Check if it's a supported file type
+    const isText = file.type === "text/plain" || file.name.endsWith(".txt") || file.name.endsWith(".md");
+    const isPdf = file.type === "application/pdf";
+    
+    if (!isText && !isPdf) {
+      toast.error("Unsupported file type. Please use .txt, .md, or .pdf files.");
       return;
     }
 
-    if (file.type === "application/pdf") {
-      toast.info("PDF uploaded. The AI will extract content from it.");
+    setFileName(file.name);
+    setSelectedDocumentId(""); // Clear any selected saved document
+
+    if (isText) {
+      const text = await file.text();
+      setSourceContent(text);
+      toast.success(`Loaded ${file.name}`);
+    } else if (isPdf) {
       const reader = new FileReader();
       reader.onload = () => {
         setSourceContent(`[PDF Content from: ${file.name}]`);
       };
       reader.readAsDataURL(file);
+      toast.info("PDF uploaded. The AI will extract content from it.");
+    }
+
+    // Upload to campaign storage for future use
+    uploadDocument.mutate(file);
+  };
+
+  const handleSelectSavedDocument = async (documentId: string) => {
+    if (!documentId) {
+      clearFile();
       return;
     }
 
-    toast.error("Unsupported file type. Please use .txt, .md, or .pdf files.");
+    const document = campaignDocuments.find(d => d.id === documentId);
+    if (!document) return;
+
+    setSelectedDocumentId(documentId);
+    setFileName(document.name);
+    setIsLoadingDocument(true);
+
+    try {
+      const content = await getDocumentContent(document.file_path);
+      setSourceContent(content);
+      toast.success(`Loaded "${document.name}"`);
+    } catch (error) {
+      console.error("Error loading document:", error);
+      toast.error("Failed to load document");
+      setSelectedDocumentId("");
+      setFileName("");
+    } finally {
+      setIsLoadingDocument(false);
+    }
   };
 
   const handleSend = async () => {
@@ -253,12 +302,14 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
     setSourceUrl("");
     setSourceContent("");
     setFileName("");
+    setSelectedDocumentId("");
     onOpenChange(false);
   };
 
   const clearFile = () => {
     setSourceContent("");
     setFileName("");
+    setSelectedDocumentId("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -282,7 +333,7 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
         </DialogHeader>
 
         {/* Source Input Bar */}
-        <div className="px-4 py-2 border-b border-border bg-muted/30 flex items-center gap-3">
+        <div className="px-4 py-2 border-b border-border bg-muted/30 flex flex-wrap items-center gap-3">
           <input
             ref={fileInputRef}
             type="file"
@@ -291,9 +342,37 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
             className="hidden"
           />
           
+          {/* Saved Documents Dropdown */}
+          {campaignDocuments.length > 0 && !fileName && (
+            <Select
+              value={selectedDocumentId}
+              onValueChange={handleSelectSavedDocument}
+              disabled={isLoadingDocument}
+            >
+              <SelectTrigger className="w-[180px] h-8 text-xs bg-input border-border">
+                <FolderOpen className="w-3 h-3 mr-2" />
+                <SelectValue placeholder="Saved documents" />
+              </SelectTrigger>
+              <SelectContent>
+                {campaignDocuments.map((doc) => (
+                  <SelectItem key={doc.id} value={doc.id} className="text-xs">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-3 h-3" />
+                      <span className="truncate max-w-[140px]">{doc.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          
           {fileName ? (
             <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 px-3 py-1.5 rounded">
-              <FileText className="w-3 h-3" />
+              {isLoadingDocument ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <FileText className="w-3 h-3" />
+              )}
               <span className="truncate max-w-[150px]">{fileName}</span>
               <button onClick={clearFile} className="hover:text-destructive">
                 <X className="w-3 h-3" />
@@ -305,11 +384,11 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
               className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 border border-dashed border-border rounded hover:border-primary/50"
             >
               <Upload className="w-3 h-3" />
-              Upload PDF/Text
+              Upload New
             </button>
           )}
 
-          <div className="flex-1 relative">
+          <div className="flex-1 min-w-[150px] relative">
             <Link className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
             <input
               type="url"
