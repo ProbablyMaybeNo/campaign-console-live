@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      campaign_documents: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          file_path: string
+          file_size: number | null
+          file_type: string
+          id: string
+          name: string
+          uploaded_by: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          name: string
+          uploaded_by: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string
+          id?: string
+          name?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_documents_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_players: {
         Row: {
           campaign_id: string
