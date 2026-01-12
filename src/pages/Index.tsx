@@ -1,14 +1,55 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { Link } from "react-router-dom";
+import { TerminalButton } from "@/components/ui/TerminalButton";
+import { useAuth } from "@/hooks/useAuth";
 
-const Index = () => {
+export default function Index() {
+  const { user } = useAuth();
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Grid background */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `linear-gradient(hsl(var(--primary)) 1px, transparent 1px),
+                           linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)`,
+          backgroundSize: '50px 50px'
+        }} />
+      </div>
+
+      <div className="text-center space-y-8 relative z-10">
+        <div className="space-y-4">
+          <h1 className="text-5xl font-bold tracking-widest text-primary text-glow-primary">
+            CAMPAIGN CONSOLE
+          </h1>
+          <p className="text-lg text-muted-foreground uppercase tracking-wider">
+            Wargame Campaign Tracker
+          </p>
+          <div className="text-xs text-muted-foreground font-mono">
+            // GM-First · Rules-Aware · Infinite Whiteboard
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          {user ? (
+            <Link to="/campaigns">
+              <TerminalButton size="lg">
+                {">> Enter Console"}
+              </TerminalButton>
+            </Link>
+          ) : (
+            <Link to="/auth">
+              <TerminalButton size="lg">
+                {">> Access System"}
+              </TerminalButton>
+            </Link>
+          )}
+        </div>
+
+        <div className="pt-8 text-xs text-muted-foreground space-y-1">
+          <p>[ System Status: <span className="text-primary">ONLINE</span> ]</p>
+          <p>v1.0.0 - Powered by Lovable Cloud</p>
+        </div>
       </div>
     </div>
   );
-};
-
-export default Index;
+}
