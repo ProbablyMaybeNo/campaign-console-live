@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
-import { useAuth } from "@/hooks/useAuth";
 import { useCampaignUnits, useCreateCampaignUnit, useDeleteCampaignUnit, CampaignUnit, EquipmentOption } from "@/hooks/useCampaignUnits";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { TerminalButton } from "@/components/ui/TerminalButton";
@@ -11,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UnitDatasheet } from "@/components/warband/UnitDatasheet";
+import { AIUnitExtractor } from "@/components/warband/AIUnitExtractor";
 import { 
   ArrowLeft, 
   Database, 
@@ -19,7 +19,8 @@ import {
   Eye,
   Search,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  Brain
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,7 @@ export default function UnitLibrary() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAIExtractor, setShowAIExtractor] = useState(false);
   const [viewingUnit, setViewingUnit] = useState<CampaignUnit | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -124,10 +126,16 @@ export default function UnitLibrary() {
             </div>
           </div>
 
-          <TerminalButton onClick={() => setShowAddModal(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Unit
-          </TerminalButton>
+          <div className="flex items-center gap-2">
+            <TerminalButton variant="outline" onClick={() => setShowAIExtractor(true)}>
+              <Brain className="w-4 h-4 mr-2" />
+              AI Extract
+            </TerminalButton>
+            <TerminalButton onClick={() => setShowAddModal(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Unit
+            </TerminalButton>
+          </div>
         </div>
       </header>
 
@@ -221,6 +229,13 @@ export default function UnitLibrary() {
         unit={viewingUnit}
         open={!!viewingUnit}
         onOpenChange={(open) => !open && setViewingUnit(null)}
+      />
+
+      {/* AI Extractor */}
+      <AIUnitExtractor
+        open={showAIExtractor}
+        onOpenChange={setShowAIExtractor}
+        campaignId={campaignId!}
       />
     </div>
   );
