@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RulesImporter } from "@/components/campaigns/RulesImporter";
 import { UnitEditor } from "@/components/dashboard/UnitEditor";
+import { CreateUnitForm } from "@/components/dashboard/CreateUnitForm";
 import { 
   Search, 
   Filter, 
@@ -17,7 +18,8 @@ import {
   ChevronRight,
   X,
   Tag,
-  FileUp
+  FileUp,
+  Plus
 } from "lucide-react";
 
 interface RulesLibraryProps {
@@ -37,6 +39,7 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [showImporter, setShowImporter] = useState(false);
+  const [showCreateUnit, setShowCreateUnit] = useState(false);
 
   // Extract unique categories from rules
   const categories = useMemo(() => {
@@ -148,31 +151,57 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
 
   return (
     <div className="space-y-4">
-      {/* PDF Import Section */}
-      <Collapsible open={showImporter} onOpenChange={setShowImporter}>
-        <CollapsibleTrigger asChild>
-          <TerminalButton
-            variant={showImporter ? "default" : "outline"}
-            className="w-full justify-start"
-          >
-            <FileUp className="w-4 h-4 mr-2" />
-            {showImporter ? "Close PDF Importer" : "Import from PDF"}
-            {showImporter ? (
-              <ChevronDown className="w-4 h-4 ml-auto" />
-            ) : (
-              <ChevronRight className="w-4 h-4 ml-auto" />
-            )}
-          </TerminalButton>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-3">
-          <div className="border border-border bg-card p-4 rounded">
-            <RulesImporter 
-              campaignId={campaignId} 
-              onComplete={() => setShowImporter(false)}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Action Buttons Row */}
+      <div className="flex gap-2">
+        {/* PDF Import Section */}
+        <Collapsible open={showImporter} onOpenChange={setShowImporter} className="flex-1">
+          <CollapsibleTrigger asChild>
+            <TerminalButton
+              variant={showImporter ? "default" : "outline"}
+              className="w-full justify-start"
+            >
+              <FileUp className="w-4 h-4 mr-2" />
+              {showImporter ? "Close PDF Importer" : "Import from PDF"}
+              {showImporter ? (
+                <ChevronDown className="w-4 h-4 ml-auto" />
+              ) : (
+                <ChevronRight className="w-4 h-4 ml-auto" />
+              )}
+            </TerminalButton>
+          </CollapsibleTrigger>
+        </Collapsible>
+
+        {/* Create Unit Button */}
+        <TerminalButton
+          variant={showCreateUnit ? "default" : "outline"}
+          onClick={() => setShowCreateUnit(!showCreateUnit)}
+          className="shrink-0"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          {showCreateUnit ? "Cancel" : "Create Unit"}
+        </TerminalButton>
+      </div>
+
+      {/* PDF Importer Content */}
+      {showImporter && (
+        <div className="border border-border bg-card p-4 rounded animate-fade-in">
+          <RulesImporter 
+            campaignId={campaignId} 
+            onComplete={() => setShowImporter(false)}
+          />
+        </div>
+      )}
+
+      {/* Create Unit Form */}
+      {showCreateUnit && (
+        <div className="animate-fade-in">
+          <CreateUnitForm 
+            campaignId={campaignId} 
+            onComplete={() => setShowCreateUnit(false)}
+            onCancel={() => setShowCreateUnit(false)}
+          />
+        </div>
+      )}
 
       {/* Search & Filter Bar */}
       <div className="flex flex-col gap-3">
