@@ -2,3 +2,6 @@ project_id = "vcnodroausotjqabjqcf"
 
 [functions.fetch-rules-repo]
 verify_jwt = false
+
+[functions.ai-component-builder]
+verify_jwt = false
