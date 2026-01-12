@@ -234,8 +234,9 @@ export default function WarbandBuilder() {
 
             {/* Roster */}
             <WarbandRoster
-              warbandId={warband.id}
+              warband={warband}
               campaignId={campaignId!}
+              campaignName={campaign.name}
               roster={warband.roster}
               pointsLimit={campaign.points_limit || 1000}
               faction={warband.faction || ""}
