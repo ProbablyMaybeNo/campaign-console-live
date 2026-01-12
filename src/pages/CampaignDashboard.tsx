@@ -12,6 +12,7 @@ import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsMo
 import { PlayersWidget } from "@/components/dashboard/widgets/PlayersWidget";
 import { MessagesWidget } from "@/components/dashboard/widgets/MessagesWidget";
 import { NarrativeWidget } from "@/components/dashboard/widgets/NarrativeWidget";
+import { RulesLibrary } from "@/components/dashboard/RulesLibrary";
 import { ScheduleWidget } from "@/components/dashboard/widgets/ScheduleWidget";
 import { 
   ArrowLeft, 
@@ -146,21 +147,13 @@ export default function CampaignDashboard() {
         );
       case "rules":
         return (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-5xl mx-auto">
             <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
               <Scroll className="w-5 h-5" />
-              Rules Reference
+              Rules Library
             </h2>
             <div className="bg-card border border-primary/30 rounded p-4">
-              {campaign.rules_repo_url ? (
-                <p className="text-muted-foreground text-sm">
-                  Rules loaded from: {campaign.rules_repo_url}
-                </p>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  No rules repository configured. Add one in campaign settings.
-                </p>
-              )}
+              <RulesLibrary campaignId={campaignId!} />
             </div>
           </div>
         );
