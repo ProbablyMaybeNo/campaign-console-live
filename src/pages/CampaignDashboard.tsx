@@ -7,6 +7,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
 import { AddComponentModal } from "@/components/dashboard/AddComponentModal";
+import { AIComponentBuilder } from "@/components/dashboard/AIComponentBuilder";
 import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
 import { PlayersWidget } from "@/components/dashboard/widgets/PlayersWidget";
 import { MessagesWidget } from "@/components/dashboard/widgets/MessagesWidget";
@@ -25,8 +26,7 @@ import {
   LayoutGrid,
   Database,
   BookOpen,
-  ShoppingBag,
-  Archive
+  Bot
 } from "lucide-react";
 
 type DashboardView = "dashboard" | "players" | "warbands" | "narrative" | "messages" | "schedule" | "rules" | "map";
@@ -40,6 +40,7 @@ export default function CampaignDashboard() {
 
   const [selectedComponent, setSelectedComponent] = useState<DashboardComponent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAIBuilder, setShowAIBuilder] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeView, setActiveView] = useState<DashboardView>("dashboard");
 
@@ -295,12 +296,21 @@ export default function CampaignDashboard() {
         <main className="flex-1 p-4 overflow-auto relative">
           {renderMainContent()}
 
-          {/* Floating Add Button (GM only, only on dashboard view) */}
+          {/* Floating Add Buttons (GM only, only on dashboard view) */}
           {isGM && activeView === "dashboard" && (
-            <div className="fixed bottom-8 right-8 z-50">
+            <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-3">
+              <TerminalButton
+                variant="outline"
+                className="h-12 w-12 rounded-full border-primary/50 hover:border-primary"
+                onClick={() => setShowAIBuilder(true)}
+                title="AI Component Builder"
+              >
+                <Bot className="w-5 h-5" />
+              </TerminalButton>
               <TerminalButton
                 className="h-14 w-14 rounded-full glow-primary text-xl"
                 onClick={() => setShowAddModal(true)}
+                title="Add Component"
               >
                 <Plus className="w-6 h-6" />
               </TerminalButton>
@@ -313,6 +323,13 @@ export default function CampaignDashboard() {
       <AddComponentModal
         open={showAddModal}
         onOpenChange={setShowAddModal}
+        campaignId={campaignId!}
+      />
+
+      {/* AI Component Builder */}
+      <AIComponentBuilder
+        open={showAIBuilder}
+        onOpenChange={setShowAIBuilder}
         campaignId={campaignId!}
       />
 
