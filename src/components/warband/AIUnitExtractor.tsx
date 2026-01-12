@@ -84,13 +84,9 @@ export function AIUnitExtractor({ open, onOpenChange, campaignId }: AIUnitExtrac
     setFile(selectedFile);
     
     if (selectedFile.type === "application/pdf") {
-      // For PDFs, convert to base64 and let the edge function handle parsing
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = (event.target?.result as string).split(",")[1];
-        setTextContent(`__PDF_BASE64__${base64}`);
-      };
-      reader.readAsDataURL(selectedFile);
+      // PDFs can't be parsed directly - show guidance
+      toast.info("PDF detected: Please copy the text from your PDF and paste it below for best results.");
+      setTextContent("");
     } else {
       // For text files, read as text
       const reader = new FileReader();
