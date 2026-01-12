@@ -2,15 +2,17 @@ import { useState, useMemo } from "react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { PointsTracker } from "./PointsTracker";
 import { RosterValidationPanel } from "./RosterValidationPanel";
-import { RosterUnit, useUpdateWarband } from "@/hooks/useWarband";
+import { RosterExportModal } from "./RosterExportModal";
+import { RosterUnit, useUpdateWarband, Warband } from "@/hooks/useWarband";
 import { CampaignUnit, useCampaignUnits } from "@/hooks/useCampaignUnits";
 import { validateRoster } from "@/lib/rosterValidation";
-import { Plus, Trash2, Eye, Wrench, User } from "lucide-react";
+import { Plus, Trash2, Eye, Wrench, User, FileDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface WarbandRosterProps {
-  warbandId: string;
+  warband: Warband;
   campaignId: string;
+  campaignName: string;
   roster: RosterUnit[];
   pointsLimit: number;
   faction: string;
@@ -21,8 +23,9 @@ interface WarbandRosterProps {
 }
 
 export function WarbandRoster({
-  warbandId,
+  warband,
   campaignId,
+  campaignName,
   roster,
   pointsLimit,
   faction,
@@ -34,6 +37,7 @@ export function WarbandRoster({
   const { data: units } = useCampaignUnits(campaignId);
   const updateWarband = useUpdateWarband();
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const totalPoints = roster.reduce((sum, unit) => sum + unit.total_cost, 0);
 
@@ -54,7 +58,7 @@ export function WarbandRoster({
     
     try {
       await updateWarband.mutateAsync({
-        id: warbandId,
+        id: warband.id,
         campaign_id: campaignId,
         roster: newRoster,
       });
@@ -196,15 +200,24 @@ export function WarbandRoster({
           )}
         </div>
 
-        {/* Add Unit Footer */}
-        <div className="border-t border-primary/30 p-4">
+        {/* Footer Actions */}
+        <div className="border-t border-primary/30 p-4 flex gap-2">
           <TerminalButton
             onClick={onAddUnit}
-            className="w-full"
+            className="flex-1"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Unit
           </TerminalButton>
+          {roster.length > 0 && (
+            <TerminalButton
+              variant="outline"
+              onClick={() => setShowExportModal(true)}
+            >
+              <FileDown className="w-4 h-4 mr-2" />
+              Export
+            </TerminalButton>
+          )}
         </div>
       </div>
 
@@ -223,6 +236,16 @@ export function WarbandRoster({
           </div>
         </div>
       )}
+
+      {/* Export Modal */}
+      <RosterExportModal
+        open={showExportModal}
+        onOpenChange={setShowExportModal}
+        warband={warband}
+        units={units || []}
+        campaignName={campaignName}
+        pointsLimit={pointsLimit}
+      />
     </div>
   );
 }
