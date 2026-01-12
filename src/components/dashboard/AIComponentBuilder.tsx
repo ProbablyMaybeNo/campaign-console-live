@@ -407,10 +407,12 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
 
                             {/* Preview snippet */}
                             <div className="text-xs text-muted-foreground">
-                              {"columns" in component.data ? (
+                              {"columns" in component.data && component.data.columns && component.data.rows ? (
                                 <span>{component.data.rows.length} rows × {component.data.columns.length} columns</span>
-                              ) : (
+                              ) : "cards" in component.data && component.data.cards ? (
                                 <span>{component.data.cards.length} cards</span>
+                              ) : (
+                                <span>Component ready</span>
                               )}
                             </div>
                           </div>
