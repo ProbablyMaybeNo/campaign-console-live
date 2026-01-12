@@ -332,6 +332,50 @@ export type Database = {
           },
         ]
       }
+      wargame_rules: {
+        Row: {
+          campaign_id: string
+          category: string
+          content: Json
+          created_at: string
+          id: string
+          metadata: Json | null
+          rule_key: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          category: string
+          content?: Json
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          rule_key: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          category?: string
+          content?: Json
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          rule_key?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wargame_rules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
