@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.extract-units-pdf]
 verify_jwt = false
+
+[functions.parse-rules-pdf]
+verify_jwt = false
