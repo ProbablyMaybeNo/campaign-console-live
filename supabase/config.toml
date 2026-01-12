@@ -1,1 +1,4 @@
 project_id = "vcnodroausotjqabjqcf"
+
+[functions.fetch-rules-repo]
+verify_jwt = false

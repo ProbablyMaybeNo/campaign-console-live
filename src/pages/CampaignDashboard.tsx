@@ -7,6 +7,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
 import { AddComponentModal } from "@/components/dashboard/AddComponentModal";
+import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
 import { ArrowLeft, Settings, Users, Map, Scroll, Swords, MessageSquare, Calendar, Plus } from "lucide-react";
 
 export default function CampaignDashboard() {
@@ -18,6 +19,7 @@ export default function CampaignDashboard() {
 
   const [selectedComponent, setSelectedComponent] = useState<DashboardComponent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
 
   const isLoading = campaignLoading || componentsLoading;
 
@@ -88,7 +90,13 @@ export default function CampaignDashboard() {
             {isGM && (
               <>
                 <div className="h-px bg-border my-3" />
-                <NavItem icon={<Settings className="w-4 h-4" />} label="Settings" />
+                <button
+                  onClick={() => setShowSettingsModal(true)}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-wider transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </button>
               </>
             )}
           </nav>
@@ -124,6 +132,15 @@ export default function CampaignDashboard() {
         onOpenChange={setShowAddModal}
         campaignId={campaignId!}
       />
+
+      {/* Settings Modal */}
+      {campaignId && (
+        <CampaignSettingsModal
+          open={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          campaignId={campaignId}
+        />
+      )}
     </div>
   );
 }
