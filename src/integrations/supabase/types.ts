@@ -87,6 +87,65 @@ export type Database = {
           },
         ]
       }
+      campaign_units: {
+        Row: {
+          abilities: Json
+          base_cost: number
+          campaign_id: string
+          created_at: string
+          equipment_options: Json
+          faction: string
+          id: string
+          keywords: Json
+          name: string
+          source: string
+          source_ref: string | null
+          stats: Json
+          sub_faction: string | null
+          updated_at: string
+        }
+        Insert: {
+          abilities?: Json
+          base_cost?: number
+          campaign_id: string
+          created_at?: string
+          equipment_options?: Json
+          faction: string
+          id?: string
+          keywords?: Json
+          name: string
+          source?: string
+          source_ref?: string | null
+          stats?: Json
+          sub_faction?: string | null
+          updated_at?: string
+        }
+        Update: {
+          abilities?: Json
+          base_cost?: number
+          campaign_id?: string
+          created_at?: string
+          equipment_options?: Json
+          faction?: string
+          id?: string
+          keywords?: Json
+          name?: string
+          source?: string
+          source_ref?: string | null
+          stats?: Json
+          sub_faction?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_units_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           created_at: string

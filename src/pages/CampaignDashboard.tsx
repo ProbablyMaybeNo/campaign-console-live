@@ -98,7 +98,7 @@ export default function CampaignDashboard() {
             </h2>
             <div className="bg-card border border-primary/30 rounded p-4">
               <p className="text-muted-foreground text-sm">
-                Warband Builder coming soon. Manage your army rosters, units, and points here.
+                Build and manage your warband roster with validated unit selection and points tracking.
               </p>
               <Link to={`/campaign/${campaignId}/warband-builder`}>
                 <TerminalButton className="mt-4">
