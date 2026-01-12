@@ -5,11 +5,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface ConversationMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 interface BuilderRequest {
   prompt: string;
-  componentType: "table" | "card";
-  sourceContent?: string; // Extracted text from PDF or fetched content
-  sourceUrl?: string; // URL to fetch content from
+  conversationHistory?: ConversationMessage[];
+  sourceContent?: string;
+  sourceUrl?: string;
+}
+
+interface ComponentData {
+  type: "table" | "card";
+  data: {
+    title: string;
+    columns?: string[];
+    rows?: Record<string, string>[];
+    cards?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      properties?: Record<string, string>;
+    }>;
+  };
 }
 
 serve(async (req) => {
@@ -23,67 +43,80 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { prompt, componentType, sourceContent, sourceUrl } = await req.json() as BuilderRequest;
+    const { prompt, conversationHistory = [], sourceContent, sourceUrl } = await req.json() as BuilderRequest;
 
     // Build context for the AI
     let contentContext = "";
     
     if (sourceContent) {
-      contentContext = `\n\nSOURCE CONTENT TO EXTRACT FROM:\n${sourceContent.substring(0, 50000)}`; // Limit to 50k chars
+      contentContext = `\n\nSOURCE CONTENT TO EXTRACT FROM:\n${sourceContent.substring(0, 50000)}`;
     }
     
     if (sourceUrl) {
-      // Try to fetch content from URL (for repos, we'd need GitHub API, but for now just note it)
       contentContext += `\n\nThe user has provided this source URL: ${sourceUrl}`;
     }
 
-    const systemPrompt = componentType === "table" 
-      ? `You are a data extraction expert. The user wants to create a TABLE component for a wargame campaign dashboard.
+    const systemPrompt = `You are an AI assistant helping users create dashboard components for a wargaming campaign management app. You can create TABLE and CARD components by extracting data from source content (PDFs, text files, or URLs) that users provide.
 
-Your job is to extract structured tabular data from the provided source content based on the user's request.
+IMPORTANT: You are having a conversation with the user. You can:
+1. Answer questions about the content they've uploaded
+2. List tables, sections, or data you find in the source
+3. Create one or multiple components when they ask
 
-RESPOND ONLY WITH VALID JSON in this exact format:
+When the user asks you to CREATE components, you MUST respond with a JSON object in this EXACT format:
 {
-  "title": "Table title",
-  "columns": ["Column1", "Column2", "Column3"],
-  "rows": [
-    {"Column1": "value1", "Column2": "value2", "Column3": "value3"},
-    {"Column1": "value1", "Column2": "value2", "Column3": "value3"}
-  ]
-}
-
-Guidelines:
-- Extract the exact data the user is asking for
-- Use clear, concise column names
-- Include all relevant rows from the source
-- If the source doesn't contain the requested data, create a reasonable structure with placeholder content
-- For wargame data: look for stats, profiles, costs, abilities, weapons, etc.`
-      : `You are a data extraction expert. The user wants to create a CARD component for a wargame campaign dashboard.
-
-Your job is to extract structured card data from the provided source content based on the user's request.
-
-RESPOND ONLY WITH VALID JSON in this exact format:
-{
-  "title": "Cards title",
-  "cards": [
+  "message": "Your conversational response explaining what you found/created",
+  "components": [
     {
-      "id": "unique-id-1",
-      "name": "Card Name",
-      "description": "Card description or effect",
-      "properties": {
-        "property1": "value1",
-        "property2": "value2"
+      "type": "table",
+      "data": {
+        "title": "Component Title",
+        "columns": ["Column1", "Column2"],
+        "rows": [{"Column1": "value", "Column2": "value"}]
+      }
+    },
+    {
+      "type": "card",
+      "data": {
+        "title": "Cards Title",
+        "cards": [
+          {
+            "id": "unique-id",
+            "name": "Card Name",
+            "description": "Description text",
+            "properties": {"key": "value"}
+          }
+        ]
       }
     }
   ]
 }
 
+When the user is just asking questions or exploring (NOT creating):
+{
+  "message": "Your conversational response",
+  "components": []
+}
+
 Guidelines:
-- Extract individual items as cards (abilities, units, weapons, etc.)
-- Each card should have a unique id, name, and description
-- Put any additional stats/values in the properties object
-- If the source doesn't contain the requested data, create reasonable examples
-- For wargame data: look for abilities, special rules, unit profiles, equipment, etc.`;
+- Be conversational and helpful
+- When listing what you find, be specific about table names, sections, page references
+- When creating components, extract ACCURATE data from the source
+- You can create MULTIPLE components at once (e.g., 3 separate tables)
+- Each component should be self-contained with all its data
+- For wargames: look for injury tables, advancement charts, exploration results, weapon stats, ability lists, etc.
+- If source doesn't contain requested data, explain what you could find instead
+
+ALWAYS RESPOND WITH VALID JSON. The response must be parseable JSON with "message" and "components" fields.`;
+
+    // Build messages array with conversation history
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
+      { role: "user", content: `${prompt}${contentContext}` }
+    ];
+
+    console.log("Sending to AI with history length:", conversationHistory.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -93,11 +126,8 @@ Guidelines:
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `${prompt}${contentContext}` }
-        ],
-        temperature: 0.3,
+        messages,
+        temperature: 0.4,
       }),
     });
 
@@ -128,30 +158,37 @@ Guidelines:
       throw new Error("No response from AI");
     }
 
+    console.log("AI raw response:", content.substring(0, 500));
+
     // Try to parse the JSON from the response
-    let parsedData;
+    let parsedData: { message: string; components: ComponentData[] };
     try {
       // Extract JSON from potential markdown code blocks
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
-      const jsonStr = jsonMatch[1].trim();
+      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+      const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim();
       parsedData = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", content);
-      // Return raw content for debugging
-      return new Response(JSON.stringify({ 
-        error: "Failed to parse AI response",
-        rawContent: content 
-      }), {
-        status: 422,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // If parsing fails, treat the whole content as a message with no components
+      parsedData = {
+        message: content,
+        components: []
+      };
     }
 
-    return new Response(JSON.stringify({ 
-      success: true,
-      data: parsedData,
-      componentType 
-    }), {
+    // Validate and normalize the response
+    const normalizedResponse = {
+      message: parsedData.message || "Here's what I found.",
+      components: Array.isArray(parsedData.components) 
+        ? parsedData.components.filter((c: ComponentData) => 
+            c && c.type && c.data && c.data.title
+          )
+        : []
+    };
+
+    console.log("Returning components:", normalizedResponse.components.length);
+
+    return new Response(JSON.stringify(normalizedResponse), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
