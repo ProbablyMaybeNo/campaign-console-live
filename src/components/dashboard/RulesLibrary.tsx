@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RulesImporter } from "@/components/campaigns/RulesImporter";
+import { UnitEditor } from "@/components/dashboard/UnitEditor";
 import { 
   Search, 
   Filter, 
@@ -348,71 +349,12 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
                     {expandedItems.has(`faction-${faction}`) && (
                       <div className="border-t border-border/30 divide-y divide-border/30">
                         {factionUnits.map(unit => (
-                          <div 
-                            key={unit.id} 
-                            className="px-4 py-3 hover:bg-accent/50 transition-colors"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <h4 className="font-mono text-sm text-foreground">
-                                    {unit.name}
-                                  </h4>
-                                  <span className="text-xs text-secondary font-mono">
-                                    {unit.base_cost} pts
-                                  </span>
-                                </div>
-                                
-                                {unit.sub_faction && (
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                                    {unit.sub_faction}
-                                  </p>
-                                )}
-
-                                {/* Stats */}
-                                {Object.keys(unit.stats).length > 0 && (
-                                  <div className="flex gap-2 mt-2 flex-wrap">
-                                    {Object.entries(unit.stats).map(([stat, value]) => (
-                                      <div 
-                                        key={stat} 
-                                        className="px-1.5 py-0.5 bg-muted text-[10px] font-mono"
-                                      >
-                                        <span className="text-muted-foreground uppercase">{stat}:</span>{" "}
-                                        <span className="text-foreground">{value}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Keywords */}
-                                {unit.keywords.length > 0 && (
-                                  <div className="flex gap-1 mt-2 flex-wrap">
-                                    {unit.keywords.map(kw => (
-                                      <Badge 
-                                        key={kw} 
-                                        variant="secondary" 
-                                        className="text-[9px] px-1 py-0"
-                                      >
-                                        {kw}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Abilities */}
-                                {unit.abilities.length > 0 && (
-                                  <div className="mt-2 space-y-1">
-                                    {unit.abilities.map((ability, idx) => (
-                                      <div key={idx} className="text-[10px]">
-                                        <span className="text-primary font-medium">{ability.name}:</span>{" "}
-                                        <span className="text-muted-foreground">{ability.effect}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                          <UnitEditor
+                            key={unit.id}
+                            unit={unit}
+                            isExpanded={expandedItems.has(`unit-${unit.id}`)}
+                            onToggleExpand={() => toggleExpanded(`unit-${unit.id}`)}
+                          />
                         ))}
                       </div>
                     )}
