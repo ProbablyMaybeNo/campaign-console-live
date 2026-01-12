@@ -5,6 +5,13 @@ import { DashboardComponent, useUpdateComponent, useDeleteComponent } from "@/ho
 import { GripVertical, X, Maximize2 } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { PlayersWidget } from "./widgets/PlayersWidget";
+import { MessagesWidget } from "./widgets/MessagesWidget";
+import { TableWidget } from "./widgets/TableWidget";
+import { NarrativeWidget } from "./widgets/NarrativeWidget";
+import { ScheduleWidget } from "./widgets/ScheduleWidget";
+import { CounterWidget } from "./widgets/CounterWidget";
+import { DiceRollerWidget } from "./widgets/DiceRollerWidget";
+import { CardWidget } from "./widgets/CardWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -121,6 +128,39 @@ export function DraggableComponent({
     switch (component.component_type) {
       case "players":
         return <PlayersWidget campaignId={campaignId} />;
+      case "messages":
+        return <MessagesWidget campaignId={campaignId} />;
+      case "table":
+        return <TableWidget component={component} isGM={isGM} />;
+      case "narrative":
+        return <NarrativeWidget campaignId={campaignId} isGM={isGM} />;
+      case "schedule":
+        return <ScheduleWidget campaignId={campaignId} isGM={isGM} />;
+      case "counter":
+        return <CounterWidget component={component} isGM={isGM} />;
+      case "dice_roller":
+        return <DiceRollerWidget component={component} />;
+      case "card":
+        return <CardWidget component={component} isGM={isGM} />;
+      case "rules":
+        return (
+          <div className="text-center py-4">
+            <p className="font-mono text-xs">[ RULES PANEL ]</p>
+            <p className="mt-1 text-xs opacity-60">Rules from repository will display here</p>
+          </div>
+        );
+      case "map":
+        return (
+          <div className="flex items-center justify-center h-full bg-muted/20 border border-dashed border-border rounded">
+            <p className="text-xs text-muted-foreground">Map Component</p>
+          </div>
+        );
+      case "image":
+        return (
+          <div className="flex items-center justify-center h-full bg-muted/20 border border-dashed border-border rounded">
+            <p className="text-xs text-muted-foreground">Image Component</p>
+          </div>
+        );
       default:
         return (
           <div className="text-center py-8">
