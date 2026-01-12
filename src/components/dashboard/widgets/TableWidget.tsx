@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Pencil, X, Check } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
 
 interface TableWidgetProps {
@@ -24,6 +24,8 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
   const rows = config.rows || [];
 
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
+  const [editingHeader, setEditingHeader] = useState<number | null>(null);
+  const [headerValue, setHeaderValue] = useState("");
 
   const handleAddRow = () => {
     const newRow: TableRow = { id: crypto.randomUUID() };
@@ -53,11 +55,72 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
   };
 
   const handleAddColumn = () => {
-    const newColName = `Col ${columns.length + 1}`;
+    const newColName = `Column ${columns.length + 1}`;
     const updatedRows = rows.map((row) => ({ ...row, [newColName]: "" }));
     updateComponent.mutate({
       id: component.id,
       config: { ...config, columns: [...columns, newColName], rows: updatedRows },
+    });
+  };
+
+  const handleStartEditHeader = (index: number) => {
+    setEditingHeader(index);
+    setHeaderValue(columns[index]);
+  };
+
+  const handleSaveHeader = () => {
+    if (editingHeader === null || !headerValue.trim()) {
+      setEditingHeader(null);
+      return;
+    }
+
+    const oldName = columns[editingHeader];
+    const newName = headerValue.trim();
+
+    if (oldName === newName) {
+      setEditingHeader(null);
+      return;
+    }
+
+    // Check for duplicate column names
+    if (columns.some((col, i) => i !== editingHeader && col === newName)) {
+      setEditingHeader(null);
+      return;
+    }
+
+    const updatedColumns = columns.map((col, i) => (i === editingHeader ? newName : col));
+    const updatedRows = rows.map((row) => {
+      const newRow: TableRow = { id: row.id };
+      columns.forEach((col, i) => {
+        const key = i === editingHeader ? newName : col;
+        newRow[key] = row[col] || "";
+      });
+      return newRow;
+    });
+
+    updateComponent.mutate({
+      id: component.id,
+      config: { ...config, columns: updatedColumns, rows: updatedRows },
+    });
+    setEditingHeader(null);
+  };
+
+  const handleDeleteColumn = (index: number) => {
+    if (columns.length <= 1) return; // Keep at least one column
+
+    const colToDelete = columns[index];
+    const updatedColumns = columns.filter((_, i) => i !== index);
+    const updatedRows = rows.map((row) => {
+      const newRow: TableRow = { id: row.id };
+      updatedColumns.forEach((col) => {
+        newRow[col] = row[col] || "";
+      });
+      return newRow;
+    });
+
+    updateComponent.mutate({
+      id: component.id,
+      config: { ...config, columns: updatedColumns, rows: updatedRows },
     });
   };
 
@@ -72,7 +135,50 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
                   key={i}
                   className="text-left p-2 text-primary font-mono uppercase tracking-wider"
                 >
-                  {col}
+                  {isGM && editingHeader === i ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        autoFocus
+                        className="bg-input border border-primary rounded px-1 py-0.5 text-xs w-20"
+                        value={headerValue}
+                        onChange={(e) => setHeaderValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveHeader();
+                          if (e.key === "Escape") setEditingHeader(null);
+                        }}
+                      />
+                      <button onClick={handleSaveHeader} className="text-green-500 hover:text-green-400">
+                        <Check className="w-3 h-3" />
+                      </button>
+                      <button onClick={() => setEditingHeader(null)} className="text-muted-foreground hover:text-foreground">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 group">
+                      <span>{col}</span>
+                      {isGM && (
+                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity">
+                          <button
+                            onClick={() => handleStartEditHeader(i)}
+                            className="text-muted-foreground hover:text-primary p-0.5"
+                            title="Rename column"
+                          >
+                            <Pencil className="w-2.5 h-2.5" />
+                          </button>
+                          {columns.length > 1 && (
+                            <button
+                              onClick={() => handleDeleteColumn(i)}
+                              className="text-muted-foreground hover:text-destructive p-0.5"
+                              title="Delete column"
+                            >
+                              <Trash2 className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </th>
               ))}
               {isGM && <th className="w-8" />}
@@ -82,7 +188,7 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={columns.length + (isGM ? 1 : 0)} className="p-4 text-center text-muted-foreground">
-                  No data. {isGM && "Click + to add a row."}
+                  No data. {isGM && "Click '+ Add Row' to get started."}
                 </td>
               </tr>
             ) : (
@@ -101,10 +207,11 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
                         />
                       ) : (
                         <span
-                          className={isGM ? "cursor-pointer hover:text-primary" : ""}
+                          className={isGM ? "cursor-pointer hover:text-primary block min-h-[1.25rem]" : ""}
                           onClick={() => isGM && setEditingCell({ rowId: row.id, col })}
+                          title={isGM ? "Click to edit" : undefined}
                         >
-                          {row[col] || <span className="text-muted-foreground/50">—</span>}
+                          {row[col] || <span className="text-muted-foreground/50 italic">Click to edit</span>}
                         </span>
                       )}
                     </td>
@@ -114,6 +221,7 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
                       <button
                         onClick={() => handleDeleteRow(row.id)}
                         className="text-destructive/50 hover:text-destructive p-1"
+                        title="Delete row"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
