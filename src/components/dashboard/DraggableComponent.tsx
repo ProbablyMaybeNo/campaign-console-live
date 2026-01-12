@@ -134,7 +134,7 @@ export function DraggableComponent({
       case "messages":
         return <MessagesWidget campaignId={campaignId} />;
       case "table":
-        return <TableWidget component={component} isGM={isGM} />;
+        return <TableWidget component={component} isGM={isGM} campaignId={campaignId} />;
       case "narrative":
         return <NarrativeWidget campaignId={campaignId} isGM={isGM} />;
       case "schedule":
@@ -144,7 +144,7 @@ export function DraggableComponent({
       case "dice_roller":
         return <DiceRollerWidget component={component} isGM={isGM} />;
       case "card":
-        return <CardWidget component={component} isGM={isGM} />;
+        return <CardWidget component={component} isGM={isGM} campaignId={campaignId} />;
       case "rules":
         return <RulesWidget campaignId={campaignId} isGM={isGM} />;
       case "map":
