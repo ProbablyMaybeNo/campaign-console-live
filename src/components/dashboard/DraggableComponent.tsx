@@ -2,9 +2,9 @@ import { useState, useRef, useCallback } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { DashboardComponent, useUpdateComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
-import { TerminalCard } from "@/components/ui/TerminalCard";
 import { GripVertical, X, Maximize2 } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
+import { PlayersWidget } from "./widgets/PlayersWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -117,6 +117,20 @@ export function DraggableComponent({
     }
   };
 
+  const renderComponentContent = () => {
+    switch (component.component_type) {
+      case "players":
+        return <PlayersWidget campaignId={campaignId} />;
+      default:
+        return (
+          <div className="text-center py-8">
+            <p className="font-mono">[ {component.component_type.toUpperCase()} ]</p>
+            <p className="mt-2 text-xs opacity-60">Component content placeholder</p>
+          </div>
+        );
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -161,10 +175,7 @@ export function DraggableComponent({
 
         {/* Component Content */}
         <div className="flex-1 p-3 overflow-auto text-xs text-muted-foreground">
-          <div className="text-center py-8">
-            <p className="font-mono">[ {component.component_type.toUpperCase()} ]</p>
-            <p className="mt-2 text-xs opacity-60">Component content placeholder</p>
-          </div>
+          {renderComponentContent()}
         </div>
 
         {/* Resize Handle (GM only) */}
