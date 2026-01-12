@@ -43,9 +43,78 @@ serve(async (req) => {
 
     if (!pdfContent) {
       return new Response(
-        JSON.stringify({ error: "No PDF content provided" }),
+        JSON.stringify({ error: "No content provided" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Handle PDF base64 content - extract text using pdf-parse-like approach
+    let textContent = pdfContent;
+    
+    if (pdfContent.startsWith("__PDF_BASE64__")) {
+      const base64Data = pdfContent.replace("__PDF_BASE64__", "");
+      console.log("Processing PDF, base64 length:", base64Data.length);
+      
+      // Decode base64 to binary
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      
+      // Extract text from PDF using simple text extraction
+      // PDFs contain text in various formats - we'll look for common patterns
+      const pdfText = new TextDecoder("latin1").decode(bytes);
+      
+      // Extract readable text from PDF binary
+      // Look for text between stream markers and common text patterns
+      const textChunks: string[] = [];
+      
+      // Method 1: Extract from text objects (BT...ET blocks)
+      const textMatches = pdfText.match(/\(([^)]+)\)/g) || [];
+      for (const match of textMatches) {
+        const text = match.slice(1, -1);
+        // Filter out binary garbage - only keep mostly printable strings
+        if (text.length > 2 && text.length < 500 && /^[\x20-\x7E\s]+$/.test(text)) {
+          textChunks.push(text);
+        }
+      }
+      
+      // Method 2: Look for Unicode text
+      const unicodeMatches = pdfText.match(/<([0-9A-Fa-f]+)>/g) || [];
+      for (const match of unicodeMatches) {
+        const hex = match.slice(1, -1);
+        if (hex.length > 4 && hex.length % 2 === 0) {
+          try {
+            let decoded = "";
+            for (let i = 0; i < hex.length; i += 2) {
+              const code = parseInt(hex.substring(i, i + 2), 16);
+              if (code >= 32 && code <= 126) {
+                decoded += String.fromCharCode(code);
+              }
+            }
+            if (decoded.length > 2) {
+              textChunks.push(decoded);
+            }
+          } catch (e) {
+            // Skip invalid hex
+          }
+        }
+      }
+      
+      textContent = textChunks.join(" ").trim();
+      console.log("Extracted text length:", textContent.length);
+      
+      if (textContent.length < 100) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Could not extract readable text from PDF. Try copying the text content and pasting it directly.",
+            units: [],
+            extractionNotes: "PDF text extraction failed. Please copy/paste the unit entries as text instead."
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const systemPrompt = `You are an expert wargaming rules parser. Your task is to extract unit datasheets from army book PDFs and convert them into structured JSON data.
@@ -125,7 +194,7 @@ IMPORTANT:
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Extract unit datasheets from this army book content:\n\n${pdfContent.substring(0, 100000)}` }
+          { role: "user", content: `Extract unit datasheets from this army book content:\n\n${textContent.substring(0, 100000)}` }
         ],
       }),
     });

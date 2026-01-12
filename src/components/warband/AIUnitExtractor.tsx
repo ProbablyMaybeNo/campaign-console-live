@@ -77,25 +77,28 @@ export function AIUnitExtractor({ open, onOpenChange, campaignId }: AIUnitExtrac
     setImportProgress(0);
   }, []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      
-      // Read file content
+    if (!selectedFile) return;
+    
+    setFile(selectedFile);
+    
+    if (selectedFile.type === "application/pdf") {
+      // For PDFs, convert to base64 and let the edge function handle parsing
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = (event.target?.result as string).split(",")[1];
+        setTextContent(`__PDF_BASE64__${base64}`);
+      };
+      reader.readAsDataURL(selectedFile);
+    } else {
+      // For text files, read as text
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
         setTextContent(content);
       };
-      
-      if (selectedFile.type === "application/pdf") {
-        // For PDFs, we'll send the raw text that the AI can parse
-        // In production, you'd use a PDF parsing library
-        reader.readAsText(selectedFile);
-      } else {
-        reader.readAsText(selectedFile);
-      }
+      reader.readAsText(selectedFile);
     }
   };
 
