@@ -12,6 +12,9 @@ import { ScheduleWidget } from "./widgets/ScheduleWidget";
 import { CounterWidget } from "./widgets/CounterWidget";
 import { DiceRollerWidget } from "./widgets/DiceRollerWidget";
 import { CardWidget } from "./widgets/CardWidget";
+import { ImageWidget } from "./widgets/ImageWidget";
+import { MapWidget } from "./widgets/MapWidget";
+import { RulesWidget } from "./widgets/RulesWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -139,28 +142,15 @@ export function DraggableComponent({
       case "counter":
         return <CounterWidget component={component} isGM={isGM} />;
       case "dice_roller":
-        return <DiceRollerWidget component={component} />;
+        return <DiceRollerWidget component={component} isGM={isGM} />;
       case "card":
         return <CardWidget component={component} isGM={isGM} />;
       case "rules":
-        return (
-          <div className="text-center py-4">
-            <p className="font-mono text-xs">[ RULES PANEL ]</p>
-            <p className="mt-1 text-xs opacity-60">Rules from repository will display here</p>
-          </div>
-        );
+        return <RulesWidget campaignId={campaignId} isGM={isGM} />;
       case "map":
-        return (
-          <div className="flex items-center justify-center h-full bg-muted/20 border border-dashed border-border rounded">
-            <p className="text-xs text-muted-foreground">Map Component</p>
-          </div>
-        );
+        return <MapWidget component={component} isGM={isGM} />;
       case "image":
-        return (
-          <div className="flex items-center justify-center h-full bg-muted/20 border border-dashed border-border rounded">
-            <p className="text-xs text-muted-foreground">Image Component</p>
-          </div>
-        );
+        return <ImageWidget component={component} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">
