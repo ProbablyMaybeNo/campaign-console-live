@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { Plus, Trash2, Pencil, X, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Pencil, X, Check, RefreshCw } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
+import { useRulesByCategory } from "@/hooks/useWargameRules";
+import type { Json } from "@/integrations/supabase/types";
 
 interface TableWidgetProps {
   component: DashboardComponent;
   isGM: boolean;
+  campaignId: string;
 }
 
 interface TableRow {
@@ -15,32 +18,132 @@ interface TableRow {
 interface TableConfig {
   columns?: string[];
   rows?: TableRow[];
+  rule_category?: string;
+  rule_key?: string;
+  manual_setup?: boolean;
 }
 
-export function TableWidget({ component, isGM }: TableWidgetProps) {
+export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   const updateComponent = useUpdateComponent();
   const config = (component.config as TableConfig) || {};
   const columns = config.columns || ["Name", "Value"];
   const rows = config.rows || [];
+  const ruleCategory = config.rule_category;
+  const ruleKey = config.rule_key;
+  const isManual = config.manual_setup ?? true;
+
+  // Fetch linked rule data if not manual setup
+  const { data: categoryRules } = useRulesByCategory(campaignId, ruleCategory);
+  const linkedRule = categoryRules?.find(r => r.rule_key === ruleKey);
 
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [headerValue, setHeaderValue] = useState("");
+  const [isPopulated, setIsPopulated] = useState(false);
+
+  // Auto-populate from rule content when linked and not yet populated
+  useEffect(() => {
+    if (!isManual && linkedRule && !isPopulated && rows.length === 0) {
+      const content = linkedRule.content as Record<string, unknown>;
+      
+      // Try to extract table-like data from rule content
+      const tableData = extractTableData(content);
+      
+      if (tableData.columns.length > 0 && tableData.rows.length > 0) {
+        const newConfig = { 
+          ...config, 
+          columns: tableData.columns, 
+          rows: tableData.rows 
+        };
+        updateComponent.mutate({
+          id: component.id,
+          config: newConfig as unknown as Json,
+        });
+        setIsPopulated(true);
+      }
+    }
+  }, [linkedRule, isManual, isPopulated, rows.length]);
+
+  // Extract table data from various rule content structures
+  function extractTableData(content: Record<string, unknown>): { columns: string[]; rows: TableRow[] } {
+    // If content has arrays, try to use them as table rows
+    for (const [key, value] of Object.entries(content)) {
+      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
+        // Found an array of objects - use as table
+        const firstItem = value[0] as Record<string, unknown>;
+        const cols = Object.keys(firstItem).filter(k => 
+          typeof firstItem[k] === 'string' || typeof firstItem[k] === 'number'
+        );
+        
+        if (cols.length > 0) {
+          const tableRows: TableRow[] = value.map((item, i) => {
+            const row: TableRow = { id: crypto.randomUUID() };
+            cols.forEach(col => {
+              const val = (item as Record<string, unknown>)[col];
+              row[col] = typeof val === 'string' || typeof val === 'number' ? String(val) : '';
+            });
+            return row;
+          });
+          
+          return { columns: cols.map(c => c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())), rows: tableRows };
+        }
+      }
+    }
+    
+    // Fallback: create key-value pairs from content
+    const kvRows: TableRow[] = [];
+    for (const [key, value] of Object.entries(content)) {
+      if (typeof value === 'string' || typeof value === 'number') {
+        kvRows.push({
+          id: crypto.randomUUID(),
+          'Property': key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          'Value': String(value)
+        });
+      }
+    }
+    
+    if (kvRows.length > 0) {
+      return { columns: ['Property', 'Value'], rows: kvRows };
+    }
+    
+    return { columns: [], rows: [] };
+  }
+
+  const handleRefreshFromRules = () => {
+    if (linkedRule) {
+      const content = linkedRule.content as Record<string, unknown>;
+      const tableData = extractTableData(content);
+      
+      if (tableData.columns.length > 0) {
+        const newConfig = { 
+          ...config, 
+          columns: tableData.columns, 
+          rows: tableData.rows 
+        };
+        updateComponent.mutate({
+          id: component.id,
+          config: newConfig as unknown as Json,
+        });
+      }
+    }
+  };
 
   const handleAddRow = () => {
     const newRow: TableRow = { id: crypto.randomUUID() };
     columns.forEach((col) => (newRow[col] = ""));
     
+    const newConfig = { ...config, columns, rows: [...rows, newRow] };
     updateComponent.mutate({
       id: component.id,
-      config: { ...config, columns, rows: [...rows, newRow] },
+      config: newConfig as unknown as Json,
     });
   };
 
   const handleDeleteRow = (rowId: string) => {
+    const newConfig = { ...config, columns, rows: rows.filter((r) => r.id !== rowId) };
     updateComponent.mutate({
       id: component.id,
-      config: { ...config, columns, rows: rows.filter((r) => r.id !== rowId) },
+      config: newConfig as unknown as Json,
     });
   };
 
@@ -48,18 +151,20 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
     const updatedRows = rows.map((row) =>
       row.id === rowId ? { ...row, [col]: value } : row
     );
+    const newConfig = { ...config, columns, rows: updatedRows };
     updateComponent.mutate({
       id: component.id,
-      config: { ...config, columns, rows: updatedRows },
+      config: newConfig as unknown as Json,
     });
   };
 
   const handleAddColumn = () => {
     const newColName = `Column ${columns.length + 1}`;
     const updatedRows = rows.map((row) => ({ ...row, [newColName]: "" }));
+    const newConfig = { ...config, columns: [...columns, newColName], rows: updatedRows };
     updateComponent.mutate({
       id: component.id,
-      config: { ...config, columns: [...columns, newColName], rows: updatedRows },
+      config: newConfig as unknown as Json,
     });
   };
 
@@ -98,9 +203,10 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
       return newRow;
     });
 
+    const newConfig = { ...config, columns: updatedColumns, rows: updatedRows };
     updateComponent.mutate({
       id: component.id,
-      config: { ...config, columns: updatedColumns, rows: updatedRows },
+      config: newConfig as unknown as Json,
     });
     setEditingHeader(null);
   };
@@ -118,9 +224,10 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
       return newRow;
     });
 
+    const newConfig = { ...config, columns: updatedColumns, rows: updatedRows };
     updateComponent.mutate({
       id: component.id,
-      config: { ...config, columns: updatedColumns, rows: updatedRows },
+      config: newConfig as unknown as Json,
     });
   };
 
@@ -248,6 +355,15 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
           >
             <Plus className="w-3 h-3" /> Add Column
           </button>
+          {!isManual && linkedRule && (
+            <button
+              onClick={handleRefreshFromRules}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-auto"
+              title="Refresh data from linked rules"
+            >
+              <RefreshCw className="w-3 h-3" /> Refresh from Rules
+            </button>
+          )}
         </div>
       )}
     </div>
