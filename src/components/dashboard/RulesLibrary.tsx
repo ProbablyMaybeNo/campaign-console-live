@@ -22,7 +22,9 @@ import {
   X,
   Tag,
   FileUp,
-  Plus
+  Plus,
+  LayoutGrid,
+  List
 } from "lucide-react";
 
 interface RulesLibraryProps {
@@ -45,6 +47,7 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
   const [showImporter, setShowImporter] = useState(false);
   const [showCreateUnit, setShowCreateUnit] = useState(false);
   const [showCreateRule, setShowCreateRule] = useState(false);
+  const [rulesViewMode, setRulesViewMode] = useState<"grid" | "list">("grid");
 
   // Extract unique categories from rules
   const categories = useMemo(() => {
@@ -347,18 +350,49 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "rules" | "units")}>
-        <TabsList className="bg-muted/30 border border-border w-full justify-start">
-          <TabsTrigger value="units" className="flex items-center gap-2 data-[state=active]:bg-primary/20">
-            <Swords className="w-4 h-4" />
-            Units
-            <Badge variant="outline" className="ml-1 text-[10px]">{units.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="rules" className="flex items-center gap-2 data-[state=active]:bg-primary/20">
-            <Scroll className="w-4 h-4" />
-            Rules
-            <Badge variant="outline" className="ml-1 text-[10px]">{rules.length}</Badge>
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between gap-2">
+          <TabsList className="bg-muted/30 border border-border flex-1 justify-start">
+            <TabsTrigger value="units" className="flex items-center gap-2 data-[state=active]:bg-primary/20">
+              <Swords className="w-4 h-4" />
+              Units
+              <Badge variant="outline" className="ml-1 text-[10px]">{units.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="rules" className="flex items-center gap-2 data-[state=active]:bg-primary/20">
+              <Scroll className="w-4 h-4" />
+              Rules
+              <Badge variant="outline" className="ml-1 text-[10px]">{rules.length}</Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* View Mode Toggle (visible on Rules tab) */}
+          {activeTab === "rules" && (
+            <div className="flex items-center border border-border bg-muted/30">
+              <button
+                onClick={() => setRulesViewMode("grid")}
+                className={`p-2 transition-colors ${
+                  rulesViewMode === "grid"
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+                title="Grid view"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+              <div className="w-px h-6 bg-border" />
+              <button
+                onClick={() => setRulesViewMode("list")}
+                className={`p-2 transition-colors ${
+                  rulesViewMode === "list"
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+                title="List view"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Units Tab */}
         <TabsContent value="units" className="mt-4">
@@ -465,14 +499,19 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
                       </div>
                     </button>
 
-                    {/* Rules Grid */}
+                    {/* Rules Grid/List */}
                     {expandedItems.has(`category-${category}`) && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 animate-fade-in">
+                      <div className={`animate-fade-in ${
+                        rulesViewMode === "grid" 
+                          ? "grid grid-cols-1 md:grid-cols-2 gap-2" 
+                          : "flex flex-col gap-1"
+                      }`}>
                         {categoryRules.map(rule => (
                           <RuleCard
                             key={rule.id}
                             rule={rule}
                             isGM={isGM}
+                            compact={rulesViewMode === "list"}
                           />
                         ))}
                       </div>
