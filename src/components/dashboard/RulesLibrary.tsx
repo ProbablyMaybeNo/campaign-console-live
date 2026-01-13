@@ -10,6 +10,7 @@ import { RulesImporter } from "@/components/campaigns/RulesImporter";
 import { UnitEditor } from "@/components/dashboard/UnitEditor";
 import { CreateUnitForm } from "@/components/dashboard/CreateUnitForm";
 import { RuleEditor } from "@/components/dashboard/RuleEditor";
+import { CreateRuleForm } from "@/components/dashboard/CreateRuleForm";
 import { 
   Search, 
   Filter, 
@@ -41,6 +42,7 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [showImporter, setShowImporter] = useState(false);
   const [showCreateUnit, setShowCreateUnit] = useState(false);
+  const [showCreateRule, setShowCreateRule] = useState(false);
 
   // Extract unique categories from rules
   const categories = useMemo(() => {
@@ -181,6 +183,16 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
           <Plus className="w-4 h-4 mr-2" />
           {showCreateUnit ? "Cancel" : "Create Unit"}
         </TerminalButton>
+
+        {/* Create Rule Button */}
+        <TerminalButton
+          variant={showCreateRule ? "default" : "outline"}
+          onClick={() => setShowCreateRule(!showCreateRule)}
+          className="shrink-0"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          {showCreateRule ? "Cancel" : "Create Rule"}
+        </TerminalButton>
       </div>
 
       {/* PDF Importer Content */}
@@ -200,6 +212,17 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
             campaignId={campaignId} 
             onComplete={() => setShowCreateUnit(false)}
             onCancel={() => setShowCreateUnit(false)}
+          />
+        </div>
+      )}
+
+      {/* Create Rule Form */}
+      {showCreateRule && (
+        <div className="animate-fade-in">
+          <CreateRuleForm 
+            campaignId={campaignId} 
+            onComplete={() => setShowCreateRule(false)}
+            onCancel={() => setShowCreateRule(false)}
           />
         </div>
       )}
