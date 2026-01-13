@@ -9,8 +9,9 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RulesImporter } from "@/components/campaigns/RulesImporter";
 import { UnitEditor } from "@/components/dashboard/UnitEditor";
 import { CreateUnitForm } from "@/components/dashboard/CreateUnitForm";
-import { RuleEditor } from "@/components/dashboard/RuleEditor";
+import { RuleCard } from "@/components/dashboard/RuleCard";
 import { CreateRuleForm } from "@/components/dashboard/CreateRuleForm";
+import { useIsGM } from "@/hooks/useCampaigns";
 import { 
   Search, 
   Filter, 
@@ -32,6 +33,7 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
   const { data: rules = [], isLoading: rulesLoading } = useWargameRules(campaignId);
   const { data: units = [], isLoading: unitsLoading } = useCampaignUnits(campaignId);
   const factions = useFactions(campaignId);
+  const isGM = useIsGM(campaignId);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"rules" | "units">("units");
@@ -437,36 +439,40 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
             </div>
           ) : (
             <ScrollArea className="h-[500px]">
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {Object.entries(rulesByCategory).map(([category, categoryRules]) => (
-                  <div key={category} className="border border-border/50 bg-card">
+                  <div key={category}>
+                    {/* Category Header */}
                     <button
                       onClick={() => toggleExpanded(`category-${category}`)}
-                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-accent transition-colors"
+                      className="w-full flex items-center justify-between mb-3 group"
                     >
                       <div className="flex items-center gap-2">
                         {expandedItems.has(`category-${category}`) ? (
                           <ChevronDown className="w-4 h-4 text-primary" />
                         ) : (
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         )}
                         <span className="text-sm font-mono uppercase tracking-wider text-primary">
                           {category}
                         </span>
                       </div>
-                      <Badge variant="outline" className="text-[10px]">
-                        {categoryRules.length} rules
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px]">
+                          {categoryRules.length} rules
+                        </Badge>
+                        <div className="h-px flex-1 bg-border/30 min-w-8" />
+                      </div>
                     </button>
 
+                    {/* Rules Grid */}
                     {expandedItems.has(`category-${category}`) && (
-                      <div className="border-t border-border/30 divide-y divide-border/30">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 animate-fade-in">
                         {categoryRules.map(rule => (
-                          <RuleEditor
+                          <RuleCard
                             key={rule.id}
                             rule={rule}
-                            isExpanded={expandedItems.has(`rule-${rule.id}`)}
-                            onToggleExpand={() => toggleExpanded(`rule-${rule.id}`)}
+                            isGM={isGM}
                           />
                         ))}
                       </div>
