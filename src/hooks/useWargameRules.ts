@@ -125,3 +125,65 @@ export function useRulesByCategory(campaignId: string | undefined, category: str
     enabled: !!campaignId && !!category,
   });
 }
+
+export function useUpdateWargameRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      campaign_id,
+      ...updates
+    }: {
+      id: string;
+      campaign_id: string;
+      title?: string;
+      category?: string;
+      content?: Json;
+      metadata?: Json;
+    }) => {
+      const { data, error } = await supabase
+        .from("wargame_rules")
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaign_id] });
+      toast.success("Rule updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update rule: ${error.message}`);
+    },
+  });
+}
+
+export function useDeleteWargameRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, campaignId }: { id: string; campaignId: string }) => {
+      const { error } = await supabase
+        .from("wargame_rules")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      return { id, campaignId };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
+      toast.success("Rule deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete rule: ${error.message}`);
+    },
+  });
+}

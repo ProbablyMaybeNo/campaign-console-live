@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { RulesImporter } from "@/components/campaigns/RulesImporter";
 import { UnitEditor } from "@/components/dashboard/UnitEditor";
 import { CreateUnitForm } from "@/components/dashboard/CreateUnitForm";
+import { RuleEditor } from "@/components/dashboard/RuleEditor";
 import { 
   Search, 
   Filter, 
@@ -438,19 +439,12 @@ export function RulesLibrary({ campaignId }: RulesLibraryProps) {
                     {expandedItems.has(`category-${category}`) && (
                       <div className="border-t border-border/30 divide-y divide-border/30">
                         {categoryRules.map(rule => (
-                          <div 
-                            key={rule.id} 
-                            className="px-4 py-3 hover:bg-accent/50 transition-colors"
-                          >
-                            <h4 className="font-mono text-sm text-foreground">
-                              {rule.title}
-                            </h4>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {typeof rule.content === "string" 
-                                ? rule.content 
-                                : JSON.stringify(rule.content, null, 2)}
-                            </div>
-                          </div>
+                          <RuleEditor
+                            key={rule.id}
+                            rule={rule}
+                            isExpanded={expandedItems.has(`rule-${rule.id}`)}
+                            onToggleExpand={() => toggleExpanded(`rule-${rule.id}`)}
+                          />
                         ))}
                       </div>
                     )}
