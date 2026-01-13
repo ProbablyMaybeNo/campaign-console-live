@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useCampaignPlayers, useCampaignOwner, CampaignPlayer } from "@/hooks/useCampaignPlayers";
-import { useWarbands } from "@/hooks/useWarband";
+import { useCampaignWarbands } from "@/hooks/useWarband";
 import { Link } from "react-router-dom";
 import { 
   Users, 
@@ -32,7 +32,7 @@ export function PlayersManagerOverlay({
 }: PlayersManagerOverlayProps) {
   const { data: players, isLoading: playersLoading } = useCampaignPlayers(campaignId);
   const { data: owner, isLoading: ownerLoading } = useCampaignOwner(campaignId);
-  const { data: warbands } = useWarbands(campaignId);
+  const { data: warbands } = useCampaignWarbands(campaignId);
   
   const [selectedPlayer, setSelectedPlayer] = useState<CampaignPlayer | null>(null);
 

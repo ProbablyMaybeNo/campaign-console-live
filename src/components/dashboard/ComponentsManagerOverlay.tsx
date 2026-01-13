@@ -90,7 +90,7 @@ export function ComponentsManagerOverlay({
 
   const handleDelete = async (component: DashboardComponent) => {
     setDeletingId(component.id);
-    await deleteComponent.mutateAsync(component.id);
+    await deleteComponent.mutateAsync({ id: component.id, campaignId });
     setDeletingId(null);
     if (selectedComponent?.id === component.id) {
       setSelectedComponent(null);
