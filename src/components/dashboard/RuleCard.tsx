@@ -36,6 +36,7 @@ import type { Json } from "@/integrations/supabase/types";
 interface RuleCardProps {
   rule: WargameRule;
   isGM?: boolean;
+  compact?: boolean;
 }
 
 interface RuleContent {
@@ -46,7 +47,7 @@ interface RuleContent {
   rows?: string[][];
 }
 
-export function RuleCard({ rule, isGM = false }: RuleCardProps) {
+export function RuleCard({ rule, isGM = false, compact = false }: RuleCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedRule, setEditedRule] = useState<{
@@ -194,33 +195,56 @@ export function RuleCard({ rule, isGM = false }: RuleCardProps) {
 
   return (
     <>
-      {/* Card Tile */}
+      {/* Card Tile - Grid or Compact List */}
       <button
         onClick={() => setIsOpen(true)}
-        className="group relative w-full text-left p-3 bg-card border border-border/50 hover:border-primary/50 transition-all duration-200 hover:shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)]"
+        className={`group relative w-full text-left transition-all duration-200 hover:shadow-[0_0_15px_rgba(var(--primary-rgb),0.15)] ${
+          compact 
+            ? "px-3 py-2 bg-card border-b border-border/30 hover:bg-accent/30 hover:border-primary/30"
+            : "p-3 bg-card border border-border/50 hover:border-primary/50"
+        }`}
       >
-        {/* Terminal-style top bar */}
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+        {/* Terminal-style top bar (grid only) */}
+        {!compact && (
+          <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50 opacity-0 group-hover:opacity-100 transition-opacity" />
+        )}
         
-        <div className="flex items-start gap-3">
+        <div className={`flex items-center gap-3 ${compact ? "" : "items-start"}`}>
           {/* Icon */}
-          <div className="shrink-0 w-8 h-8 bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+          <div className={`shrink-0 flex items-center justify-center text-primary ${
+            compact 
+              ? "w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" 
+              : "w-8 h-8 bg-primary/10 border border-primary/30"
+          }`}>
             {getContentIcon()}
           </div>
           
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="font-mono text-sm text-foreground truncate group-hover:text-primary transition-colors">
-                {rule.title}
-              </h4>
-              <Badge variant="outline" className="text-[9px] shrink-0 opacity-60">
-                {parsedContent.type || "text"}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground truncate">
-              {getPreviewText()}
-            </p>
+            {compact ? (
+              <div className="flex items-center gap-3">
+                <h4 className="font-mono text-sm text-foreground truncate group-hover:text-primary transition-colors flex-1">
+                  {rule.title}
+                </h4>
+                <Badge variant="outline" className="text-[9px] shrink-0 opacity-50">
+                  {parsedContent.type || "text"}
+                </Badge>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <h4 className="font-mono text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                    {rule.title}
+                  </h4>
+                  <Badge variant="outline" className="text-[9px] shrink-0 opacity-60">
+                    {parsedContent.type || "text"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">
+                  {getPreviewText()}
+                </p>
+              </>
+            )}
           </div>
 
           {/* Hover indicator */}
@@ -229,8 +253,10 @@ export function RuleCard({ rule, isGM = false }: RuleCardProps) {
           </div>
         </div>
 
-        {/* Bottom accent line */}
-        <div className="absolute bottom-0 left-3 right-3 h-px bg-border/30 group-hover:bg-primary/30 transition-colors" />
+        {/* Bottom accent line (grid only) */}
+        {!compact && (
+          <div className="absolute bottom-0 left-3 right-3 h-px bg-border/30 group-hover:bg-primary/30 transition-colors" />
+        )}
       </button>
 
       {/* Full Rule Dialog */}
