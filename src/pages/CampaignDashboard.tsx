@@ -8,12 +8,15 @@ import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
 import { AddComponentModal } from "@/components/dashboard/AddComponentModal";
 import { AIComponentBuilder } from "@/components/dashboard/AIComponentBuilder";
-import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
-import { PlayersWidget } from "@/components/dashboard/widgets/PlayersWidget";
-import { MessagesWidget } from "@/components/dashboard/widgets/MessagesWidget";
-import { NarrativeWidget } from "@/components/dashboard/widgets/NarrativeWidget";
+import { ComponentsManagerOverlay } from "@/components/dashboard/ComponentsManagerOverlay";
+import { PlayersManagerOverlay } from "@/components/dashboard/PlayersManagerOverlay";
+import { NarrativeManagerOverlay } from "@/components/dashboard/NarrativeManagerOverlay";
+import { MapEditorOverlay } from "@/components/dashboard/MapEditorOverlay";
+import { BattlesManagerOverlay } from "@/components/dashboard/BattlesManagerOverlay";
+import { MessagesManagerOverlay } from "@/components/dashboard/MessagesManagerOverlay";
+import { SettingsManagerOverlay } from "@/components/dashboard/SettingsManagerOverlay";
+import { WarbandManagerOverlay } from "@/components/dashboard/WarbandManagerOverlay";
 import { RulesLibrary } from "@/components/dashboard/RulesLibrary";
-import { ScheduleWidget } from "@/components/dashboard/widgets/ScheduleWidget";
 import { 
   ArrowLeft, 
   Settings, 
@@ -22,15 +25,12 @@ import {
   Scroll, 
   Swords, 
   MessageSquare, 
-  Calendar, 
   Plus,
   LayoutGrid,
   Database,
   BookOpen,
   Bot
 } from "lucide-react";
-
-type DashboardView = "dashboard" | "players" | "warbands" | "narrative" | "messages" | "schedule" | "rules" | "map";
 
 export default function CampaignDashboard() {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -42,8 +42,17 @@ export default function CampaignDashboard() {
   const [selectedComponent, setSelectedComponent] = useState<DashboardComponent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAIBuilder, setShowAIBuilder] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [activeView, setActiveView] = useState<DashboardView>("dashboard");
+  
+  // Overlay states
+  const [showComponentsOverlay, setShowComponentsOverlay] = useState(false);
+  const [showPlayersOverlay, setShowPlayersOverlay] = useState(false);
+  const [showNarrativeOverlay, setShowNarrativeOverlay] = useState(false);
+  const [showMapOverlay, setShowMapOverlay] = useState(false);
+  const [showBattlesOverlay, setShowBattlesOverlay] = useState(false);
+  const [showMessagesOverlay, setShowMessagesOverlay] = useState(false);
+  const [showSettingsOverlay, setShowSettingsOverlay] = useState(false);
+  const [showWarbandOverlay, setShowWarbandOverlay] = useState(false);
+  const [showRulesOverlay, setShowRulesOverlay] = useState(false);
 
   const isLoading = campaignLoading || componentsLoading;
 
@@ -66,115 +75,27 @@ export default function CampaignDashboard() {
     );
   }
 
-  const renderMainContent = () => {
-    switch (activeView) {
-      case "dashboard":
-        return (
-          <InfiniteCanvas
-            components={components}
-            isGM={isGM}
-            campaignId={campaignId!}
-            selectedComponentId={selectedComponent?.id || null}
-            onComponentSelect={setSelectedComponent}
-          />
-        );
-      case "players":
-        return (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              Players
-            </h2>
-            <div className="bg-card border border-primary/30 rounded p-4 min-h-[400px]">
-              <PlayersWidget campaignId={campaignId!} />
-            </div>
-          </div>
-        );
-      case "warbands":
-        return (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Swords className="w-5 h-5" />
-              Warbands
-            </h2>
-            <div className="bg-card border border-primary/30 rounded p-4">
-              <p className="text-muted-foreground text-sm">
-                Build and manage your warband roster with validated unit selection and points tracking.
-              </p>
-              <Link to={`/campaign/${campaignId}/warband-builder`}>
-                <TerminalButton className="mt-4">
-                  Open Warband Builder
-                </TerminalButton>
-              </Link>
-            </div>
-          </div>
-        );
-      case "narrative":
-        return (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <BookOpen className="w-5 h-5" />
-              Narrative Tracker
-            </h2>
-            <div className="bg-card border border-primary/30 rounded p-4 min-h-[400px]">
-              <NarrativeWidget campaignId={campaignId!} isGM={isGM} />
-            </div>
-          </div>
-        );
-      case "messages":
-        return (
-          <div className="max-w-2xl mx-auto">
-            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <MessageSquare className="w-5 h-5" />
-              Messages
-            </h2>
-            <div className="bg-card border border-primary/30 rounded p-4 h-[500px]">
-              <MessagesWidget campaignId={campaignId!} />
-            </div>
-          </div>
-        );
-      case "schedule":
-        return (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Match Schedule
-            </h2>
-            <div className="bg-card border border-primary/30 rounded p-4 min-h-[400px]">
-              <ScheduleWidget campaignId={campaignId!} isGM={isGM} />
-            </div>
-          </div>
-        );
-      case "rules":
-        return (
-          <div className="max-w-5xl mx-auto">
-            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Scroll className="w-5 h-5" />
-              Rules Library
-            </h2>
-            <div className="bg-card border border-primary/30 rounded p-4">
-              <RulesLibrary campaignId={campaignId!} />
-            </div>
-          </div>
-        );
-      case "map":
-        return (
-          <div className="max-w-6xl mx-auto">
-            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Map className="w-5 h-5" />
-              Campaign Map
-            </h2>
-            <div className="bg-card border border-primary/30 rounded p-4 aspect-video flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">
-                Interactive map coming soon.
-              </p>
-            </div>
-          </div>
-        );
-      default:
-        return null;
-    }
-  };
+  // GM sidebar items
+  const gmNavItems = [
+    { icon: <LayoutGrid className="w-4 h-4" />, label: "Home", onClick: () => {} },
+    { icon: <Database className="w-4 h-4" />, label: "Components", onClick: () => setShowComponentsOverlay(true) },
+    { icon: <Swords className="w-4 h-4" />, label: "Warbands", onClick: () => setShowWarbandOverlay(true) },
+    { icon: <Users className="w-4 h-4" />, label: "Players", onClick: () => setShowPlayersOverlay(true) },
+    { icon: <Scroll className="w-4 h-4" />, label: "Rules", onClick: () => setShowRulesOverlay(true) },
+    { icon: <Map className="w-4 h-4" />, label: "Map", onClick: () => setShowMapOverlay(true) },
+    { icon: <BookOpen className="w-4 h-4" />, label: "Narrative", onClick: () => setShowNarrativeOverlay(true) },
+    { icon: <MessageSquare className="w-4 h-4" />, label: "Messages", onClick: () => setShowMessagesOverlay(true) },
+    { icon: <Swords className="w-4 h-4" />, label: "Battles", onClick: () => setShowBattlesOverlay(true) },
+  ];
+
+  // Player sidebar items (limited)
+  const playerNavItems = [
+    { icon: <LayoutGrid className="w-4 h-4" />, label: "Home", onClick: () => {} },
+    { icon: <Swords className="w-4 h-4" />, label: "My Warband", onClick: () => setShowWarbandOverlay(true) },
+    { icon: <BookOpen className="w-4 h-4" />, label: "Narrative", onClick: () => setShowNarrativeOverlay(true) },
+  ];
+
+  const navItems = isGM ? gmNavItems : playerNavItems;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -214,62 +135,19 @@ export default function CampaignDashboard() {
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation */}
         <aside className="w-56 border-r border-primary/20 bg-sidebar flex-shrink-0 p-4 hidden md:flex flex-col">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">Campaign Control</p>
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">
+            {isGM ? "Campaign Control" : "Player Menu"}
+          </p>
           <nav className="space-y-1 flex-1">
-            <NavItem 
-              icon={<LayoutGrid className="w-4 h-4" />} 
-              label="Home" 
-              active={activeView === "dashboard"}
-              onClick={() => setActiveView("dashboard")}
-            />
-            <NavItem 
-              icon={<Database className="w-4 h-4" />} 
-              label="Components" 
-              active={false}
-              onClick={() => setActiveView("dashboard")}
-            />
-            <NavItem 
-              icon={<Swords className="w-4 h-4" />} 
-              label="Warbands" 
-              active={activeView === "warbands"}
-              onClick={() => setActiveView("warbands")}
-            />
-            <NavItem 
-              icon={<Users className="w-4 h-4" />} 
-              label="Players" 
-              active={activeView === "players"}
-              onClick={() => setActiveView("players")}
-            />
-            <NavItem 
-              icon={<Scroll className="w-4 h-4" />} 
-              label="Rules" 
-              active={activeView === "rules"}
-              onClick={() => setActiveView("rules")}
-            />
-            <NavItem 
-              icon={<Map className="w-4 h-4" />} 
-              label="Map" 
-              active={activeView === "map"}
-              onClick={() => setActiveView("map")}
-            />
-            <NavItem 
-              icon={<BookOpen className="w-4 h-4" />} 
-              label="Narrative" 
-              active={activeView === "narrative"}
-              onClick={() => setActiveView("narrative")}
-            />
-            <NavItem 
-              icon={<MessageSquare className="w-4 h-4" />} 
-              label="Messages" 
-              active={activeView === "messages"}
-              onClick={() => setActiveView("messages")}
-            />
-            <NavItem 
-              icon={<Calendar className="w-4 h-4" />} 
-              label="Schedule" 
-              active={activeView === "schedule"}
-              onClick={() => setActiveView("schedule")}
-            />
+            {navItems.map((item, index) => (
+              <NavItem 
+                key={index}
+                icon={item.icon} 
+                label={item.label} 
+                active={index === 0}
+                onClick={item.onClick}
+              />
+            ))}
 
             {isGM && (
               <>
@@ -278,19 +156,25 @@ export default function CampaignDashboard() {
                   icon={<Settings className="w-4 h-4" />} 
                   label="Settings" 
                   active={false}
-                  onClick={() => setShowSettingsModal(true)}
+                  onClick={() => setShowSettingsOverlay(true)}
                 />
               </>
             )}
           </nav>
         </aside>
 
-        {/* Main View */}
+        {/* Main View - Always show infinite canvas */}
         <main className="flex-1 p-4 overflow-auto relative">
-          {renderMainContent()}
+          <InfiniteCanvas
+            components={components}
+            isGM={isGM}
+            campaignId={campaignId!}
+            selectedComponentId={selectedComponent?.id || null}
+            onComponentSelect={setSelectedComponent}
+          />
 
-          {/* Floating Add Buttons (GM only, only on dashboard view) */}
-          {isGM && activeView === "dashboard" && (
+          {/* Floating Add Buttons (GM only) */}
+          {isGM && (
             <div className="fixed bottom-8 right-8 z-50 flex flex-col gap-3">
               <TerminalButton
                 variant="outline"
@@ -326,12 +210,99 @@ export default function CampaignDashboard() {
         campaignId={campaignId!}
       />
 
-      {/* Settings Modal */}
-      {campaignId && (
-        <CampaignSettingsModal
-          open={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          campaignId={campaignId}
+      {/* Components Manager Overlay */}
+      <ComponentsManagerOverlay
+        open={showComponentsOverlay}
+        onOpenChange={setShowComponentsOverlay}
+        campaignId={campaignId!}
+        onAddComponent={() => setShowAddModal(true)}
+      />
+
+      {/* Players Manager Overlay */}
+      <PlayersManagerOverlay
+        open={showPlayersOverlay}
+        onOpenChange={setShowPlayersOverlay}
+        campaignId={campaignId!}
+        isGM={isGM}
+      />
+
+      {/* Warband Manager Overlay */}
+      {user && (
+        <WarbandManagerOverlay
+          open={showWarbandOverlay}
+          onOpenChange={setShowWarbandOverlay}
+          campaignId={campaignId!}
+          userId={user.id}
+        />
+      )}
+
+      {/* Narrative Manager Overlay */}
+      <NarrativeManagerOverlay
+        open={showNarrativeOverlay}
+        onOpenChange={setShowNarrativeOverlay}
+        campaignId={campaignId!}
+        isGM={isGM}
+      />
+
+      {/* Map Editor Overlay (GM only) */}
+      {isGM && (
+        <MapEditorOverlay
+          open={showMapOverlay}
+          onOpenChange={setShowMapOverlay}
+          campaignId={campaignId!}
+          isGM={isGM}
+        />
+      )}
+
+      {/* Battles Manager Overlay (GM only) */}
+      {isGM && (
+        <BattlesManagerOverlay
+          open={showBattlesOverlay}
+          onOpenChange={setShowBattlesOverlay}
+          campaignId={campaignId!}
+          isGM={isGM}
+        />
+      )}
+
+      {/* Messages Manager Overlay (GM only) */}
+      {isGM && (
+        <MessagesManagerOverlay
+          open={showMessagesOverlay}
+          onOpenChange={setShowMessagesOverlay}
+          campaignId={campaignId!}
+        />
+      )}
+
+      {/* Rules Library Overlay (GM only) */}
+      {isGM && showRulesOverlay && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-primary/30 rounded-lg max-w-5xl w-full max-h-[85vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-primary/20 flex items-center justify-between">
+              <h2 className="text-primary uppercase tracking-widest text-sm flex items-center gap-2">
+                <Scroll className="w-4 h-4" />
+                Rules Manager
+              </h2>
+              <TerminalButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowRulesOverlay(false)}
+              >
+                Close
+              </TerminalButton>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <RulesLibrary campaignId={campaignId!} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Manager Overlay (GM only) */}
+      {isGM && (
+        <SettingsManagerOverlay
+          open={showSettingsOverlay}
+          onOpenChange={setShowSettingsOverlay}
+          campaignId={campaignId!}
         />
       )}
     </div>
