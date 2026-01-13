@@ -187,3 +187,37 @@ export function useDeleteWargameRule() {
     },
   });
 }
+
+export function useCreateWargameRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (rule: {
+      campaign_id: string;
+      category: string;
+      rule_key: string;
+      title: string;
+      content: Json;
+      metadata?: Json;
+    }) => {
+      const { data, error } = await supabase
+        .from("wargame_rules")
+        .insert({
+          ...rule,
+          metadata: rule.metadata || null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaign_id] });
+      toast.success("Rule created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create rule: ${error.message}`);
+    },
+  });
+}
