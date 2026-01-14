@@ -55,6 +55,7 @@ export function useRuleCategories(campaignId: string | undefined) {
   return Object.entries(categories || {}).map(([category, categoryRules]) => ({
     category,
     rules: categoryRules,
+    ruleCount: categoryRules.length,
   }));
 }
 
