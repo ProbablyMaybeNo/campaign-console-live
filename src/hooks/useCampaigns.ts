@@ -180,10 +180,12 @@ export function useDeleteCampaign() {
   });
 }
 
-export function useIsGM(campaignId: string | undefined) {
+export function useIsGM(campaignId: string | undefined): boolean {
   const { user } = useAuth();
-  const { data: campaign } = useCampaign(campaignId);
+  const { data: campaign, isLoading } = useCampaign(campaignId);
 
-  if (!user || !campaign) return false;
+  // Return true (assume GM) while loading to prevent flash of player mode
+  if (isLoading || !campaign) return true;
+  if (!user) return false;
   return campaign.owner_id === user.id;
 }
