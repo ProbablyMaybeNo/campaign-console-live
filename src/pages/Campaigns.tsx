@@ -53,7 +53,7 @@ export default function Campaigns() {
 
       {/* Admin Library Link */}
       <Link 
-        to="/admin/library" 
+        to="/admin/game-library" 
         className="absolute top-8 right-8 p-3 border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
         title="Admin Game Library"
       >
