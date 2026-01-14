@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { DOMParser, Element } from "https://deno.land/x/deno_dom@v0.1.43/deno-dom-wasm.ts";
+import { parse } from "https://deno.land/x/xml@2.1.3/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +38,9 @@ interface ParsedGameSystem {
   shared_rules: Array<{ rule_key: string; title: string; content: string }>;
 }
 
+// deno-lint-ignore no-explicit-any
+type XmlNode = any;
+
 function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
   const match = url.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
   return match ? { owner: match[1], repo: match[2].replace(/\.git$/, '') } : null;
@@ -58,33 +61,40 @@ async function fetchFileContent(downloadUrl: string): Promise<string> {
   return await response.text();
 }
 
-function getAttr(el: Element | null | undefined, attr: string): string {
-  return el?.getAttribute?.(attr) || '';
+function getAttr(node: XmlNode, attr: string): string {
+  if (!node) return '';
+  // The xml parser stores attributes with @ prefix
+  return node[`@${attr}`] || node[attr] || '';
 }
 
-function getChildText(el: Element, selector: string): string {
-  return el.querySelector(selector)?.textContent?.trim() || '';
+function findNodes(node: XmlNode, ...path: string[]): XmlNode[] {
+  if (!node) return [];
+  let current = node;
+  for (const key of path) {
+    current = current?.[key];
+    if (!current) return [];
+  }
+  return Array.isArray(current) ? current : [current];
 }
 
 function parseGameSystem(xml: string): ParsedGameSystem {
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  const root = doc?.documentElement;
+  const doc = parse(xml);
+  const root = doc?.gameSystem || doc?.catalogue || Object.values(doc)[0];
+  
   const name = getAttr(root, 'name') || 'Unknown';
   const version = getAttr(root, 'revision') || '1.0';
   const sharedRules: ParsedGameSystem['shared_rules'] = [];
   
-  const ruleNodes = doc?.querySelectorAll('sharedRules > rule');
-  if (ruleNodes) {
-    for (let i = 0; i < ruleNodes.length; i++) {
-      const rule = ruleNodes[i] as Element;
-      const ruleName = getAttr(rule, 'name');
-      if (ruleName) {
-        sharedRules.push({
-          rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
-          title: ruleName,
-          content: getChildText(rule, 'description'),
-        });
-      }
+  const rules = findNodes(root, 'sharedRules', 'rule');
+  for (const rule of rules) {
+    const ruleName = getAttr(rule, 'name');
+    if (ruleName) {
+      const description = rule?.description?.['#text'] || rule?.description || '';
+      sharedRules.push({
+        rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
+        title: ruleName,
+        content: typeof description === 'string' ? description : '',
+      });
     }
   }
   
@@ -93,75 +103,82 @@ function parseGameSystem(xml: string): ParsedGameSystem {
 }
 
 function parseCatalogue(xml: string, sourceFile: string): ParsedFaction {
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  const root = doc?.documentElement;
+  const doc = parse(xml);
+  const root = doc?.catalogue || doc?.gameSystem || Object.values(doc)[0];
+  
   const name = getAttr(root, 'name') || sourceFile.replace('.cat', '');
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const units: ParsedUnit[] = [];
   const rules: ParsedFaction['rules'] = [];
   
-  const ruleNodes = doc?.querySelectorAll('rules > rule');
-  if (ruleNodes) {
-    for (let i = 0; i < ruleNodes.length; i++) {
-      const rule = ruleNodes[i] as Element;
-      const ruleName = getAttr(rule, 'name');
-      if (ruleName) {
-        rules.push({
-          rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
-          title: ruleName,
-          content: getChildText(rule, 'description'),
-        });
-      }
+  // Parse faction rules
+  const ruleNodes = findNodes(root, 'rules', 'rule');
+  for (const rule of ruleNodes) {
+    const ruleName = getAttr(rule, 'name');
+    if (ruleName) {
+      const description = rule?.description?.['#text'] || rule?.description || '';
+      rules.push({
+        rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
+        title: ruleName,
+        content: typeof description === 'string' ? description : '',
+      });
     }
   }
   
-  const entryNodes = doc?.querySelectorAll('selectionEntries > selectionEntry');
-  if (entryNodes) {
-    for (let i = 0; i < entryNodes.length; i++) {
-      const entry = entryNodes[i] as Element;
-      const entryType = getAttr(entry, 'type');
-      if (entryType === 'model' || entryType === 'unit') {
-        const unitName = getAttr(entry, 'name');
-        if (!unitName) continue;
-        
-        let baseCost = 0;
-        const costNodes = entry.querySelectorAll('costs > cost');
-        for (let j = 0; j < costNodes.length; j++) {
-          const cost = costNodes[j] as Element;
-          baseCost += parseFloat(getAttr(cost, 'value')) || 0;
-        }
-        
-        const stats: Record<string, string | number> = {};
-        const profileNodes = entry.querySelectorAll('profiles > profile');
-        for (let j = 0; j < profileNodes.length; j++) {
-          const profile = profileNodes[j] as Element;
-          const charNodes = profile.querySelectorAll('characteristics > characteristic');
-          for (let k = 0; k < charNodes.length; k++) {
-            const char = charNodes[k] as Element;
-            const charName = getAttr(char, 'name');
-            const charVal = char.textContent?.trim() || '';
-            if (charName) stats[charName] = isNaN(parseFloat(charVal)) ? charVal : parseFloat(charVal);
+  // Parse selection entries (units)
+  const entries = findNodes(root, 'selectionEntries', 'selectionEntry');
+  for (const entry of entries) {
+    const entryType = getAttr(entry, 'type');
+    if (entryType === 'model' || entryType === 'unit') {
+      const unitName = getAttr(entry, 'name');
+      if (!unitName) continue;
+      
+      // Parse costs
+      let baseCost = 0;
+      const costs = findNodes(entry, 'costs', 'cost');
+      for (const cost of costs) {
+        baseCost += parseFloat(getAttr(cost, 'value')) || 0;
+      }
+      
+      // Parse stats from profiles
+      const stats: Record<string, string | number> = {};
+      const profiles = findNodes(entry, 'profiles', 'profile');
+      for (const profile of profiles) {
+        const chars = findNodes(profile, 'characteristics', 'characteristic');
+        for (const char of chars) {
+          const charName = getAttr(char, 'name');
+          const charVal = char?.['#text'] || '';
+          if (charName) {
+            stats[charName] = isNaN(parseFloat(charVal)) ? charVal : parseFloat(charVal);
           }
         }
-        
-        const abilities: string[] = [];
-        const abilityNodes = entry.querySelectorAll('rules > rule');
-        for (let j = 0; j < abilityNodes.length; j++) {
-          const rule = abilityNodes[j] as Element;
-          const n = getAttr(rule, 'name');
-          if (n) abilities.push(n);
-        }
-        
-        const keywords: string[] = [];
-        const linkNodes = entry.querySelectorAll('categoryLinks > categoryLink');
-        for (let j = 0; j < linkNodes.length; j++) {
-          const link = linkNodes[j] as Element;
-          const n = getAttr(link, 'name');
-          if (n && n !== 'Configuration') keywords.push(n);
-        }
-        
-        units.push({ name: unitName, source_id: getAttr(entry, 'id'), base_cost: baseCost, stats, abilities, equipment_options: [], keywords });
       }
+      
+      // Parse abilities
+      const abilities: string[] = [];
+      const abilityNodes = findNodes(entry, 'rules', 'rule');
+      for (const rule of abilityNodes) {
+        const n = getAttr(rule, 'name');
+        if (n) abilities.push(n);
+      }
+      
+      // Parse keywords from category links
+      const keywords: string[] = [];
+      const links = findNodes(entry, 'categoryLinks', 'categoryLink');
+      for (const link of links) {
+        const n = getAttr(link, 'name');
+        if (n && n !== 'Configuration') keywords.push(n);
+      }
+      
+      units.push({
+        name: unitName,
+        source_id: getAttr(entry, 'id'),
+        base_cost: baseCost,
+        stats,
+        abilities,
+        equipment_options: [],
+        keywords
+      });
     }
   }
   
