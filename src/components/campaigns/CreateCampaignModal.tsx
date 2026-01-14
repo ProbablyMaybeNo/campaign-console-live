@@ -4,9 +4,10 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { RulesImporter } from "./RulesImporter";
+import { GameSystemPicker } from "./GameSystemPicker";
 import { useCreateCampaign } from "@/hooks/useCampaigns";
 import { useDiscoverRepoRules, useSyncRepoRules } from "@/hooks/useWargameRules";
-import { GitBranch, CheckCircle, AlertCircle, Gamepad2, FileUp } from "lucide-react";
+import { GitBranch, CheckCircle, AlertCircle, Gamepad2, FileUp, ChevronDown, ChevronUp } from "lucide-react";
 
 interface CreateCampaignModalProps {
   open: boolean;
@@ -15,7 +16,7 @@ interface CreateCampaignModalProps {
 
 type CreateFlowStep = "setup" | "pdf";
 
-type WargameOption = "custom" | "github" | "pdf";
+type WargameOption = "library" | "github" | "pdf";
 
 const WARGAME_PRESETS: Array<{
   value: WargameOption;
@@ -23,9 +24,9 @@ const WARGAME_PRESETS: Array<{
   description: string;
   icon: typeof Gamepad2;
 }> = [
-  { value: "custom", label: "Custom / No Preset", description: "Set up rules manually", icon: Gamepad2 },
-  { value: "github", label: "Import from GitHub", description: "Load rules from a repository", icon: GitBranch },
-  { value: "pdf", label: "Import from PDF", description: "Upload a rulebook and parse", icon: FileUp },
+  { value: "library", label: "Game Library", description: "Choose from imported systems", icon: Gamepad2 },
+  { value: "github", label: "GitHub Repo", description: "Link a custom repository", icon: GitBranch },
+  { value: "pdf", label: "Upload PDF", description: "Parse rules from a PDF", icon: FileUp },
 ];
 
 export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps) {
@@ -35,7 +36,14 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pointsLimit, setPointsLimit] = useState("1000");
-  const [wargameOption, setWargameOption] = useState<WargameOption>("custom");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  
+  // Game system selection
+  const [wargameOption, setWargameOption] = useState<WargameOption>("library");
+  const [selectedGameSystemId, setSelectedGameSystemId] = useState<string | null>(null);
+  const [selectedGameSystemName, setSelectedGameSystemName] = useState<string>("");
+  
+  // GitHub-specific state
   const [repoUrl, setRepoUrl] = useState("");
   const [repoValidated, setRepoValidated] = useState<boolean | null>(null);
   const [repoCategories, setRepoCategories] = useState<string[]>([]);
@@ -52,7 +60,10 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     setName("");
     setDescription("");
     setPointsLimit("1000");
-    setWargameOption("custom");
+    setShowAdvanced(false);
+    setWargameOption("library");
+    setSelectedGameSystemId(null);
+    setSelectedGameSystemName("");
     setRepoUrl("");
     setRepoValidated(null);
     setRepoCategories([]);
@@ -87,6 +98,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
       description: description || undefined,
       points_limit: parseInt(pointsLimit) || 1000,
       rules_repo_url: wargameOption === "github" && repoValidated ? repoUrl : undefined,
+      game_system_id: wargameOption === "library" && selectedGameSystemId ? selectedGameSystemId : undefined,
     });
 
     // If we have a validated repo, sync the rules immediately after creating
@@ -163,103 +175,134 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               onChange={(e) => setPointsLimit(e.target.value)}
             />
 
-            {/* Wargame Selection */}
+            {/* Game System Selection */}
             <div className="space-y-2">
               <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium flex items-center gap-2">
                 <Gamepad2 className="w-3 h-3" />
-                Wargame Rules Source
+                Game System
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {WARGAME_PRESETS.map((option) => {
-                  const Icon = option.icon;
-                  const isActive = wargameOption === option.value;
-
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => {
-                        setWargameOption(option.value);
-
-                        // Reset repo state unless we're in github mode
-                        if (option.value !== "github") {
-                          setRepoUrl("");
-                          setRepoValidated(null);
-                          setRepoCategories([]);
-                        }
-                      }}
-                      className={`p-3 border text-left transition-all ${
-                        isActive
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border hover:border-primary/50 hover:bg-accent"
-                      }`}
-                    >
-                      <p className="text-xs font-mono uppercase flex items-center gap-2">
-                        <Icon className="w-3.5 h-3.5" />
-                        {option.label}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-1">{option.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              <GameSystemPicker
+                value={selectedGameSystemId}
+                onChange={(id, name) => {
+                  setSelectedGameSystemId(id);
+                  setSelectedGameSystemName(name || "");
+                  if (id) setWargameOption("library");
+                }}
+              />
+              {selectedGameSystemName && (
+                <p className="text-[10px] text-primary/70">
+                  Units and rules from {selectedGameSystemName} will be available in this campaign
+                </p>
+              )}
             </div>
 
-            {/* GitHub Repo Input */}
-            {wargameOption === "github" && (
-              <div className="space-y-3 animate-fade-in border border-border/50 p-4 bg-muted/30">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <GitBranch className="w-4 h-4" />
-                  <span>Enter the GitHub repository URL containing your wargame rules</span>
-                </div>
+            {/* Advanced Options Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showAdvanced ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              Advanced options
+            </button>
 
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <TerminalInput
-                      placeholder="https://github.com/username/repo"
-                      value={repoUrl}
-                      onChange={(e) => {
-                        setRepoUrl(e.target.value);
-                        setRepoValidated(null);
-                        setRepoCategories([]);
-                      }}
-                    />
+            {showAdvanced && (
+              <div className="space-y-4 animate-fade-in border border-border/50 p-4 bg-muted/20">
+                {/* Wargame Source Options */}
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Alternative Rules Source
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {WARGAME_PRESETS.filter(p => p.value !== "library").map((option) => {
+                      const Icon = option.icon;
+                      const isActive = wargameOption === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setWargameOption(option.value);
+                            setSelectedGameSystemId(null);
+                            setSelectedGameSystemName("");
+
+                            if (option.value !== "github") {
+                              setRepoUrl("");
+                              setRepoValidated(null);
+                              setRepoCategories([]);
+                            }
+                          }}
+                          className={`p-3 border text-left transition-all ${
+                            isActive
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border hover:border-primary/50 hover:bg-accent"
+                          }`}
+                        >
+                          <p className="text-xs font-mono uppercase flex items-center gap-2">
+                            <Icon className="w-3.5 h-3.5" />
+                            {option.label}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1">{option.description}</p>
+                        </button>
+                      );
+                    })}
                   </div>
-                  <TerminalButton
-                    type="button"
-                    variant="outline"
-                    onClick={handleValidateRepo}
-                    disabled={!repoUrl.trim() || discoverRules.isPending}
-                    className="shrink-0"
-                  >
-                    {discoverRules.isPending ? (
-                      <TerminalLoader text="Validating" size="sm" />
-                    ) : (
-                      "Validate"
-                    )}
-                  </TerminalButton>
                 </div>
 
-                {/* Validation Status */}
-                {repoValidated === true && (
-                  <div className="flex items-start gap-2 text-xs text-green-400 bg-green-400/10 p-2 border border-green-400/30">
-                    <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Repository validated!</p>
-                      <p className="text-green-400/70 mt-1">
-                        Found {repoCategories.length} rule categories: {repoCategories.join(", ")}
-                      </p>
-                      <p className="text-green-400/60 mt-1 text-[10px]">
-                        Rules will be synced when you create the campaign.
-                      </p>
+                {/* GitHub Repo Input */}
+                {wargameOption === "github" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <GitBranch className="w-4 h-4" />
+                      <span>Enter the GitHub repository URL containing your wargame rules</span>
                     </div>
-                  </div>
-                )}
 
-                {repoValidated === false && (
-                  <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 border border-destructive/30">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>Could not access repository. Check the URL and ensure it's public.</span>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <TerminalInput
+                          placeholder="https://github.com/username/repo"
+                          value={repoUrl}
+                          onChange={(e) => {
+                            setRepoUrl(e.target.value);
+                            setRepoValidated(null);
+                            setRepoCategories([]);
+                          }}
+                        />
+                      </div>
+                      <TerminalButton
+                        type="button"
+                        variant="outline"
+                        onClick={handleValidateRepo}
+                        disabled={!repoUrl.trim() || discoverRules.isPending}
+                        className="shrink-0"
+                      >
+                        {discoverRules.isPending ? (
+                          <TerminalLoader text="Validating" size="sm" />
+                        ) : (
+                          "Validate"
+                        )}
+                      </TerminalButton>
+                    </div>
+
+                    {repoValidated === true && (
+                      <div className="flex items-start gap-2 text-xs text-green-400 bg-green-400/10 p-2 border border-green-400/30">
+                        <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Repository validated!</p>
+                          <p className="text-green-400/70 mt-1">
+                            Found {repoCategories.length} rule categories: {repoCategories.join(", ")}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {repoValidated === false && (
+                      <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 border border-destructive/30">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Could not access repository. Check the URL and ensure it's public.</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
