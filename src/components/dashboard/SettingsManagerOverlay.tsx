@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
+import { useGameSystem } from "@/hooks/useGameSystems";
+import { GameSystemPicker } from "@/components/campaigns/GameSystemPicker";
 import { 
   Settings, 
   Save, 
@@ -14,7 +16,8 @@ import {
   Lock,
   Users,
   Swords,
-  Key
+  Key,
+  Gamepad2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -33,24 +36,28 @@ export function SettingsManagerOverlay({
   campaignId,
 }: SettingsManagerOverlayProps) {
   const { data: campaign, isLoading } = useCampaign(campaignId);
+  const { data: currentGameSystem } = useGameSystem(campaign?.game_system_id ?? undefined);
   const updateCampaign = useUpdateCampaign();
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pointsLimit, setPointsLimit] = useState("");
+  const [gameSystemId, setGameSystemId] = useState<string | null>(null);
   const [status, setStatus] = useState<CampaignStatus>("active");
   const [gmIsPlayer, setGmIsPlayer] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Initialize form when campaign loads
-  useState(() => {
+  useEffect(() => {
     if (campaign) {
       setName(campaign.name);
       setDescription(campaign.description || "");
       setPointsLimit(campaign.points_limit?.toString() || "");
+      setGameSystemId(campaign.game_system_id || null);
+      setHasChanges(false);
     }
-  });
+  }, [campaign]);
 
   const handleCopyId = async () => {
     await navigator.clipboard.writeText(campaignId);
@@ -70,13 +77,14 @@ export function SettingsManagerOverlay({
       name: name.trim(),
       description: description.trim() || null,
       points_limit: pointsLimit ? parseInt(pointsLimit) : null,
+      game_system_id: gameSystemId,
     });
 
     setHasChanges(false);
     toast.success("Settings saved");
   };
 
-  const handleChange = (setter: (value: string) => void, value: string) => {
+  const handleChange = <T,>(setter: (value: T) => void, value: T) => {
     setter(value);
     setHasChanges(true);
   };
@@ -172,6 +180,26 @@ export function SettingsManagerOverlay({
                 placeholder="e.g. 1000"
               />
             </div>
+          </div>
+
+          {/* Game System */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground border-b border-border pb-2 flex items-center gap-2">
+              <Gamepad2 className="w-3 h-3" />
+              Game System
+            </h3>
+            
+            <GameSystemPicker
+              value={gameSystemId}
+              onChange={(id) => handleChange(setGameSystemId, id)}
+            />
+            
+            {currentGameSystem && gameSystemId === campaign?.game_system_id && (
+              <p className="text-[10px] text-muted-foreground">
+                Currently using: <span className="text-primary">{currentGameSystem.name}</span>
+                {currentGameSystem.version && ` v${currentGameSystem.version}`}
+              </p>
+            )}
           </div>
 
           {/* Campaign Status */}

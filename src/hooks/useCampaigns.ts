@@ -10,6 +10,7 @@ export interface Campaign {
   rules_repo_url: string | null;
   rules_repo_ref: string | null;
   points_limit: number | null;
+  game_system_id: string | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -20,6 +21,7 @@ export interface CreateCampaignInput {
   description?: string;
   points_limit?: number;
   rules_repo_url?: string;
+  game_system_id?: string;
 }
 
 export interface UpdateCampaignInput {
@@ -28,6 +30,7 @@ export interface UpdateCampaignInput {
   description?: string;
   points_limit?: number;
   rules_repo_url?: string;
+  game_system_id?: string | null;
 }
 
 export function useCampaigns() {
@@ -108,6 +111,7 @@ export function useCreateCampaign() {
           description: input.description || null,
           points_limit: input.points_limit || 1000,
           rules_repo_url: input.rules_repo_url || null,
+          game_system_id: input.game_system_id || null,
           owner_id: user.id,
         })
         .select()
