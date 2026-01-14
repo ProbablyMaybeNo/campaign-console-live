@@ -194,6 +194,46 @@ export function useMasterRules(gameSystemId: string | undefined, factionId?: str
   });
 }
 
+// Get unique rule categories for a game system
+export function useMasterRuleCategories(gameSystemId: string | undefined) {
+  const { data: rules } = useMasterRules(gameSystemId);
+
+  const categories = rules?.reduce((acc, rule) => {
+    if (!acc[rule.category]) {
+      acc[rule.category] = [];
+    }
+    acc[rule.category].push(rule);
+    return acc;
+  }, {} as Record<string, MasterRule[]>);
+
+  return Object.entries(categories || {}).map(([category, categoryRules]) => ({
+    category,
+    rules: categoryRules,
+    ruleCount: categoryRules.length,
+  }));
+}
+
+// Fetch rules by category for a game system
+export function useMasterRulesByCategory(gameSystemId: string | undefined, category: string | undefined) {
+  return useQuery({
+    queryKey: ["master-rules-by-category", gameSystemId, category],
+    queryFn: async () => {
+      if (!gameSystemId || !category) return [];
+
+      const { data, error } = await supabase
+        .from("master_rules")
+        .select("*")
+        .eq("game_system_id", gameSystemId)
+        .eq("category", category)
+        .order("title");
+
+      if (error) throw error;
+      return data as MasterRule[];
+    },
+    enabled: !!gameSystemId && !!category,
+  });
+}
+
 // BSData Gallery types
 export interface BSDataGameSystem {
   name: string;
