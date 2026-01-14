@@ -218,23 +218,43 @@ export function useDiscoverBattleScribe() {
   });
 }
 
-// Sync BattleScribe repo to game system
+// Sync BattleScribe repo to game system (with batching)
 export function useSyncBattleScribe() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ repoUrl, gameSystemId }: { repoUrl: string; gameSystemId: string }) => {
-      const { data, error } = await supabase.functions.invoke("parse-battlescribe", {
-        body: { repoUrl, gameSystemId, action: "sync" },
-      });
+      let batchIndex = 0;
+      let totalUnits = 0;
+      let allFactions: string[] = [];
+      let gameSystemName: string | undefined;
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-      return data;
+      // Process in batches until done
+      while (true) {
+        const { data, error } = await supabase.functions.invoke("parse-battlescribe", {
+          body: { repoUrl, gameSystemId, action: "sync", batchIndex, batchSize: 2 },
+        });
+
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+
+        totalUnits += data.unitsInserted || 0;
+        allFactions = [...allFactions, ...(data.factionsProcessed || [])];
+        if (data.gameSystem) gameSystemName = data.gameSystem;
+
+        console.log(`Batch ${batchIndex}: ${data.factionsProcessed?.join(', ')} (${data.processedSoFar}/${data.totalFactions})`);
+
+        if (!data.hasMore) break;
+        batchIndex = data.nextBatchIndex;
+      }
+
+      return { unitsInserted: totalUnits, factionsProcessed: allFactions, gameSystem: gameSystemName };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["game-systems"] });
+      queryClient.invalidateQueries({ queryKey: ["game-systems", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["game-systems", "active"] });
       queryClient.invalidateQueries({ queryKey: ["master-factions"] });
       queryClient.invalidateQueries({ queryKey: ["master-units"] });
       queryClient.invalidateQueries({ queryKey: ["master-rules"] });

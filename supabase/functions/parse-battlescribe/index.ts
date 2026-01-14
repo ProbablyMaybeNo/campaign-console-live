@@ -63,7 +63,6 @@ async function fetchFileContent(downloadUrl: string): Promise<string> {
 
 function getAttr(node: XmlNode, attr: string): string {
   if (!node) return '';
-  // The xml parser stores attributes with @ prefix
   return node[`@${attr}`] || node[attr] || '';
 }
 
@@ -111,8 +110,8 @@ function parseCatalogue(xml: string, sourceFile: string): ParsedFaction {
   const units: ParsedUnit[] = [];
   const rules: ParsedFaction['rules'] = [];
   
-  // Parse faction rules
-  const ruleNodes = findNodes(root, 'rules', 'rule');
+  // Parse faction rules (limit to first 50 to save CPU)
+  const ruleNodes = findNodes(root, 'rules', 'rule').slice(0, 50);
   for (const rule of ruleNodes) {
     const ruleName = getAttr(rule, 'name');
     if (ruleName) {
@@ -125,24 +124,22 @@ function parseCatalogue(xml: string, sourceFile: string): ParsedFaction {
     }
   }
   
-  // Parse selection entries (units)
-  const entries = findNodes(root, 'selectionEntries', 'selectionEntry');
+  // Parse selection entries (units) - limit to first 100 to save CPU
+  const entries = findNodes(root, 'selectionEntries', 'selectionEntry').slice(0, 100);
   for (const entry of entries) {
     const entryType = getAttr(entry, 'type');
     if (entryType === 'model' || entryType === 'unit') {
       const unitName = getAttr(entry, 'name');
       if (!unitName) continue;
       
-      // Parse costs
       let baseCost = 0;
       const costs = findNodes(entry, 'costs', 'cost');
       for (const cost of costs) {
         baseCost += parseFloat(getAttr(cost, 'value')) || 0;
       }
       
-      // Parse stats from profiles
       const stats: Record<string, string | number> = {};
-      const profiles = findNodes(entry, 'profiles', 'profile');
+      const profiles = findNodes(entry, 'profiles', 'profile').slice(0, 5);
       for (const profile of profiles) {
         const chars = findNodes(profile, 'characteristics', 'characteristic');
         for (const char of chars) {
@@ -154,17 +151,15 @@ function parseCatalogue(xml: string, sourceFile: string): ParsedFaction {
         }
       }
       
-      // Parse abilities
       const abilities: string[] = [];
-      const abilityNodes = findNodes(entry, 'rules', 'rule');
+      const abilityNodes = findNodes(entry, 'rules', 'rule').slice(0, 20);
       for (const rule of abilityNodes) {
         const n = getAttr(rule, 'name');
         if (n) abilities.push(n);
       }
       
-      // Parse keywords from category links
       const keywords: string[] = [];
-      const links = findNodes(entry, 'categoryLinks', 'categoryLink');
+      const links = findNodes(entry, 'categoryLinks', 'categoryLink').slice(0, 20);
       for (const link of links) {
         const n = getAttr(link, 'name');
         if (n && n !== 'Configuration') keywords.push(n);
@@ -191,7 +186,7 @@ Deno.serve(async (req) => {
 
   try {
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const { repoUrl, gameSystemId, action } = await req.json();
+    const { repoUrl, gameSystemId, action, batchIndex = 0, batchSize = 2 } = await req.json();
     
     const parsed = parseGitHubUrl(repoUrl);
     if (!parsed) return new Response(JSON.stringify({ error: 'Invalid GitHub URL' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -211,32 +206,89 @@ Deno.serve(async (req) => {
 
     if (action === 'sync' && gameSystemId) {
       let gameSystemData: ParsedGameSystem | null = null;
-      if (gstFiles[0]?.download_url) {
+      
+      // Only parse GST on first batch
+      if (batchIndex === 0 && gstFiles[0]?.download_url) {
         gameSystemData = parseGameSystem(await fetchFileContent(gstFiles[0].download_url));
-        await supabase.from('game_systems').update({ name: gameSystemData.name, version: gameSystemData.version, last_synced_at: new Date().toISOString(), status: 'active' }).eq('id', gameSystemId);
-        for (const rule of gameSystemData.shared_rules) {
-          await supabase.from('master_rules').upsert({ game_system_id: gameSystemId, faction_id: null, category: 'Core Rules', rule_key: rule.rule_key, title: rule.title, content: { text: rule.content } }, { onConflict: 'game_system_id,rule_key' });
+        await supabase.from('game_systems').update({ 
+          name: gameSystemData.name, 
+          version: gameSystemData.version, 
+          last_synced_at: new Date().toISOString(), 
+          status: 'active' 
+        }).eq('id', gameSystemId);
+        
+        // Insert rules in smaller batches
+        for (let i = 0; i < gameSystemData.shared_rules.length; i += 10) {
+          const ruleBatch = gameSystemData.shared_rules.slice(i, i + 10);
+          for (const rule of ruleBatch) {
+            await supabase.from('master_rules').upsert({ 
+              game_system_id: gameSystemId, 
+              faction_id: null, 
+              category: 'Core Rules', 
+              rule_key: rule.rule_key, 
+              title: rule.title, 
+              content: { text: rule.content } 
+            }, { onConflict: 'game_system_id,rule_key' });
+          }
         }
       }
 
+      // Process only a batch of catalogue files
+      const startIdx = batchIndex * batchSize;
+      const endIdx = Math.min(startIdx + batchSize, catFiles.length);
+      const batchCatFiles = catFiles.slice(startIdx, endIdx);
+      
       const factionsProcessed: string[] = [];
       let unitsInserted = 0;
       
-      for (const catFile of catFiles) {
+      for (const catFile of batchCatFiles) {
         if (!catFile.download_url) continue;
         try {
           const faction = parseCatalogue(await fetchFileContent(catFile.download_url), catFile.name);
-          const { data: fd } = await supabase.from('master_factions').upsert({ game_system_id: gameSystemId, name: faction.name, slug: faction.slug, source_file: faction.source_file }, { onConflict: 'game_system_id,slug' }).select('id').single();
+          const { data: fd } = await supabase.from('master_factions').upsert({ 
+            game_system_id: gameSystemId, 
+            name: faction.name, 
+            slug: faction.slug, 
+            source_file: faction.source_file 
+          }, { onConflict: 'game_system_id,slug' }).select('id').single();
+          
           if (!fd) continue;
           factionsProcessed.push(faction.name);
+          
+          // Insert units in smaller batches
           for (const unit of faction.units) {
-            const { error } = await supabase.from('master_units').upsert({ game_system_id: gameSystemId, faction_id: fd.id, name: unit.name, source_id: unit.source_id, base_cost: unit.base_cost, stats: unit.stats, abilities: unit.abilities, equipment_options: unit.equipment_options, keywords: unit.keywords, constraints: unit.constraints || {} }, { onConflict: 'game_system_id,faction_id,source_id' });
+            const { error } = await supabase.from('master_units').upsert({ 
+              game_system_id: gameSystemId, 
+              faction_id: fd.id, 
+              name: unit.name, 
+              source_id: unit.source_id, 
+              base_cost: unit.base_cost, 
+              stats: unit.stats, 
+              abilities: unit.abilities, 
+              equipment_options: unit.equipment_options, 
+              keywords: unit.keywords, 
+              constraints: unit.constraints || {} 
+            }, { onConflict: 'game_system_id,faction_id,source_id' });
             if (!error) unitsInserted++;
           }
-        } catch (e) { console.error(`Error: ${catFile.name}`, e); }
+        } catch (e) { 
+          console.error(`Error parsing ${catFile.name}:`, e); 
+        }
       }
 
-      return new Response(JSON.stringify({ success: true, gameSystem: gameSystemData?.name, factionsProcessed, unitsInserted }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const hasMore = endIdx < catFiles.length;
+      const nextBatchIndex = hasMore ? batchIndex + 1 : null;
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        gameSystem: gameSystemData?.name,
+        factionsProcessed, 
+        unitsInserted,
+        hasMore,
+        nextBatchIndex,
+        totalFactions: catFiles.length,
+        processedSoFar: endIdx,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ error: 'Invalid action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
