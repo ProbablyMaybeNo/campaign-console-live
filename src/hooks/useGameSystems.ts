@@ -244,6 +244,14 @@ export interface BSDataGameSystem {
   githubUrl: string;
 }
 
+export interface CatalogueFile {
+  name: string;
+  fileName: string;
+  downloadUrl: string;
+  path: string;
+  type: 'gamesystem' | 'catalogue';
+}
+
 // Fetch all available game systems from BSData gallery
 export function useBSDataGallery() {
   return useQuery({
@@ -258,6 +266,76 @@ export function useBSDataGallery() {
       return data.gameSystems as BSDataGameSystem[];
     },
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
+  });
+}
+
+// List catalogue files from a GitHub repo
+export function useRepoCatalogueFiles(githubUrl: string | null | undefined) {
+  return useQuery({
+    queryKey: ["repo-catalogue-files", githubUrl],
+    queryFn: async () => {
+      if (!githubUrl) return [];
+
+      const { data, error } = await supabase.functions.invoke("parse-battlescribe", {
+        body: { action: "list_repo_files", githubUrl },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data.files as CatalogueFile[];
+    },
+    enabled: !!githubUrl,
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+}
+
+// Parse a specific catalogue file and import its rules
+export function useImportCatalogue() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      downloadUrl, 
+      fileName, 
+      gameSystemId, 
+      categoryPrefix 
+    }: { 
+      downloadUrl: string; 
+      fileName: string; 
+      gameSystemId: string;
+      categoryPrefix?: string;
+    }) => {
+      const { data, error } = await supabase.functions.invoke("parse-battlescribe", {
+        body: {
+          action: "parse_catalogue",
+          downloadUrl,
+          fileName,
+          gameSystemId,
+          categoryPrefix,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["master-rules"] });
+      queryClient.invalidateQueries({ queryKey: ["master-rules-by-category"] });
+
+      toast({
+        title: "Catalogue imported!",
+        description: `Imported ${data.rulesSaved} rules from ${data.catalogueName}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Import failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 }
 
