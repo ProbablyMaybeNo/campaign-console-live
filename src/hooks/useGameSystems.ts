@@ -194,23 +194,67 @@ export function useMasterRules(gameSystemId: string | undefined, factionId?: str
   });
 }
 
-// Discover BattleScribe repo
-export function useDiscoverBattleScribe() {
+// BSData Gallery types
+export interface BSDataGameSystem {
+  name: string;
+  description: string;
+  version: string;
+  lastUpdated: string;
+  repositoryUrl: string;
+  githubUrl: string;
+}
+
+// Fetch all available game systems from BSData gallery
+export function useBSDataGallery() {
+  return useQuery({
+    queryKey: ["bsdata-gallery"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("parse-battlescribe", {
+        body: { action: "list_gallery" },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data.gameSystems as BSDataGameSystem[];
+    },
+    staleTime: 1000 * 60 * 60, // Cache for 1 hour
+  });
+}
+
+// Import a game system from BSData gallery (instant, uses pre-processed data)
+export function useImportFromGallery() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (repoUrl: string) => {
+    mutationFn: async (gameSystem: BSDataGameSystem) => {
       const { data, error } = await supabase.functions.invoke("parse-battlescribe", {
-        body: { repoUrl, action: "discover" },
+        body: {
+          action: "import_from_gallery",
+          ...gameSystem,
+        },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
       return data;
     },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["game-systems"] });
+      queryClient.invalidateQueries({ queryKey: ["game-systems", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["game-systems", "active"] });
+      queryClient.invalidateQueries({ queryKey: ["master-factions"] });
+      queryClient.invalidateQueries({ queryKey: ["master-units"] });
+      queryClient.invalidateQueries({ queryKey: ["master-rules"] });
+
+      toast({
+        title: "Import complete!",
+        description: `Imported ${data.unitsCount} units across ${data.factions?.length || 0} factions`,
+      });
+    },
     onError: (error) => {
       toast({
-        title: "Discovery failed",
+        title: "Import failed",
         description: error.message,
         variant: "destructive",
       });
