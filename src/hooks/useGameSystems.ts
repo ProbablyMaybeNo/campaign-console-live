@@ -67,17 +67,17 @@ export interface MasterRule {
   updated_at: string;
 }
 
-// Fetch all active game systems
-export function useGameSystems() {
-  return useQuery({
-    queryKey: ["game-systems"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("game_systems")
-        .select("*")
-        .eq("status", "active")
-        .order("name");
+// Fetch game systems (admin library uses this; can optionally filter to active only)
+export function useGameSystems(options?: { status?: "active" | "all" }) {
+  const status = options?.status ?? "all";
 
+  return useQuery({
+    queryKey: ["game-systems", status],
+    queryFn: async () => {
+      let query = supabase.from("game_systems").select("*").order("name");
+      if (status === "active") query = query.eq("status", "active");
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as GameSystem[];
     },
@@ -254,7 +254,7 @@ export function useSyncBattleScribe() {
   });
 }
 
-// Create a new game system (admin only - uses service role in edge function)
+// Create a new game system (idempotent by slug)
 export function useCreateGameSystem() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -267,12 +267,11 @@ export function useCreateGameSystem() {
       repo_url?: string;
       repo_type: "battlescribe" | "custom" | "manual";
     }) => {
+      // Use upsert so re-importing the same repo doesn't fail with duplicate slug.
+      // On insert, DB defaults status='draft'. On conflict, we avoid forcing status back to draft.
       const { data, error } = await supabase
         .from("game_systems")
-        .insert({
-          ...input,
-          status: "draft",
-        })
+        .upsert({ ...input }, { onConflict: "slug" })
         .select()
         .single();
 
@@ -281,15 +280,22 @@ export function useCreateGameSystem() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["game-systems"] });
+      queryClient.invalidateQueries({ queryKey: ["game-systems", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["game-systems", "active"] });
       toast({
-        title: "Game system created",
-        description: "You can now sync data from the repository",
+        title: "Game system ready",
+        description: "Starting import from the repository…",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const message =
+        error?.code === "23505"
+          ? "A game system with this slug already exists. Try resync instead."
+          : error?.message || "Unknown error";
+
       toast({
         title: "Failed to create game system",
-        description: error.message,
+        description: message,
         variant: "destructive",
       });
     },

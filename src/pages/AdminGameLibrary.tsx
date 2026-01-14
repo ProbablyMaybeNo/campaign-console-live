@@ -48,7 +48,7 @@ export default function AdminGameLibrary() {
   const [newDescription, setNewDescription] = useState("");
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResult | null>(null);
 
-  const { data: gameSystems, isLoading } = useGameSystems();
+  const { data: gameSystems, isLoading } = useGameSystems({ status: "all" });
   const discoverMutation = useDiscoverBattleScribe();
   const syncMutation = useSyncBattleScribe();
   const createMutation = useCreateGameSystem();
