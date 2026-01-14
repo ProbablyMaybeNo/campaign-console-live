@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.43/deno-dom-wasm.ts";
+import { DOMParser, Element } from "https://deno.land/x/deno_dom@v0.1.43/deno-dom-wasm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,9 +58,12 @@ async function fetchFileContent(downloadUrl: string): Promise<string> {
   return await response.text();
 }
 
-// deno-lint-ignore no-explicit-any
-function getAttr(el: any, attr: string): string {
+function getAttr(el: Element | null | undefined, attr: string): string {
   return el?.getAttribute?.(attr) || '';
+}
+
+function getChildText(el: Element, selector: string): string {
+  return el.querySelector(selector)?.textContent?.trim() || '';
 }
 
 function parseGameSystem(xml: string): ParsedGameSystem {
@@ -70,16 +73,20 @@ function parseGameSystem(xml: string): ParsedGameSystem {
   const version = getAttr(root, 'revision') || '1.0';
   const sharedRules: ParsedGameSystem['shared_rules'] = [];
   
-  doc?.querySelectorAll('sharedRules > rule').forEach((rule) => {
-    const ruleName = getAttr(rule, 'name');
-    if (ruleName) {
-      sharedRules.push({
-        rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
-        title: ruleName,
-        content: rule.querySelector('description')?.textContent?.trim() || '',
-      });
+  const ruleNodes = doc?.querySelectorAll('sharedRules > rule');
+  if (ruleNodes) {
+    for (let i = 0; i < ruleNodes.length; i++) {
+      const rule = ruleNodes[i] as Element;
+      const ruleName = getAttr(rule, 'name');
+      if (ruleName) {
+        sharedRules.push({
+          rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
+          title: ruleName,
+          content: getChildText(rule, 'description'),
+        });
+      }
     }
-  });
+  }
   
   console.log(`Parsed GST: ${name} v${version}, ${sharedRules.length} rules`);
   return { name, version, shared_rules: sharedRules };
@@ -93,52 +100,70 @@ function parseCatalogue(xml: string, sourceFile: string): ParsedFaction {
   const units: ParsedUnit[] = [];
   const rules: ParsedFaction['rules'] = [];
   
-  doc?.querySelectorAll('rules > rule').forEach((rule) => {
-    const ruleName = getAttr(rule, 'name');
-    if (ruleName) {
-      rules.push({
-        rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
-        title: ruleName,
-        content: rule.querySelector('description')?.textContent?.trim() || '',
-      });
-    }
-  });
-  
-  doc?.querySelectorAll('selectionEntries > selectionEntry').forEach((entry) => {
-    const entryType = getAttr(entry, 'type');
-    if (entryType === 'model' || entryType === 'unit') {
-      const unitName = getAttr(entry, 'name');
-      if (!unitName) return;
-      
-      let baseCost = 0;
-      entry.querySelectorAll('costs > cost').forEach((cost) => {
-        baseCost += parseFloat(getAttr(cost, 'value')) || 0;
-      });
-      
-      const stats: Record<string, string | number> = {};
-      entry.querySelectorAll('profiles > profile').forEach((profile) => {
-        profile.querySelectorAll('characteristics > characteristic').forEach((char) => {
-          const charName = getAttr(char, 'name');
-          const charVal = char.textContent?.trim() || '';
-          if (charName) stats[charName] = isNaN(parseFloat(charVal)) ? charVal : parseFloat(charVal);
+  const ruleNodes = doc?.querySelectorAll('rules > rule');
+  if (ruleNodes) {
+    for (let i = 0; i < ruleNodes.length; i++) {
+      const rule = ruleNodes[i] as Element;
+      const ruleName = getAttr(rule, 'name');
+      if (ruleName) {
+        rules.push({
+          rule_key: getAttr(rule, 'id') || ruleName.toLowerCase().replace(/\s+/g, '_'),
+          title: ruleName,
+          content: getChildText(rule, 'description'),
         });
-      });
-      
-      const abilities: string[] = [];
-      entry.querySelectorAll('rules > rule').forEach((rule) => {
-        const n = getAttr(rule, 'name');
-        if (n) abilities.push(n);
-      });
-      
-      const keywords: string[] = [];
-      entry.querySelectorAll('categoryLinks > categoryLink').forEach((link) => {
-        const n = getAttr(link, 'name');
-        if (n && n !== 'Configuration') keywords.push(n);
-      });
-      
-      units.push({ name: unitName, source_id: getAttr(entry, 'id'), base_cost: baseCost, stats, abilities, equipment_options: [], keywords });
+      }
     }
-  });
+  }
+  
+  const entryNodes = doc?.querySelectorAll('selectionEntries > selectionEntry');
+  if (entryNodes) {
+    for (let i = 0; i < entryNodes.length; i++) {
+      const entry = entryNodes[i] as Element;
+      const entryType = getAttr(entry, 'type');
+      if (entryType === 'model' || entryType === 'unit') {
+        const unitName = getAttr(entry, 'name');
+        if (!unitName) continue;
+        
+        let baseCost = 0;
+        const costNodes = entry.querySelectorAll('costs > cost');
+        for (let j = 0; j < costNodes.length; j++) {
+          const cost = costNodes[j] as Element;
+          baseCost += parseFloat(getAttr(cost, 'value')) || 0;
+        }
+        
+        const stats: Record<string, string | number> = {};
+        const profileNodes = entry.querySelectorAll('profiles > profile');
+        for (let j = 0; j < profileNodes.length; j++) {
+          const profile = profileNodes[j] as Element;
+          const charNodes = profile.querySelectorAll('characteristics > characteristic');
+          for (let k = 0; k < charNodes.length; k++) {
+            const char = charNodes[k] as Element;
+            const charName = getAttr(char, 'name');
+            const charVal = char.textContent?.trim() || '';
+            if (charName) stats[charName] = isNaN(parseFloat(charVal)) ? charVal : parseFloat(charVal);
+          }
+        }
+        
+        const abilities: string[] = [];
+        const abilityNodes = entry.querySelectorAll('rules > rule');
+        for (let j = 0; j < abilityNodes.length; j++) {
+          const rule = abilityNodes[j] as Element;
+          const n = getAttr(rule, 'name');
+          if (n) abilities.push(n);
+        }
+        
+        const keywords: string[] = [];
+        const linkNodes = entry.querySelectorAll('categoryLinks > categoryLink');
+        for (let j = 0; j < linkNodes.length; j++) {
+          const link = linkNodes[j] as Element;
+          const n = getAttr(link, 'name');
+          if (n && n !== 'Configuration') keywords.push(n);
+        }
+        
+        units.push({ name: unitName, source_id: getAttr(entry, 'id'), base_cost: baseCost, stats, abilities, equipment_options: [], keywords });
+      }
+    }
+  }
   
   console.log(`Parsed CAT: ${name}, ${units.length} units, ${rules.length} rules`);
   return { name, slug, source_file: sourceFile, units, rules };
