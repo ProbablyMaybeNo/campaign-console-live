@@ -4,7 +4,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
-import { useGameSystem } from "@/hooks/useGameSystems";
+import { useGameSystem, useRepoCatalogueFiles, useImportCatalogue, CatalogueFile } from "@/hooks/useGameSystems";
 import { GameSystemPicker } from "@/components/campaigns/GameSystemPicker";
 import { 
   Settings, 
@@ -17,7 +17,10 @@ import {
   Users,
   Swords,
   Key,
-  Gamepad2
+  Gamepad2,
+  FileCode,
+  Download,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -37,6 +40,8 @@ export function SettingsManagerOverlay({
 }: SettingsManagerOverlayProps) {
   const { data: campaign, isLoading } = useCampaign(campaignId);
   const { data: currentGameSystem } = useGameSystem(campaign?.game_system_id ?? undefined);
+  const { data: catalogueFiles, isLoading: loadingCatalogues } = useRepoCatalogueFiles(currentGameSystem?.repo_url);
+  const importCatalogue = useImportCatalogue();
   const updateCampaign = useUpdateCampaign();
   
   const [name, setName] = useState("");
@@ -47,6 +52,7 @@ export function SettingsManagerOverlay({
   const [gmIsPlayer, setGmIsPlayer] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [importingFile, setImportingFile] = useState<string | null>(null);
 
   // Initialize form when campaign loads
   useEffect(() => {
@@ -88,6 +94,29 @@ export function SettingsManagerOverlay({
     setter(value);
     setHasChanges(true);
   };
+
+  const handleImportCatalogue = async (file: CatalogueFile) => {
+    if (!currentGameSystem?.id) return;
+    
+    setImportingFile(file.fileName);
+    try {
+      await importCatalogue.mutateAsync({
+        downloadUrl: file.downloadUrl,
+        fileName: file.fileName,
+        gameSystemId: currentGameSystem.id,
+      });
+    } finally {
+      setImportingFile(null);
+    }
+  };
+
+  // Filter catalogue files to show only non-faction catalogues (like Campaign Rules)
+  const importableCatalogues = catalogueFiles?.filter(f => 
+    f.type === 'catalogue' && 
+    (f.name.toLowerCase().includes('campaign') || 
+     f.name.toLowerCase().includes('rules') ||
+     f.name.toLowerCase().includes('core'))
+  ) || [];
 
   if (isLoading) {
     return (
@@ -202,7 +231,62 @@ export function SettingsManagerOverlay({
             )}
           </div>
 
-          {/* Campaign Status */}
+          {/* Campaign Rules Import - Only show if game system has a repo URL */}
+          {currentGameSystem?.repo_url && (
+            <div className="space-y-4">
+              <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground border-b border-border pb-2 flex items-center gap-2">
+                <FileCode className="w-3 h-3" />
+                Import Campaign Rules
+              </h3>
+              
+              <p className="text-[10px] text-muted-foreground">
+                Import additional rule sets from the game system repository (e.g., Campaign Rules, Exploration Tables, Injury Charts).
+              </p>
+              
+              {loadingCatalogues ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Loading available catalogues...
+                </div>
+              ) : catalogueFiles && catalogueFiles.length > 0 ? (
+                <div className="space-y-2">
+                  {catalogueFiles.map((file) => (
+                    <div 
+                      key={file.fileName}
+                      className="flex items-center justify-between border border-border rounded p-3 hover:border-primary/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileCode className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-mono">{file.name}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {file.type === 'gamesystem' ? 'Game System' : 'Catalogue'}
+                          </p>
+                        </div>
+                      </div>
+                      <TerminalButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleImportCatalogue(file)}
+                        disabled={importingFile !== null}
+                      >
+                        {importingFile === file.fileName ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Download className="w-3 h-3" />
+                        )}
+                      </TerminalButton>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-yellow-400">
+                  No catalogue files found in the repository.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="space-y-4">
             <h3 className="text-xs font-mono uppercase tracking-wider text-muted-foreground border-b border-border pb-2">
               Campaign Status
