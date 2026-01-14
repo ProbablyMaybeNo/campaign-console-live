@@ -150,6 +150,7 @@ export type Database = {
         Row: {
           created_at: string
           description: string | null
+          game_system_id: string | null
           id: string
           name: string
           owner_id: string
@@ -161,6 +162,7 @@ export type Database = {
         Insert: {
           created_at?: string
           description?: string | null
+          game_system_id?: string | null
           id?: string
           name: string
           owner_id: string
@@ -172,6 +174,7 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string | null
+          game_system_id?: string | null
           id?: string
           name?: string
           owner_id?: string
@@ -180,7 +183,15 @@ export type Database = {
           rules_repo_url?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_game_system_id_fkey"
+            columns: ["game_system_id"]
+            isOneToOne: false
+            referencedRelation: "game_systems"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dashboard_components: {
         Row: {
@@ -231,6 +242,212 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_systems: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon_url: string | null
+          id: string
+          last_synced_at: string | null
+          name: string
+          repo_type: string
+          repo_url: string | null
+          slug: string
+          status: string
+          updated_at: string
+          version: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          last_synced_at?: string | null
+          name: string
+          repo_type?: string
+          repo_url?: string | null
+          slug: string
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          last_synced_at?: string | null
+          name?: string
+          repo_type?: string
+          repo_url?: string | null
+          slug?: string
+          status?: string
+          updated_at?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      master_factions: {
+        Row: {
+          created_at: string
+          description: string | null
+          game_system_id: string
+          id: string
+          name: string
+          rules_text: Json | null
+          slug: string
+          source_file: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          game_system_id: string
+          id?: string
+          name: string
+          rules_text?: Json | null
+          slug: string
+          source_file?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          game_system_id?: string
+          id?: string
+          name?: string
+          rules_text?: Json | null
+          slug?: string
+          source_file?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_factions_game_system_id_fkey"
+            columns: ["game_system_id"]
+            isOneToOne: false
+            referencedRelation: "game_systems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_rules: {
+        Row: {
+          category: string
+          content: Json
+          created_at: string
+          faction_id: string | null
+          game_system_id: string
+          id: string
+          rule_key: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          category: string
+          content?: Json
+          created_at?: string
+          faction_id?: string | null
+          game_system_id: string
+          id?: string
+          rule_key: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          category?: string
+          content?: Json
+          created_at?: string
+          faction_id?: string | null
+          game_system_id?: string
+          id?: string
+          rule_key?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_rules_faction_id_fkey"
+            columns: ["faction_id"]
+            isOneToOne: false
+            referencedRelation: "master_factions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_rules_game_system_id_fkey"
+            columns: ["game_system_id"]
+            isOneToOne: false
+            referencedRelation: "game_systems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_units: {
+        Row: {
+          abilities: Json
+          base_cost: number
+          constraints: Json | null
+          created_at: string
+          equipment_options: Json
+          faction_id: string
+          game_system_id: string
+          id: string
+          keywords: Json
+          name: string
+          source_id: string | null
+          stats: Json
+          updated_at: string
+        }
+        Insert: {
+          abilities?: Json
+          base_cost?: number
+          constraints?: Json | null
+          created_at?: string
+          equipment_options?: Json
+          faction_id: string
+          game_system_id: string
+          id?: string
+          keywords?: Json
+          name: string
+          source_id?: string | null
+          stats?: Json
+          updated_at?: string
+        }
+        Update: {
+          abilities?: Json
+          base_cost?: number
+          constraints?: Json | null
+          created_at?: string
+          equipment_options?: Json
+          faction_id?: string
+          game_system_id?: string
+          id?: string
+          keywords?: Json
+          name?: string
+          source_id?: string | null
+          stats?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_units_faction_id_fkey"
+            columns: ["faction_id"]
+            isOneToOne: false
+            referencedRelation: "master_factions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_units_game_system_id_fkey"
+            columns: ["game_system_id"]
+            isOneToOne: false
+            referencedRelation: "game_systems"
             referencedColumns: ["id"]
           },
         ]

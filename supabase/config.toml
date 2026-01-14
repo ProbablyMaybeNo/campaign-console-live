@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.parse-rules-pdf]
 verify_jwt = false
+
+[functions.parse-battlescribe]
+verify_jwt = false
