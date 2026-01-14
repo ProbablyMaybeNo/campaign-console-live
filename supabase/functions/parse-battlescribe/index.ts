@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { parse as parseXML } from "https://deno.land/x/xml@5.4.16/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,6 +52,142 @@ interface Catpkg {
   catalogues?: CatpkgCatalogue[];
 }
 
+// Type for parsed XML nodes
+interface XmlNode {
+  '@name'?: string;
+  '@id'?: string;
+  '@hidden'?: string;
+  [key: string]: unknown;
+}
+
+// Helper to safely get attribute from XML node
+function getAttr(node: XmlNode | undefined, name: string): string {
+  if (!node) return '';
+  const attrName = `@${name}`;
+  return String(node[attrName] || '');
+}
+
+// Ensure array from XML parsed result - returns unknown[] for flexibility
+function ensureArray(val: unknown): unknown[] {
+  if (!val) return [];
+  return Array.isArray(val) ? val : [val];
+}
+
+// Extract description from a selectionEntry's profiles
+function extractDescription(entry: XmlNode): string {
+  const profiles = ensureArray((entry as Record<string, unknown>).profiles);
+  
+  for (const profilesWrapper of profiles) {
+    const pw = profilesWrapper as Record<string, unknown>;
+    const profileList = ensureArray(pw?.profile);
+    
+    for (const profile of profileList) {
+      const p = profile as Record<string, unknown>;
+      const charWrapper = p?.characteristics as Record<string, unknown>;
+      if (!charWrapper) continue;
+      
+      const characteristics = ensureArray(charWrapper?.characteristic);
+      
+      for (const char of characteristics) {
+        const c = char as XmlNode;
+        const charName = getAttr(c, 'name');
+        if (charName === 'Description' || charName === 'Effect' || charName === 'Rules') {
+          const text = (c as Record<string, unknown>)['#text'] || (c as Record<string, unknown>)['$text'] || '';
+          return String(text).trim();
+        }
+      }
+    }
+  }
+  
+  return '';
+}
+
+// Parse selectionEntry to extract basic info
+function parseSelectionEntry(entry: XmlNode): { name: string; id: string; description: string } | null {
+  const name = getAttr(entry, 'name');
+  const id = getAttr(entry, 'id');
+  const hidden = getAttr(entry, 'hidden');
+  
+  if (!name || hidden === 'true') return null;
+  
+  const description = extractDescription(entry);
+  
+  return { name, id, description };
+}
+
+// Parse a selectionEntryGroup to extract category and its entries
+function parseSelectionEntryGroup(group: XmlNode): { category: string; entries: Array<{ name: string; id: string; description: string }> } {
+  const category = getAttr(group, 'name');
+  const entries: Array<{ name: string; id: string; description: string }> = [];
+  
+  // Get direct child selectionEntries
+  const g = group as Record<string, unknown>;
+  const selectionsWrapper = g.selectionEntries as Record<string, unknown>;
+  const selectionEntries = ensureArray(selectionsWrapper?.selectionEntry);
+  
+  for (const entry of selectionEntries) {
+    const parsed = parseSelectionEntry(entry as XmlNode);
+    if (parsed && parsed.name) {
+      entries.push(parsed);
+    }
+  }
+  
+  // Check for nested selectionEntryGroups
+  const nestedGroupsWrapper = g.selectionEntryGroups as Record<string, unknown>;
+  const nestedGroups = ensureArray(nestedGroupsWrapper?.selectionEntryGroup);
+  
+  for (const nestedGroup of nestedGroups) {
+    const ng = nestedGroup as XmlNode;
+    const nestedCategory = getAttr(ng, 'name');
+    const nestedSelectionsWrapper = (ng as Record<string, unknown>).selectionEntries as Record<string, unknown>;
+    const nestedSelections = ensureArray(nestedSelectionsWrapper?.selectionEntry);
+    
+    for (const entry of nestedSelections) {
+      const parsed = parseSelectionEntry(entry as XmlNode);
+      if (parsed && parsed.name) {
+        entries.push({
+          ...parsed,
+          name: nestedCategory ? `${nestedCategory}: ${parsed.name}` : parsed.name
+        });
+      }
+    }
+  }
+  
+  return { category, entries };
+}
+
+// Recursively find all selectionEntryGroups in a document
+function findAllSelectionEntryGroups(obj: unknown, results: XmlNode[] = []): XmlNode[] {
+  if (!obj || typeof obj !== 'object') return results;
+  
+  const node = obj as Record<string, unknown>;
+  
+  // Check if this node has selectionEntryGroups
+  if (node.selectionEntryGroups) {
+    const wrapper = node.selectionEntryGroups as Record<string, unknown>;
+    const groups = ensureArray(wrapper?.selectionEntryGroup);
+    for (const g of groups) {
+      results.push(g as XmlNode);
+    }
+  }
+  
+  // Recurse into all properties
+  for (const key of Object.keys(node)) {
+    if (!key.startsWith('@') && !key.startsWith('#')) {
+      const val = node[key];
+      if (Array.isArray(val)) {
+        for (const item of val) {
+          findAllSelectionEntryGroups(item, results);
+        }
+      } else if (typeof val === 'object') {
+        findAllSelectionEntryGroups(val, results);
+      }
+    }
+  }
+  
+  return results;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -91,6 +228,164 @@ Deno.serve(async (req) => {
         success: true, 
         gameSystems,
         count: gameSystems.length,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // LIST FILES: List .cat files from a GitHub repo
+    if (action === 'list_repo_files') {
+      const { githubUrl } = body;
+      
+      if (!githubUrl) {
+        return new Response(JSON.stringify({ error: 'Missing githubUrl' }), { 
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      // Convert GitHub URL to API URL
+      const match = githubUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
+      if (!match) {
+        return new Response(JSON.stringify({ error: 'Invalid GitHub URL' }), { 
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      const [, owner, repo] = match;
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents`;
+      
+      console.log(`Fetching repo contents from: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl, {
+        headers: { 
+          'User-Agent': 'Wargame-Tracker',
+          'Accept': 'application/vnd.github.v3+json'
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch repo: ${response.status}`);
+      }
+      
+      const contents = await response.json();
+      
+      // Filter to .cat and .gst files
+      const catalogueFiles = contents
+        .filter((file: { name: string; type: string }) => 
+          file.type === 'file' && (file.name.endsWith('.cat') || file.name.endsWith('.gst'))
+        )
+        .map((file: { name: string; download_url: string; path: string }) => ({
+          name: file.name.replace(/\.(cat|gst)$/, ''),
+          fileName: file.name,
+          downloadUrl: file.download_url,
+          path: file.path,
+          type: file.name.endsWith('.gst') ? 'gamesystem' : 'catalogue'
+        }));
+
+      console.log(`Found ${catalogueFiles.length} catalogue files`);
+      
+      return new Response(JSON.stringify({ 
+        success: true, 
+        files: catalogueFiles,
+        count: catalogueFiles.length,
+        repoOwner: owner,
+        repoName: repo
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // PARSE CATALOGUE: Parse a .cat file and extract campaign rules
+    if (action === 'parse_catalogue') {
+      const { downloadUrl, fileName, gameSystemId, categoryPrefix } = body;
+      
+      if (!downloadUrl || !gameSystemId) {
+        return new Response(JSON.stringify({ error: 'Missing downloadUrl or gameSystemId' }), { 
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      console.log(`Parsing catalogue: ${fileName || downloadUrl}`);
+      
+      // Fetch the raw XML file
+      const response = await fetch(downloadUrl, {
+        headers: { 'User-Agent': 'Wargame-Tracker' },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch catalogue: ${response.status}`);
+      }
+      
+      const xmlText = await response.text();
+      console.log(`Fetched ${xmlText.length} bytes of XML`);
+      
+      // Parse XML using deno xml library
+      const doc = parseXML(xmlText) as Record<string, XmlNode>;
+      
+      if (!doc) {
+        throw new Error('Failed to parse XML');
+      }
+
+      // Get catalogue name from root element
+      const catalogue = doc.catalogue as XmlNode;
+      const catalogueName = getAttr(catalogue, 'name') || fileName || 'Unknown';
+      console.log(`Catalogue name: ${catalogueName}`);
+      
+      // Find all selectionEntryGroups recursively
+      const allGroups = findAllSelectionEntryGroups(doc);
+      console.log(`Found ${allGroups.length} selectionEntryGroups`);
+      
+      const rules: Array<{ category: string; entries: Array<{ name: string; id: string; description: string }> }> = [];
+      
+      for (const group of allGroups) {
+        const parsed = parseSelectionEntryGroup(group);
+        if (parsed.category && parsed.entries.length > 0) {
+          // Check if this category is meaningful (has descriptions or enough entries)
+          const hasDescriptions = parsed.entries.some(e => e.description.length > 20);
+          if (hasDescriptions || parsed.entries.length >= 3) {
+            rules.push(parsed);
+          }
+        }
+      }
+
+      console.log(`Found ${rules.length} rule categories with meaningful content`);
+      
+      // Save to master_rules
+      let savedCount = 0;
+      for (const ruleGroup of rules) {
+        const category = categoryPrefix 
+          ? `${categoryPrefix} - ${ruleGroup.category}`
+          : `${catalogueName} - ${ruleGroup.category}`;
+        
+        for (const entry of ruleGroup.entries) {
+          const ruleKey = entry.id || entry.name.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+          
+          const { error } = await supabase.from('master_rules').upsert({
+            game_system_id: gameSystemId,
+            faction_id: null,
+            category: category,
+            rule_key: ruleKey,
+            title: entry.name,
+            content: { 
+              text: entry.description,
+              source_file: fileName || 'unknown',
+              source_category: ruleGroup.category
+            },
+            visibility: 'public'
+          }, { onConflict: 'game_system_id,rule_key' });
+          
+          if (!error) {
+            savedCount++;
+          } else {
+            console.error(`Failed to save rule ${entry.name}:`, error);
+          }
+        }
+      }
+
+      console.log(`Saved ${savedCount} rules from ${catalogueName}`);
+      
+      return new Response(JSON.stringify({
+        success: true,
+        catalogueName,
+        categoriesFound: rules.length,
+        categories: rules.map(r => ({ name: r.category, entryCount: r.entries.length })),
+        rulesSaved: savedCount,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
