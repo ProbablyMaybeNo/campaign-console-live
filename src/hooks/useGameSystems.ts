@@ -218,35 +218,55 @@ export function useDiscoverBattleScribe() {
   });
 }
 
-// Sync BattleScribe repo to game system (with batching)
+// Sync BattleScribe repo - processes one faction at a time
 export function useSyncBattleScribe() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ repoUrl, gameSystemId }: { repoUrl: string; gameSystemId: string }) => {
-      let batchIndex = 0;
-      let totalUnits = 0;
-      let allFactions: string[] = [];
-      let gameSystemName: string | undefined;
+    mutationFn: async ({ 
+      repoUrl, 
+      gameSystemId,
+      onProgress 
+    }: { 
+      repoUrl: string; 
+      gameSystemId: string;
+      onProgress?: (current: number, total: number, factionName: string) => void;
+    }) => {
+      // Step 1: Initialize game system (parse GST only)
+      const initRes = await supabase.functions.invoke("parse-battlescribe", {
+        body: { repoUrl, gameSystemId, action: "sync_init" },
+      });
 
-      // Process in batches until done
-      while (true) {
-        const { data, error } = await supabase.functions.invoke("parse-battlescribe", {
-          body: { repoUrl, gameSystemId, action: "sync", batchIndex, batchSize: 2 },
+      if (initRes.error) throw initRes.error;
+      if (initRes.data.error) throw new Error(initRes.data.error);
+
+      const totalFactions = initRes.data.totalFactions || 0;
+      const gameSystemName = initRes.data.gameSystem;
+      let totalUnits = 0;
+      const allFactions: string[] = [];
+
+      // Step 2: Process each faction one at a time
+      for (let i = 0; i < totalFactions; i++) {
+        onProgress?.(i + 1, totalFactions, `Importing faction ${i + 1} of ${totalFactions}...`);
+
+        const factionRes = await supabase.functions.invoke("parse-battlescribe", {
+          body: { repoUrl, gameSystemId, action: "sync_faction", factionIndex: i },
         });
 
-        if (error) throw error;
-        if (data.error) throw new Error(data.error);
+        if (factionRes.error) {
+          console.error(`Error syncing faction ${i}:`, factionRes.error);
+          continue; // Skip failed factions but continue
+        }
+        if (factionRes.data.error) {
+          console.error(`Error syncing faction ${i}:`, factionRes.data.error);
+          continue;
+        }
 
-        totalUnits += data.unitsInserted || 0;
-        allFactions = [...allFactions, ...(data.factionsProcessed || [])];
-        if (data.gameSystem) gameSystemName = data.gameSystem;
-
-        console.log(`Batch ${batchIndex}: ${data.factionsProcessed?.join(', ')} (${data.processedSoFar}/${data.totalFactions})`);
-
-        if (!data.hasMore) break;
-        batchIndex = data.nextBatchIndex;
+        totalUnits += factionRes.data.unitsInserted || 0;
+        if (factionRes.data.factionName) {
+          allFactions.push(factionRes.data.factionName);
+        }
       }
 
       return { unitsInserted: totalUnits, factionsProcessed: allFactions, gameSystem: gameSystemName };

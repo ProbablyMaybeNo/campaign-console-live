@@ -41,6 +41,7 @@ export default function AdminGameLibrary() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [expandedSystem, setExpandedSystem] = useState<string | null>(null);
+  const [syncProgress, setSyncProgress] = useState<string | null>(null);
 
   // Form state for adding new game system
   const [newRepoUrl, setNewRepoUrl] = useState("");
@@ -81,10 +82,15 @@ export default function AdminGameLibrary() {
         repo_type: "battlescribe",
       });
 
-      // Sync immediately after creation
+      setSyncProgress("Initializing game system...");
+
+      // Sync with progress callback
       await syncMutation.mutateAsync({
         repoUrl: newRepoUrl,
         gameSystemId: gameSystem.id,
+        onProgress: (_current, _total, message) => {
+          setSyncProgress(message);
+        },
       });
 
       // Reset and close
@@ -92,18 +98,28 @@ export default function AdminGameLibrary() {
       setNewName("");
       setNewDescription("");
       setDiscoveryResult(null);
+      setSyncProgress(null);
       setAddModalOpen(false);
     } catch {
+      setSyncProgress(null);
       // Error handled by mutations
     }
   };
 
   const handleResync = async (gameSystemId: string, repoUrl: string) => {
     setSyncingId(gameSystemId);
+    setSyncProgress("Initializing...");
     try {
-      await syncMutation.mutateAsync({ repoUrl, gameSystemId });
+      await syncMutation.mutateAsync({ 
+        repoUrl, 
+        gameSystemId,
+        onProgress: (_current, _total, message) => {
+          setSyncProgress(message);
+        },
+      });
     } finally {
       setSyncingId(null);
+      setSyncProgress(null);
     }
   };
 
@@ -291,7 +307,7 @@ export default function AdminGameLibrary() {
                 className="flex-1"
               >
                 {createMutation.isPending || syncMutation.isPending ? (
-                  <TerminalLoader text="Importing" size="sm" />
+                  <TerminalLoader text={syncProgress || "Importing"} size="sm" />
                 ) : (
                   "Import Game System"
                 )}
