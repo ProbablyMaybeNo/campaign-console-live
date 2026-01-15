@@ -590,6 +590,416 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // IMPORT JSON: Parse a rules.json file and import structured game data
+    if (action === 'import_json') {
+      const { githubUrl, jsonPath, gameSystemId, gameSystemName } = body;
+      
+      if (!githubUrl || !gameSystemId) {
+        return new Response(JSON.stringify({ error: 'Missing githubUrl or gameSystemId' }), { 
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      // Parse GitHub URL to construct raw content URL
+      let owner: string, repo: string;
+      const httpsMatch = githubUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
+      const sshMatch = githubUrl.match(/git@github\.com:([^\/]+)\/([^\/\.]+)/);
+      
+      if (httpsMatch) {
+        [, owner, repo] = httpsMatch;
+      } else if (sshMatch) {
+        [, owner, repo] = sshMatch;
+      } else {
+        return new Response(JSON.stringify({ error: 'Invalid GitHub URL format' }), { 
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      // Default to looking for rules.json in common locations
+      const pathsToTry = jsonPath 
+        ? [jsonPath]
+        : [
+            'rules.json',
+            'trench-crusade-digital-rulebook/rules.json',
+            'warbands-of-trench-crusade/rules.json',
+            'data/rules.json'
+          ];
+
+      let jsonData: Record<string, unknown> | null = null;
+      let usedPath = '';
+
+      for (const path of pathsToTry) {
+        const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/main/${path}`;
+        console.log(`Trying to fetch JSON from: ${rawUrl}`);
+        
+        const response = await fetch(rawUrl, {
+          headers: { 'User-Agent': 'Wargame-Tracker' },
+        });
+        
+        if (response.ok) {
+          try {
+            jsonData = await response.json();
+            usedPath = path;
+            console.log(`Successfully loaded JSON from ${path}`);
+            break;
+          } catch (e) {
+            console.log(`Failed to parse JSON from ${path}:`, e);
+          }
+        }
+      }
+
+      if (!jsonData) {
+        return new Response(JSON.stringify({ 
+          error: 'No valid rules.json found in repository',
+          triedPaths: pathsToTry 
+        }), { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      let savedCount = 0;
+      const categories: string[] = [];
+
+      // Helper to create rule entries
+      async function saveRule(category: string, title: string, content: Record<string, unknown>, ruleKey?: string) {
+        const key = ruleKey || title.toLowerCase().replace(/[^a-z0-9]+/g, '_').slice(0, 50);
+        const { error } = await supabase.from('master_rules').upsert({
+          game_system_id: gameSystemId,
+          faction_id: null,
+          category,
+          rule_key: `json_${key}`,
+          title,
+          content: { 
+            ...content,
+            source_file: usedPath,
+            source_type: 'json_import'
+          },
+          visibility: 'public'
+        }, { onConflict: 'game_system_id,rule_key' });
+        
+        if (!error) {
+          savedCount++;
+          if (!categories.includes(category)) categories.push(category);
+        } else {
+          console.error(`Failed to save rule ${title}:`, error);
+        }
+      }
+
+      // Process core_rules
+      if (jsonData.core_rules && typeof jsonData.core_rules === 'object') {
+        const coreRules = jsonData.core_rules as Record<string, unknown>;
+        
+        for (const [key, value] of Object.entries(coreRules)) {
+          if (!value || typeof value !== 'object') continue;
+          const rule = value as Record<string, unknown>;
+          
+          const title = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          
+          // Handle simple description rules
+          if (rule.description && typeof rule.description === 'string') {
+            await saveRule('Core Rules', title, { text: rule.description }, key);
+          }
+          
+          // Handle rules with steps/procedures
+          if (rule.steps && Array.isArray(rule.steps)) {
+            await saveRule('Core Rules', title, { 
+              text: rule.description || '',
+              steps: rule.steps 
+            }, key);
+          }
+          
+          // Handle rules with effects arrays
+          if (rule.effects && Array.isArray(rule.effects)) {
+            await saveRule('Core Rules', title, { 
+              text: rule.description || '',
+              effects: rule.effects 
+            }, key);
+          }
+          
+          // Handle rules with tables
+          if (rule.table && Array.isArray(rule.table)) {
+            await saveRule('Core Rules - Tables', title, { 
+              text: rule.description || '',
+              table: rule.table 
+            }, key);
+          }
+          
+          // Handle nested actions (like common_actions)
+          if (rule.common_actions && Array.isArray(rule.common_actions)) {
+            for (const action of rule.common_actions as Array<{ name: string; description: string }>) {
+              if (action.name && action.description) {
+                await saveRule('Core Rules - Actions', action.name, { text: action.description });
+              }
+            }
+          }
+        }
+      }
+
+      // Process keywords
+      if (jsonData.keywords && Array.isArray(jsonData.keywords)) {
+        for (const keyword of jsonData.keywords as Array<{ name: string; effect: string }>) {
+          if (keyword.name && keyword.effect) {
+            await saveRule('Keywords', keyword.name, { text: keyword.effect });
+          }
+        }
+      }
+
+      // Process tags
+      if (jsonData.tags && Array.isArray(jsonData.tags)) {
+        for (const tag of jsonData.tags as Array<{ name: string; effect: string }>) {
+          if (tag.name && tag.effect) {
+            await saveRule('Tags', tag.name, { text: tag.effect });
+          }
+        }
+      }
+
+      // Process terrain
+      if (jsonData.terrain && Array.isArray(jsonData.terrain)) {
+        for (const terrain of jsonData.terrain as Array<{ name: string; terrain_pieces?: string[]; setup_rules?: string }>) {
+          if (terrain.name) {
+            await saveRule('Terrain', terrain.name, { 
+              terrain_pieces: terrain.terrain_pieces,
+              setup_rules: terrain.setup_rules 
+            });
+          }
+        }
+      }
+
+      // Process battlekit (equipment)
+      if (jsonData.battlekit && Array.isArray(jsonData.battlekit)) {
+        for (const item of jsonData.battlekit as Array<{ 
+          name: string; 
+          type?: string; 
+          range?: string;
+          rules?: string[];
+          keywords?: string[];
+          special_rules?: Array<{ name: string; description: string }>;
+        }>) {
+          if (item.name) {
+            const category = item.type ? `Battlekit - ${item.type}` : 'Battlekit';
+            await saveRule(category, item.name, { 
+              type: item.type,
+              range: item.range,
+              rules: item.rules,
+              keywords: item.keywords,
+              special_rules: item.special_rules
+            });
+          }
+        }
+      }
+
+      // Process campaign_rules
+      if (jsonData.campaign_rules && typeof jsonData.campaign_rules === 'object') {
+        const campaignRules = jsonData.campaign_rules as Record<string, unknown>;
+        
+        // Patrons
+        if (campaignRules.patrons && Array.isArray(campaignRules.patrons)) {
+          for (const patron of campaignRules.patrons as Array<{ 
+            name: string; 
+            eligibility?: string;
+            skills?: Array<{ name: string; rules: string }>;
+          }>) {
+            if (patron.name) {
+              // Save the patron itself
+              await saveRule('Campaign - Patrons', patron.name, { 
+                eligibility: patron.eligibility,
+                skills: patron.skills?.map(s => s.name) 
+              });
+              
+              // Save each patron skill
+              if (patron.skills) {
+                for (const skill of patron.skills) {
+                  await saveRule(`Patron Skills - ${patron.name}`, skill.name, { 
+                    text: skill.rules,
+                    patron: patron.name 
+                  });
+                }
+              }
+            }
+          }
+        }
+
+        // Scenarios
+        if (campaignRules.scenarios && typeof campaignRules.scenarios === 'object') {
+          const scenarios = campaignRules.scenarios as Record<string, { games?: string; roll_d6?: string[]; scenario?: string }>;
+          for (const [phase, data] of Object.entries(scenarios)) {
+            const title = phase.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            await saveRule('Campaign - Scenarios', title, {
+              games: data.games,
+              options: data.roll_d6,
+              scenario: data.scenario
+            });
+          }
+        }
+
+        // Warband threshold table
+        if (campaignRules.warband_threshold_table && Array.isArray(campaignRules.warband_threshold_table)) {
+          await saveRule('Campaign - Progression', 'Warband Threshold Table', {
+            table: campaignRules.warband_threshold_table
+          });
+        }
+
+        // Campaign phase steps
+        if (campaignRules.campaign_phase_steps && Array.isArray(campaignRules.campaign_phase_steps)) {
+          await saveRule('Campaign - Phases', 'Campaign Phase Steps', {
+            steps: campaignRules.campaign_phase_steps
+          });
+        }
+
+        // Trauma step entries
+        if (campaignRules.trauma_step && typeof campaignRules.trauma_step === 'object') {
+          const traumaEntries = campaignRules.trauma_step as Record<string, { name: string; effect: string }>;
+          for (const [roll, data] of Object.entries(traumaEntries)) {
+            if (data.name && data.effect) {
+              await saveRule('Campaign - Trauma Table', `${roll}: ${data.name}`, { 
+                roll,
+                text: data.effect 
+              });
+            }
+          }
+        }
+
+        // Exploration tables (Common, Rare, Legendary)
+        for (const tableType of ['common_exploration', 'rare_exploration', 'legendary_exploration', 'exploration_rewards', 'exploration']) {
+          const tableData = campaignRules[tableType];
+          if (tableData && Array.isArray(tableData)) {
+            const categoryName = tableType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            for (const item of tableData as Array<{ name?: string; roll?: string; effect?: string; description?: string }>) {
+              const title = item.name || item.roll || 'Unknown';
+              await saveRule(`Campaign - ${categoryName}`, title, {
+                roll: item.roll,
+                text: item.effect || item.description
+              });
+            }
+          }
+        }
+
+        // Glory points, glorious deeds
+        if (campaignRules.glory_points) {
+          await saveRule('Campaign - Resources', 'Glory Points', campaignRules.glory_points as Record<string, unknown>);
+        }
+        if (campaignRules.glorious_deeds) {
+          await saveRule('Campaign - Resources', 'Glorious Deeds', campaignRules.glorious_deeds as Record<string, unknown>);
+        }
+      }
+
+      // Process combat rules
+      if (jsonData.combat && typeof jsonData.combat === 'object') {
+        const combat = jsonData.combat as Record<string, unknown>;
+        
+        for (const [key, value] of Object.entries(combat)) {
+          if (!value || typeof value !== 'object') continue;
+          const rule = value as Record<string, unknown>;
+          
+          const title = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          await saveRule('Combat', title, rule);
+        }
+      }
+
+      // Update game system last_synced_at
+      await supabase
+        .from('game_systems')
+        .update({ 
+          last_synced_at: new Date().toISOString(),
+          repo_type: 'json'
+        })
+        .eq('id', gameSystemId);
+
+      console.log(`JSON import complete: ${savedCount} rules across ${categories.length} categories`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        gameSystemId,
+        gameSystemName: gameSystemName || 'Unknown',
+        sourcePath: usedPath,
+        rulesSaved: savedCount,
+        categories,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // LIST JSON FILES: Find JSON files in a repository
+    if (action === 'list_json_files') {
+      const { githubUrl } = body;
+      
+      if (!githubUrl) {
+        return new Response(JSON.stringify({ error: 'Missing githubUrl' }), { 
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      let owner: string, repo: string;
+      const httpsMatch = githubUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
+      const sshMatch = githubUrl.match(/git@github\.com:([^\/]+)\/([^\/\.]+)/);
+      
+      if (httpsMatch) {
+        [, owner, repo] = httpsMatch;
+      } else if (sshMatch) {
+        [, owner, repo] = sshMatch;
+      } else {
+        return new Response(JSON.stringify({ error: 'Invalid GitHub URL format' }), { 
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        });
+      }
+
+      // Recursively find JSON files
+      async function findJsonFiles(path: string, depth: number = 0): Promise<Array<{
+        name: string;
+        path: string;
+        downloadUrl: string;
+        folder: string;
+        size: number;
+      }>> {
+        if (depth > 3) return [];
+        
+        const apiUrl = path 
+          ? `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
+          : `https://api.github.com/repos/${owner}/${repo}/contents`;
+        
+        const response = await fetch(apiUrl, {
+          headers: { 
+            'User-Agent': 'Wargame-Tracker',
+            'Accept': 'application/vnd.github.v3+json'
+          },
+        });
+        
+        if (!response.ok) return [];
+        
+        const contents = await response.json();
+        const files: Array<{
+          name: string;
+          path: string;
+          downloadUrl: string;
+          folder: string;
+          size: number;
+        }> = [];
+        
+        for (const item of contents) {
+          if (item.type === 'file' && item.name.endsWith('.json')) {
+            files.push({
+              name: item.name.replace('.json', ''),
+              path: item.path,
+              downloadUrl: item.download_url,
+              folder: path || 'root',
+              size: item.size
+            });
+          } else if (item.type === 'dir') {
+            const subFiles = await findJsonFiles(item.path, depth + 1);
+            files.push(...subFiles);
+          }
+        }
+        
+        return files;
+      }
+
+      const jsonFiles = await findJsonFiles('');
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        files: jsonFiles,
+        count: jsonFiles.length,
+        repoOwner: owner,
+        repoName: repo
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     return new Response(JSON.stringify({ error: 'Invalid action' }), { 
       status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
     });
