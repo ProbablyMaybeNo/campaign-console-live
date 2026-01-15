@@ -231,9 +231,9 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // LIST FILES: List .cat files from a GitHub repo
+    // LIST FILES: List .cat files from a GitHub repo (with recursive subdirectory support)
     if (action === 'list_repo_files') {
-      const { githubUrl } = body;
+      const { githubUrl, subPath } = body;
       
       if (!githubUrl) {
         return new Response(JSON.stringify({ error: 'Missing githubUrl' }), { 
@@ -241,51 +241,93 @@ Deno.serve(async (req) => {
         });
       }
 
-      // Convert GitHub URL to API URL
-      const match = githubUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
-      if (!match) {
-        return new Response(JSON.stringify({ error: 'Invalid GitHub URL' }), { 
+      // Convert GitHub URL to API URL (supports both HTTPS and SSH formats)
+      let owner: string, repo: string;
+      const httpsMatch = githubUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/);
+      const sshMatch = githubUrl.match(/git@github\.com:([^\/]+)\/([^\/\.]+)/);
+      
+      if (httpsMatch) {
+        [, owner, repo] = httpsMatch;
+      } else if (sshMatch) {
+        [, owner, repo] = sshMatch;
+      } else {
+        return new Response(JSON.stringify({ error: 'Invalid GitHub URL format' }), { 
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         });
       }
 
-      const [, owner, repo] = match;
-      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents`;
-      
-      console.log(`Fetching repo contents from: ${apiUrl}`);
-      
-      const response = await fetch(apiUrl, {
-        headers: { 
-          'User-Agent': 'Wargame-Tracker',
-          'Accept': 'application/vnd.github.v3+json'
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch repo: ${response.status}`);
+      // Helper function to recursively fetch files from directories
+      async function fetchFilesRecursively(path: string, depth: number = 0): Promise<Array<{
+        name: string;
+        fileName: string;
+        downloadUrl: string;
+        path: string;
+        type: string;
+        folder: string;
+      }>> {
+        if (depth > 3) return []; // Limit recursion depth to prevent infinite loops
+        
+        const apiUrl = path 
+          ? `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
+          : `https://api.github.com/repos/${owner}/${repo}/contents`;
+        
+        console.log(`Fetching: ${apiUrl} (depth: ${depth})`);
+        
+        const response = await fetch(apiUrl, {
+          headers: { 
+            'User-Agent': 'Wargame-Tracker',
+            'Accept': 'application/vnd.github.v3+json'
+          },
+        });
+        
+        if (!response.ok) {
+          console.error(`Failed to fetch ${apiUrl}: ${response.status}`);
+          return [];
+        }
+        
+        const contents = await response.json();
+        const files: Array<{
+          name: string;
+          fileName: string;
+          downloadUrl: string;
+          path: string;
+          type: string;
+          folder: string;
+        }> = [];
+        
+        for (const item of contents) {
+          if (item.type === 'file' && (item.name.endsWith('.cat') || item.name.endsWith('.gst'))) {
+            files.push({
+              name: item.name.replace(/\.(cat|gst)$/, ''),
+              fileName: item.name,
+              downloadUrl: item.download_url,
+              path: item.path,
+              type: item.name.endsWith('.gst') ? 'gamesystem' : 'catalogue',
+              folder: path || 'root'
+            });
+          } else if (item.type === 'dir') {
+            // Recursively fetch subdirectory contents
+            const subFiles = await fetchFilesRecursively(item.path, depth + 1);
+            files.push(...subFiles);
+          }
+        }
+        
+        return files;
       }
-      
-      const contents = await response.json();
-      
-      // Filter to .cat and .gst files
-      const catalogueFiles = contents
-        .filter((file: { name: string; type: string }) => 
-          file.type === 'file' && (file.name.endsWith('.cat') || file.name.endsWith('.gst'))
-        )
-        .map((file: { name: string; download_url: string; path: string }) => ({
-          name: file.name.replace(/\.(cat|gst)$/, ''),
-          fileName: file.name,
-          downloadUrl: file.download_url,
-          path: file.path,
-          type: file.name.endsWith('.gst') ? 'gamesystem' : 'catalogue'
-        }));
 
-      console.log(`Found ${catalogueFiles.length} catalogue files`);
+      const startPath = subPath || '';
+      const catalogueFiles = await fetchFilesRecursively(startPath);
+      
+      // Group files by folder for easier display
+      const folders = [...new Set(catalogueFiles.map(f => f.folder))];
+
+      console.log(`Found ${catalogueFiles.length} catalogue files across ${folders.length} folders`);
       
       return new Response(JSON.stringify({ 
         success: true, 
         files: catalogueFiles,
         count: catalogueFiles.length,
+        folders,
         repoOwner: owner,
         repoName: repo
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
