@@ -109,21 +109,32 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     };
 
     // Add rules linking if applicable
-    if (supportsRules && !manualSetup && selectedCategory && selectedRuleKey) {
-      const selectedRule = activeCategoryRules?.find(r => r.rule_key === selectedRuleKey);
+    if (supportsRules && !manualSetup && selectedCategory) {
+      // For tables: populate ALL rules in category (no individual rule selection)
+      // For cards: still use individual rule selection
+      const isTableType = selectedType === "table";
       
-      if (ruleSource === "game_system") {
-        config.rule_source = "game_system";
-        config.game_system_id = campaign?.game_system_id || null;
-      } else {
-        config.rule_source = "campaign";
-      }
-      
-      config.rule_category = selectedCategory;
-      config.rule_key = selectedRuleKey;
-      
-      if (selectedRule) {
-        config.rule_title = selectedRule.title;
+      if (isTableType || selectedRuleKey) {
+        if (ruleSource === "game_system") {
+          config.rule_source = "game_system";
+          config.game_system_id = campaign?.game_system_id || null;
+        } else {
+          config.rule_source = "campaign";
+        }
+        
+        config.rule_category = selectedCategory;
+        
+        if (isTableType) {
+          // Tables populate all rules in category
+          config.populate_all_in_category = true;
+        } else {
+          // Cards use individual rule
+          config.rule_key = selectedRuleKey;
+          const selectedRule = activeCategoryRules?.find(r => r.rule_key === selectedRuleKey);
+          if (selectedRule) {
+            config.rule_title = selectedRule.title;
+          }
+        }
       }
     }
 
@@ -282,7 +293,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                       )}
 
                       {activeCategories.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className={`grid gap-3 ${selectedType === "table" ? "grid-cols-1" : "grid-cols-2"}`}>
                           <div className="space-y-1.5">
                             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                               Rule Category
@@ -307,27 +318,30 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                             </Select>
                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                              Rule Set
-                            </label>
-                            <Select 
-                              value={selectedRuleKey} 
-                              onValueChange={setSelectedRuleKey}
-                              disabled={!selectedCategory || !activeCategoryRules?.length}
-                            >
-                              <SelectTrigger className="w-full bg-input border-border">
-                                <SelectValue placeholder="Select rule set..." />
-                              </SelectTrigger>
-                              <SelectContent className="bg-card border-border max-h-48">
-                                {activeCategoryRules?.map((rule) => (
-                                  <SelectItem key={rule.rule_key} value={rule.rule_key}>
-                                    {rule.title}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
+                          {/* Rule Set dropdown - only show for non-table types */}
+                          {selectedType !== "table" && (
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                Rule Set
+                              </label>
+                              <Select 
+                                value={selectedRuleKey} 
+                                onValueChange={setSelectedRuleKey}
+                                disabled={!selectedCategory || !activeCategoryRules?.length}
+                              >
+                                <SelectTrigger className="w-full bg-input border-border">
+                                  <SelectValue placeholder="Select rule set..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-card border-border max-h-48">
+                                  {activeCategoryRules?.map((rule) => (
+                                    <SelectItem key={rule.rule_key} value={rule.rule_key}>
+                                      {rule.title}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <p className="text-xs text-yellow-400">
@@ -338,7 +352,14 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                         </p>
                       )}
 
-                      {selectedRuleKey && (
+                      {/* Confirmation message - different for tables vs cards */}
+                      {selectedType === "table" && selectedCategory && (
+                        <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
+                          <CheckSquare className="w-4 h-4" />
+                          <span>Table will auto-populate with all {activeCategoryRules?.length || 0} rules from "{selectedCategory}"</span>
+                        </div>
+                      )}
+                      {selectedType !== "table" && selectedRuleKey && (
                         <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
                           <CheckSquare className="w-4 h-4" />
                           <span>Component will auto-populate with "{activeCategoryRules?.find(r => r.rule_key === selectedRuleKey)?.title}"</span>

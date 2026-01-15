@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, Pencil, X, Check, RefreshCw } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
 import { useRulesByCategory } from "@/hooks/useWargameRules";
+import { useMasterRulesByCategory, MasterRule } from "@/hooks/useGameSystems";
 import type { Json } from "@/integrations/supabase/types";
 
 interface TableWidgetProps {
@@ -20,33 +21,72 @@ interface TableConfig {
   rows?: TableRow[];
   rule_category?: string;
   rule_key?: string;
+  rule_source?: "game_system" | "campaign";
+  game_system_id?: string;
+  populate_all_in_category?: boolean;
   manual_setup?: boolean;
 }
 
 export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   const updateComponent = useUpdateComponent();
   const config = (component.config as TableConfig) || {};
-  const columns = config.columns || ["Name", "Value"];
+  const columns = config.columns || ["Name", "Effect"];
   const rows = config.rows || [];
   const ruleCategory = config.rule_category;
   const ruleKey = config.rule_key;
+  const ruleSource = config.rule_source || "campaign";
+  const gameSystemId = config.game_system_id;
+  const populateAllInCategory = config.populate_all_in_category ?? false;
   const isManual = config.manual_setup ?? true;
 
-  // Fetch linked rule data if not manual setup
-  const { data: categoryRules } = useRulesByCategory(campaignId, ruleCategory);
-  const linkedRule = categoryRules?.find(r => r.rule_key === ruleKey);
+  // Fetch linked rule data based on source
+  // Campaign rules (legacy)
+  const { data: campaignRules } = useRulesByCategory(
+    ruleSource === "campaign" ? campaignId : undefined, 
+    ruleSource === "campaign" ? ruleCategory : undefined
+  );
+  
+  // Master rules from game system
+  const { data: masterRules } = useMasterRulesByCategory(
+    ruleSource === "game_system" ? gameSystemId : undefined,
+    ruleSource === "game_system" ? ruleCategory : undefined
+  );
+  
+  // Use appropriate rules based on source
+  const activeRules = ruleSource === "game_system" ? masterRules : campaignRules;
+  const linkedRule = !populateAllInCategory ? activeRules?.find(r => r.rule_key === ruleKey) : null;
 
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [headerValue, setHeaderValue] = useState("");
   const [isPopulated, setIsPopulated] = useState(false);
 
-  // Auto-populate from rule content when linked and not yet populated
+  // Auto-populate from rules when linked and not yet populated
   useEffect(() => {
-    if (!isManual && linkedRule && !isPopulated && rows.length === 0) {
-      const content = linkedRule.content as Record<string, unknown>;
+    if (isManual || isPopulated || rows.length > 0) return;
+    
+    // For tables with populate_all_in_category, use all rules in the category
+    if (populateAllInCategory && activeRules && activeRules.length > 0) {
+      const tableData = populateFromCategoryRules(activeRules);
       
-      // Try to extract table-like data from rule content
+      if (tableData.rows.length > 0) {
+        const newConfig = { 
+          ...config, 
+          columns: tableData.columns, 
+          rows: tableData.rows 
+        };
+        updateComponent.mutate({
+          id: component.id,
+          config: newConfig as unknown as Json,
+        });
+        setIsPopulated(true);
+      }
+      return;
+    }
+    
+    // Legacy: single rule extraction
+    if (linkedRule) {
+      const content = linkedRule.content as Record<string, unknown>;
       const tableData = extractTableData(content);
       
       if (tableData.columns.length > 0 && tableData.rows.length > 0) {
@@ -62,7 +102,48 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
         setIsPopulated(true);
       }
     }
-  }, [linkedRule, isManual, isPopulated, rows.length]);
+  }, [activeRules, linkedRule, isManual, isPopulated, rows.length, populateAllInCategory]);
+
+  // Transform all rules in a category into table rows
+  function populateFromCategoryRules(rules: MasterRule[] | typeof campaignRules): { columns: string[]; rows: TableRow[] } {
+    if (!rules || rules.length === 0) {
+      return { columns: ["Name", "Effect"], rows: [] };
+    }
+    
+    const tableRows: TableRow[] = rules.map(rule => {
+      // Extract text from content - handle both master_rules and campaign rules
+      const content = rule.content as Record<string, unknown>;
+      let effectText = "";
+      
+      if (typeof content === "string") {
+        effectText = content;
+      } else if (content?.text && typeof content.text === "string") {
+        effectText = content.text;
+      } else if (content?.description && typeof content.description === "string") {
+        effectText = content.description;
+      } else {
+        // Try to stringify or extract any text-like property
+        const textProps = ["text", "description", "effect", "details", "value"];
+        for (const prop of textProps) {
+          if (content?.[prop]) {
+            effectText = String(content[prop]);
+            break;
+          }
+        }
+        if (!effectText && typeof content === "object") {
+          effectText = JSON.stringify(content);
+        }
+      }
+      
+      return {
+        id: crypto.randomUUID(),
+        "Name": rule.title,
+        "Effect": effectText
+      };
+    });
+    
+    return { columns: ["Name", "Effect"], rows: tableRows };
+  }
 
   // Extract table data from various rule content structures
   function extractTableData(content: Record<string, unknown>): { columns: string[]; rows: TableRow[] } {
@@ -110,6 +191,23 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   }
 
   const handleRefreshFromRules = () => {
+    // For category-based population
+    if (populateAllInCategory && activeRules && activeRules.length > 0) {
+      const tableData = populateFromCategoryRules(activeRules);
+      
+      const newConfig = { 
+        ...config, 
+        columns: tableData.columns, 
+        rows: tableData.rows 
+      };
+      updateComponent.mutate({
+        id: component.id,
+        config: newConfig as unknown as Json,
+      });
+      return;
+    }
+    
+    // Legacy: single rule extraction
     if (linkedRule) {
       const content = linkedRule.content as Record<string, unknown>;
       const tableData = extractTableData(content);
@@ -355,7 +453,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
           >
             <Plus className="w-3 h-3" /> Add Column
           </button>
-          {!isManual && linkedRule && (
+          {!isManual && (populateAllInCategory || linkedRule) && (
             <button
               onClick={handleRefreshFromRules}
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-auto"
