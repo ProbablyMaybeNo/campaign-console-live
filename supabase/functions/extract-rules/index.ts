@@ -54,39 +54,58 @@ serve(async (req) => {
     const systemPrompt = `You are an expert at extracting and structuring tabletop wargaming rules from raw text.
 Your task is to identify and categorize ALL rules, tables, and game content into structured data.
 
-CRITICAL: FIND ALL TABLES!
-Look very carefully for these table patterns:
-- EXPLORATION TABLES: Common/Rare/Legendary exploration results, loot tables, treasure tables
-- SKILL TABLES: Combat skills, shooting skills, academic skills, strength skills, speed skills, etc.
-- INJURY TABLES: Injury results, casualty tables, wound tables
-- EVENT TABLES: Random events, campaign events, battle events
-- ADVANCEMENT TABLES: Level up rewards, experience tables
-- EQUIPMENT TABLES: Weapons, armor, gear with costs/stats
-- ANY numbered list with dice results (1-6, 2D6, D66, etc.)
+PRIORITY SECTIONS TO FIND:
+1. CAMPAIGN RULES - Any section titled "Campaign", "Campaign Rules", "Campaign Phase", "Post-Battle", "Between Games"
+2. ALL TABLES - Every single table in the document, no exceptions
 
-TABLE DETECTION HINTS:
-- Numbers followed by results (1. Something, 2. Something OR 1-2: Result, 3-4: Result)
-- Headers like "Roll", "Result", "Effect", "D6", "2D6"
-- Section titles containing "Table", "Chart", "Results", "Exploration", "Skills"
-- Grouped items under rarity labels (Common, Rare, Legendary, Uncommon)
+CRITICAL: FIND ALL TABLES!
+Scan the ENTIRE document for these table patterns:
+- EXPLORATION TABLES: Common/Rare/Legendary exploration results, loot tables, treasure tables, salvage tables
+- SKILL TABLES: Combat skills, shooting skills, academic skills, strength skills, speed skills, agility skills, etc.
+- INJURY TABLES: Injury results, casualty tables, wound tables, critical hit tables
+- EVENT TABLES: Random events, campaign events, battle events, weather tables
+- ADVANCEMENT TABLES: Level up rewards, experience tables, progression tables
+- EQUIPMENT TABLES: Weapons, armor, gear, relics, artifacts with costs/stats
+- WARBAND TABLES: Hiring costs, warband composition, mercenary tables
+- SCENARIO TABLES: Deployment, objectives, victory conditions
+- ANY numbered list with dice results (D6, 2D6, D66, D3, etc.)
+
+TABLE DETECTION - LOOK FOR:
+- Numbers 1-6, 1-2, 3-4, 5-6 followed by text results
+- Headers containing: "Roll", "Result", "Effect", "D6", "2D6", "D66", "Table", "Chart"
+- Section titles with: "Table", "Chart", "Results", "Exploration", "Skills", "Rewards"
+- Rarity labels: Common, Uncommon, Rare, Legendary, Epic
+- Column layouts with multiple entries per row
+- Bullet points or numbered lists that describe game effects
 
 CATEGORIES TO USE:
-- "Exploration Tables" - Loot, treasure, exploration results (Common/Rare/Legendary)
-- "Skill Tables" - Combat skills, shooting skills, academic skills, etc.
+- "Campaign Rules" - Post-battle sequences, campaign phases, territory, income
+- "Exploration Tables" - Loot, treasure, exploration results by rarity tier
+- "Skill Tables" - Skills organized by type (Combat, Shooting, Academic, Strength, Speed, etc.)
 - "Roll Tables" - Any other D6/2D6/D66 result tables
-- "Injury Tables" - Injury, casualty, wound tables
+- "Injury Tables" - Injury, casualty, wound, critical hit tables
 - "Equipment" - Weapons, armor, items with costs and stats
 - "Keywords" - Special abilities with names and effects
 - "Core Rules" - Basic game mechanics, turn structure, movement, combat
-- "Unit Profiles" - Character/unit stat blocks
+- "Unit Profiles" - Character/unit stat blocks with stats
 - "Abilities" - Special rules for units or factions
-- "Scenarios" - Mission objectives and setup
+- "Scenarios" - Mission objectives and setup rules
 - "Advancement" - Experience and progression rules
+- "Warband Rules" - Warband creation, hiring, composition
 - "Custom" - Other game-specific rules
 
 OUTPUT FORMAT - Respond with valid JSON:
 {
   "rules": [
+    {
+      "category": "Campaign Rules",
+      "rule_key": "post_battle_sequence",
+      "title": "Post-Battle Sequence",
+      "content": {
+        "type": "list",
+        "items": ["1. Determine Victory", "2. Roll for Injuries", "3. Collect Income", "4. Roll for Exploration", "5. Buy Equipment"]
+      }
+    },
     {
       "category": "Exploration Tables",
       "rule_key": "common_exploration",
@@ -123,45 +142,42 @@ OUTPUT FORMAT - Respond with valid JSON:
       "content": {
         "type": "equipment",
         "items": [
-          {"name": "Sword", "cost": "10 ducats", "stats": "Melee, +1 Attack", "effect": "Parry"},
-          {"name": "Great Axe", "cost": "15 ducats", "stats": "Melee, +2 Damage", "effect": "Two-handed"}
+          {"name": "Sword", "cost": "10 ducats", "stats": "Melee, +1 Attack", "effect": "Parry"}
         ]
-      }
-    },
-    {
-      "category": "Keywords",
-      "rule_key": "fearless",
-      "title": "Fearless",
-      "content": {
-        "type": "text",
-        "text": "This model never has to take morale tests."
       }
     }
   ]
 }
 
 CONTENT TYPE RULES:
-- "roll_table": For ANY numbered/dice result table. Include dice type and all entries.
-- "equipment": For items with costs/stats. Each item has name, cost, stats, effect.
-- "stats_table": For unit profiles. Include columns array and rows array.
+- "roll_table": For ANY numbered/dice result table. MUST include dice type and ALL entries.
+- "equipment": For items with costs/stats.
+- "stats_table": For unit profiles with columns and rows.
 - "list": For ordered steps or bullet points.
 - "text": For narrative rules or descriptions.
 
 CRITICAL INSTRUCTIONS:
-1. EXTRACT EVERY TABLE - Don't skip any! Each distinct table should be its own rule entry.
-2. For skill tables, create SEPARATE entries for each skill category (Combat Skills, Shooting Skills, etc.)
-3. For exploration tables, create SEPARATE entries for each rarity tier (Common, Rare, Legendary)
-4. Preserve all numbers, modifiers, and game-specific terms exactly as written
-5. Generate unique rule_key values (lowercase with underscores)
-6. Be extremely thorough - extract EVERYTHING that could be a game rule or table`;
+1. SCAN THE ENTIRE DOCUMENT - Read from start to finish, don't miss anything
+2. EXTRACT EVERY SINGLE TABLE - Each distinct table = separate rule entry
+3. For skill tables: Create SEPARATE entries for EACH skill category
+4. For exploration tables: Create SEPARATE entries for EACH rarity tier (Common, Rare, Legendary)
+5. For campaign rules: Extract the FULL sequence and all sub-rules
+6. Preserve ALL numbers, modifiers, costs, and game terms EXACTLY as written
+7. If a table has 6 entries, include all 6. If it has 36, include all 36.
+8. Generate unique rule_key values (lowercase_with_underscores)`;
 
-    const userPrompt = `Extract ALL wargaming rules from the following text. Pay special attention to:
-1. EXPLORATION TABLES - Look for Common/Rare/Legendary result tables, loot tables
-2. SKILL TABLES - Look for lists of skills organized by category (Combat, Shooting, Academic, etc.)
-3. EQUIPMENT TABLES - Weapons, armor, and gear with costs
-4. ANY other numbered result tables
+    const userPrompt = `Extract ALL rules and tables from this wargaming rulebook. 
 
-Be EXTREMELY thorough. Every table should become a separate rule entry.
+IMPORTANT - THOROUGHLY SCAN FOR:
+1. CAMPAIGN RULES SECTION - Post-battle, between games, territory, income
+2. ALL EXPLORATION TABLES - Common, Rare, Legendary (each as separate entries)
+3. ALL SKILL TABLES - Every skill category as a separate entry
+4. ALL EQUIPMENT/WEAPON TABLES
+5. ALL INJURY/CASUALTY TABLES
+6. EVERY OTHER TABLE in the document
+
+Create a SEPARATE rule entry for each distinct table. Do not combine tables.
+Include EVERY entry in each table - if a D6 table has 6 results, include all 6.
 
 SOURCE TEXT:
 ${content.substring(0, 100000)}`;
