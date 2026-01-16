@@ -51,36 +51,80 @@ serve(async (req) => {
     console.log(`Extracting rules from ${sourceType} source: ${sourceName || "unnamed"}`);
     console.log(`Content length: ${content.length} characters`);
 
-    const systemPrompt = `You are an expert at extracting and structuring tabletop wargaming rules from raw text. 
-Your task is to identify and categorize rules into structured data.
+    const systemPrompt = `You are an expert at extracting and structuring tabletop wargaming rules from raw text.
+Your task is to identify and categorize ALL rules, tables, and game content into structured data.
 
-CATEGORIES TO DETECT:
-- "Core Rules" - Basic game mechanics, turn structure, movement, combat
-- "Roll Tables" - D6/2D6/D66 tables with results (injuries, events, random effects)
-- "Keywords" - Special abilities with names and effects
+CRITICAL: FIND ALL TABLES!
+Look very carefully for these table patterns:
+- EXPLORATION TABLES: Common/Rare/Legendary exploration results, loot tables, treasure tables
+- SKILL TABLES: Combat skills, shooting skills, academic skills, strength skills, speed skills, etc.
+- INJURY TABLES: Injury results, casualty tables, wound tables
+- EVENT TABLES: Random events, campaign events, battle events
+- ADVANCEMENT TABLES: Level up rewards, experience tables
+- EQUIPMENT TABLES: Weapons, armor, gear with costs/stats
+- ANY numbered list with dice results (1-6, 2D6, D66, etc.)
+
+TABLE DETECTION HINTS:
+- Numbers followed by results (1. Something, 2. Something OR 1-2: Result, 3-4: Result)
+- Headers like "Roll", "Result", "Effect", "D6", "2D6"
+- Section titles containing "Table", "Chart", "Results", "Exploration", "Skills"
+- Grouped items under rarity labels (Common, Rare, Legendary, Uncommon)
+
+CATEGORIES TO USE:
+- "Exploration Tables" - Loot, treasure, exploration results (Common/Rare/Legendary)
+- "Skill Tables" - Combat skills, shooting skills, academic skills, etc.
+- "Roll Tables" - Any other D6/2D6/D66 result tables
+- "Injury Tables" - Injury, casualty, wound tables
 - "Equipment" - Weapons, armor, items with costs and stats
+- "Keywords" - Special abilities with names and effects
+- "Core Rules" - Basic game mechanics, turn structure, movement, combat
 - "Unit Profiles" - Character/unit stat blocks
 - "Abilities" - Special rules for units or factions
 - "Scenarios" - Mission objectives and setup
-- "Advancement" - Experience, skills, progression tables
+- "Advancement" - Experience and progression rules
 - "Custom" - Other game-specific rules
 
-OUTPUT FORMAT:
-You MUST respond with valid JSON in this exact format:
+OUTPUT FORMAT - Respond with valid JSON:
 {
   "rules": [
     {
-      "category": "Roll Tables",
-      "rule_key": "injury_table",
-      "title": "Injury Table",
+      "category": "Exploration Tables",
+      "rule_key": "common_exploration",
+      "title": "Common Exploration Table",
       "content": {
         "type": "roll_table",
         "dice": "D6",
         "entries": [
-          {"roll": "1", "result": "Dead"},
-          {"roll": "2-3", "result": "Seriously Injured"},
-          {"roll": "4-5", "result": "Light Wound"},
-          {"roll": "6", "result": "Full Recovery"}
+          {"roll": "1", "result": "Nothing Found"},
+          {"roll": "2", "result": "Scrap Metal - Worth 5 ducats"},
+          {"roll": "3-4", "result": "Supplies - Gain 1 supply token"},
+          {"roll": "5-6", "result": "Hidden Cache - Roll on Rare table"}
+        ]
+      }
+    },
+    {
+      "category": "Skill Tables",
+      "rule_key": "combat_skills",
+      "title": "Combat Skills",
+      "content": {
+        "type": "roll_table",
+        "dice": "D6",
+        "entries": [
+          {"roll": "1", "result": "Weapon Master - +1 to hit in melee"},
+          {"roll": "2", "result": "Parry - May re-roll one failed defence"},
+          {"roll": "3", "result": "Riposte - On successful parry, make free attack"}
+        ]
+      }
+    },
+    {
+      "category": "Equipment",
+      "rule_key": "melee_weapons",
+      "title": "Melee Weapons",
+      "content": {
+        "type": "equipment",
+        "items": [
+          {"name": "Sword", "cost": "10 ducats", "stats": "Melee, +1 Attack", "effect": "Parry"},
+          {"name": "Great Axe", "cost": "15 ducats", "stats": "Melee, +2 Damage", "effect": "Two-handed"}
         ]
       }
     },
@@ -92,47 +136,32 @@ You MUST respond with valid JSON in this exact format:
         "type": "text",
         "text": "This model never has to take morale tests."
       }
-    },
-    {
-      "category": "Equipment",
-      "rule_key": "weapons_list",
-      "title": "Weapons",
-      "content": {
-        "type": "equipment",
-        "items": [
-          {"name": "Sword", "cost": "5 gc", "stats": "S+1", "effect": "Parry"},
-          {"name": "Axe", "cost": "3 gc", "stats": "S+2", "effect": "-"}
-        ]
-      }
-    },
-    {
-      "category": "Core Rules",
-      "rule_key": "turn_sequence",
-      "title": "Turn Sequence",
-      "content": {
-        "type": "list",
-        "items": ["1. Initiative Phase", "2. Movement Phase", "3. Shooting Phase", "4. Combat Phase"]
-      }
     }
   ]
 }
 
 CONTENT TYPE RULES:
-- Use "roll_table" for any dice-based result table (D6, 2D6, D66, etc.)
-- Use "list" for ordered steps, phases, or bullet points
-- Use "equipment" for items with costs/stats
-- Use "stats_table" for unit profiles with multiple columns
-- Use "text" for narrative rules or single-paragraph descriptions
+- "roll_table": For ANY numbered/dice result table. Include dice type and all entries.
+- "equipment": For items with costs/stats. Each item has name, cost, stats, effect.
+- "stats_table": For unit profiles. Include columns array and rows array.
+- "list": For ordered steps or bullet points.
+- "text": For narrative rules or descriptions.
 
-IMPORTANT:
-- Generate unique rule_key values (lowercase, underscores, no spaces)
-- Group related rules under appropriate categories
-- Extract ALL tables you find, especially roll tables
-- Preserve dice notation (D6, 2D6, D66)
-- Include costs, stats, and modifiers where present
-- Be thorough - extract everything that looks like a game rule`;
+CRITICAL INSTRUCTIONS:
+1. EXTRACT EVERY TABLE - Don't skip any! Each distinct table should be its own rule entry.
+2. For skill tables, create SEPARATE entries for each skill category (Combat Skills, Shooting Skills, etc.)
+3. For exploration tables, create SEPARATE entries for each rarity tier (Common, Rare, Legendary)
+4. Preserve all numbers, modifiers, and game-specific terms exactly as written
+5. Generate unique rule_key values (lowercase with underscores)
+6. Be extremely thorough - extract EVERYTHING that could be a game rule or table`;
 
-    const userPrompt = `Extract all wargaming rules from the following text. Be thorough and extract every rule, table, ability, and piece of equipment you can find.
+    const userPrompt = `Extract ALL wargaming rules from the following text. Pay special attention to:
+1. EXPLORATION TABLES - Look for Common/Rare/Legendary result tables, loot tables
+2. SKILL TABLES - Look for lists of skills organized by category (Combat, Shooting, Academic, etc.)
+3. EQUIPMENT TABLES - Weapons, armor, and gear with costs
+4. ANY other numbered result tables
+
+Be EXTREMELY thorough. Every table should become a separate rule entry.
 
 SOURCE TEXT:
 ${content.substring(0, 100000)}`;
