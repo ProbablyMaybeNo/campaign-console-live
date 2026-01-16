@@ -36,6 +36,7 @@ export function RulesImporter({
   const [showPreview, setShowPreview] = useState(false);
   const [extractedRules, setExtractedRules] = useState<ExtractedRule[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [aiProgress, setAiProgress] = useState<{ stage: string; percent: number } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const extractRules = useExtractRules();
@@ -87,6 +88,27 @@ export function RulesImporter({
       return;
     }
 
+    // Simulate progress stages for AI processing
+    const stages = [
+      { stage: "Preparing document excerpts", percent: 10 },
+      { stage: "Sending to AI for analysis", percent: 25 },
+      { stage: "Scanning for campaign rules", percent: 40 },
+      { stage: "Extracting exploration tables", percent: 55 },
+      { stage: "Extracting skill tables", percent: 70 },
+      { stage: "Processing equipment & injuries", percent: 85 },
+      { stage: "Finalizing rules structure", percent: 95 },
+    ];
+
+    let stageIndex = 0;
+    const progressInterval = setInterval(() => {
+      if (stageIndex < stages.length) {
+        setAiProgress(stages[stageIndex]);
+        stageIndex++;
+      }
+    }, 2500);
+
+    setAiProgress({ stage: "Initializing AI extraction", percent: 5 });
+
     try {
       const result = await extractRules.mutateAsync({
         content,
@@ -94,14 +116,20 @@ export function RulesImporter({
         sourceName: activeTab === "pdf" ? pdfFile?.name : "Pasted text",
       });
 
+      clearInterval(progressInterval);
+      setAiProgress({ stage: "Complete!", percent: 100 });
+
       setExtractedRules(result.rules);
       
       // Expand all categories by default
       const categories = new Set(result.rules.map(r => r.category));
       setExpandedCategories(categories);
       
+      setTimeout(() => setAiProgress(null), 500);
       toast.success(`Found ${result.rules.length} rules across ${Object.keys(result.summary.categories).length} categories`);
     } catch (error) {
+      clearInterval(progressInterval);
+      setAiProgress(null);
       console.error("AI extraction error:", error);
     }
   };
@@ -325,8 +353,25 @@ export function RulesImporter({
           }
           className="flex-1"
         >
-          {extractRules.isPending ? (
-            <TerminalLoader text="Processing with AI" size="sm" />
+        {extractRules.isPending || aiProgress ? (
+            <div className="flex flex-col items-center w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <TerminalLoader text={aiProgress?.stage || "Processing with AI"} size="sm" />
+              </div>
+              {aiProgress && (
+                <div className="w-full">
+                  <div className="h-2 bg-muted rounded overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-500 ease-out"
+                      style={{ width: `${aiProgress.percent}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1">
+                    {aiProgress.percent}% — {aiProgress.stage}
+                  </p>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <Bot className="w-4 h-4 mr-2" />
