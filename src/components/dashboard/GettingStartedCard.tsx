@@ -1,15 +1,23 @@
-import { Bot, Upload, Scroll, Sparkles, MessageSquare } from "lucide-react";
+import { Bot, Upload, Scroll, Sparkles, MessageSquare, X } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 
 interface GettingStartedCardProps {
   onOpenAIBuilder: () => void;
   onOpenRules: () => void;
+  onDismiss: () => void;
 }
 
-export function GettingStartedCard({ onOpenAIBuilder, onOpenRules }: GettingStartedCardProps) {
+export function GettingStartedCard({ onOpenAIBuilder, onOpenRules, onDismiss }: GettingStartedCardProps) {
   return (
     <div className="absolute inset-0 flex items-center justify-center p-8">
-      <div className="max-w-2xl w-full bg-card border border-primary/30 rounded-lg p-8 shadow-lg">
+      <div className="max-w-2xl w-full bg-card border border-primary/30 rounded-lg p-8 shadow-lg relative">
+        <button
+          onClick={onDismiss}
+          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+          title="Dismiss"
+        >
+          <X className="w-5 h-5" />
+        </button>
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 border border-primary/30 mb-4">
             <Sparkles className="w-8 h-8 text-primary" />
