@@ -270,7 +270,7 @@ ${sourceText}`;
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
-        max_tokens: 8192,
+        max_tokens: 32000,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
@@ -307,17 +307,63 @@ ${sourceText}`;
 
     console.log("AI raw response length:", aiContent.length);
 
-    // Parse the JSON response
+    // Parse the JSON response - handle truncation gracefully
     let parsedRules: { rules: ExtractedRule[] };
     try {
       // Try to extract JSON from code blocks or raw response
       const jsonMatch = aiContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-      const jsonStr = jsonMatch ? jsonMatch[1].trim() : aiContent.trim();
-      parsedRules = JSON.parse(jsonStr);
+      let jsonStr = jsonMatch ? jsonMatch[1].trim() : aiContent.trim();
+      
+      // If JSON is truncated, try to recover by closing arrays/objects
+      try {
+        parsedRules = JSON.parse(jsonStr);
+      } catch {
+        console.log("Initial parse failed, attempting truncation recovery...");
+        
+        // Find last complete rule object by looking for closing braces
+        const lastCompleteRule = jsonStr.lastIndexOf('}');
+        if (lastCompleteRule > 0) {
+          // Try to find a clean cut point after a complete rule
+          let cutPoint = lastCompleteRule;
+          
+          // Look backwards for the pattern "},\n" or "}\n" which indicates end of a rule
+          const patterns = ['},', '}\n    ]', '}\n  ]'];
+          for (const pattern of patterns) {
+            const idx = jsonStr.lastIndexOf(pattern);
+            if (idx > cutPoint - 500 && idx > 0) {
+              cutPoint = idx + 1;
+              break;
+            }
+          }
+          
+          jsonStr = jsonStr.substring(0, cutPoint);
+          
+          // Count open braces/brackets and close them
+          const openBraces = (jsonStr.match(/{/g) || []).length;
+          const closeBraces = (jsonStr.match(/}/g) || []).length;
+          const openBrackets = (jsonStr.match(/\[/g) || []).length;
+          const closeBrackets = (jsonStr.match(/\]/g) || []).length;
+          
+          // Remove trailing comma if present
+          jsonStr = jsonStr.replace(/,\s*$/, '');
+          
+          // Close remaining open structures
+          jsonStr += '}}'.repeat(Math.max(0, openBraces - closeBraces - 1));
+          jsonStr += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+          jsonStr += '}';
+          
+          console.log("Recovered JSON length:", jsonStr.length);
+          parsedRules = JSON.parse(jsonStr);
+          console.log("Truncation recovery successful, extracted rules:", parsedRules.rules?.length || 0);
+        } else {
+          throw new Error("Could not find any complete rules in response");
+        }
+      }
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", aiContent.substring(0, 500));
+      console.error("Parse error:", parseError);
       return new Response(JSON.stringify({ 
-        error: "Failed to parse extracted rules. Please try again." 
+        error: "Failed to parse extracted rules. The AI response was incomplete. Please try again." 
       }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
