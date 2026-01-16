@@ -1,11 +1,11 @@
 import { useState, useCallback } from "react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
-import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
-import { useCreateCampaignUnit } from "@/hooks/useCampaignUnits";
 import { useQueryClient } from "@tanstack/react-query";
 import { extractTextFromPDF, PDFExtractionProgress, estimateTokens } from "@/lib/pdfExtractor";
 import { toast } from "sonner";
@@ -14,43 +14,36 @@ import {
   FileText, 
   Brain, 
   CheckCircle2, 
-  AlertCircle, 
   ChevronDown,
   ChevronRight,
-  Shield,
   BookOpen,
-  Loader2
+  Loader2,
+  ClipboardPaste,
+  Save,
+  Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface ParsedUnit {
-  name: string;
-  faction: string;
-  sub_faction?: string | null;
-  base_cost: number;
-  stats: Record<string, string | number>;
-  abilities: Array<{ name: string; effect: string }>;
-  equipment_options: Array<{
-    name: string;
-    cost: number;
-    replaces?: string;
-    requires?: string[];
-    excludes?: string[];
-  }>;
-  keywords: string[];
-}
-
-interface ParsedRule {
+interface ExtractedRule {
   category: string;
   title: string;
-  content: string;
   rule_key: string;
+  content: {
+    type: "text" | "roll_table" | "keyword" | "equipment" | "unit_profile";
+    text?: string;
+    dice?: string;
+    entries?: Array<{ roll: string; result: string; effect?: string }>;
+    name?: string;
+    effect?: string;
+    cost?: number;
+    stats?: Record<string, string | number>;
+    properties?: Record<string, string>;
+  };
 }
 
-interface ParseResult {
+interface ExtractResult {
   gameSystem?: string;
-  units: ParsedUnit[];
-  rules: ParsedRule[];
+  rules: ExtractedRule[];
   summary?: string;
   error?: string;
 }
@@ -60,30 +53,32 @@ interface RulesImporterProps {
   onComplete?: () => void;
 }
 
-type ImportStep = "upload" | "extracting" | "parsing" | "review" | "importing";
+type ImportStep = "input" | "extracting" | "parsing" | "review" | "importing";
+type InputMethod = "pdf" | "paste";
 
 export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
-  const createUnit = useCreateCampaignUnit();
   const queryClient = useQueryClient();
 
-  const [step, setStep] = useState<ImportStep>("upload");
+  const [step, setStep] = useState<ImportStep>("input");
+  const [inputMethod, setInputMethod] = useState<InputMethod>("pdf");
   const [file, setFile] = useState<File | null>(null);
+  const [pastedText, setPastedText] = useState("");
+  const [keepPdf, setKeepPdf] = useState(false);
   const [extractionProgress, setExtractionProgress] = useState<PDFExtractionProgress | null>(null);
   const [extractedText, setExtractedText] = useState("");
-  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+  const [extractResult, setExtractResult] = useState<ExtractResult | null>(null);
   
-  const [selectedUnits, setSelectedUnits] = useState<Set<number>>(new Set());
   const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set());
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [importProgress, setImportProgress] = useState(0);
 
   const resetState = useCallback(() => {
-    setStep("upload");
+    setStep("input");
     setFile(null);
+    setPastedText("");
     setExtractionProgress(null);
     setExtractedText("");
-    setParseResult(null);
-    setSelectedUnits(new Set());
+    setExtractResult(null);
     setSelectedRules(new Set());
     setExpandedItems(new Set());
     setImportProgress(0);
@@ -119,44 +114,51 @@ export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
     } catch (error) {
       console.error("PDF extraction error:", error);
       toast.error("Failed to extract text from PDF");
-      setStep("upload");
+      setStep("input");
     }
+  };
+
+  const handlePastedTextProcess = async () => {
+    if (!pastedText.trim()) {
+      toast.error("Please paste some text first");
+      return;
+    }
+
+    setExtractedText(pastedText);
+    setStep("parsing");
+    await parseWithAI(pastedText);
   };
 
   const parseWithAI = async (text: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke("parse-rules-pdf", {
+      const { data, error } = await supabase.functions.invoke("extract-rules", {
         body: {
           extractedText: text,
-          parseMode: "both",
         },
       });
 
       if (error) throw new Error(error.message);
 
-      const result = data as ParseResult;
-      setParseResult(result);
+      const result = data as ExtractResult;
+      setExtractResult(result);
 
       // Select all by default
-      if (result.units?.length) {
-        setSelectedUnits(new Set(result.units.map((_, i) => i)));
-      }
       if (result.rules?.length) {
         setSelectedRules(new Set(result.rules.map((_, i) => i)));
       }
 
       setStep("review");
       
-      if (result.units?.length || result.rules?.length) {
-        toast.success(result.summary || "Content parsed successfully");
+      if (result.rules?.length) {
+        toast.success(result.summary || "Rules extracted successfully");
       } else {
-        toast.warning("No units or rules found in the document");
+        toast.warning("No structured rules found in the document");
       }
 
     } catch (error) {
       console.error("AI parsing error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to parse content");
-      setStep("upload");
+      setStep("input");
     }
   };
 
@@ -171,61 +173,65 @@ export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
   };
 
   const handleImport = async () => {
-    if (!parseResult) return;
+    if (!extractResult) return;
 
     setStep("importing");
-    let totalItems = selectedUnits.size + selectedRules.size;
+    const rulesToImport = extractResult.rules.filter((_, i) => selectedRules.has(i));
     let imported = 0;
 
-    // Import units
-    const unitsToImport = parseResult.units.filter((_, i) => selectedUnits.has(i));
-    for (const unit of unitsToImport) {
+    // Optionally save PDF to storage
+    if (keepPdf && file) {
       try {
-        await createUnit.mutateAsync({
-          campaign_id: campaignId,
-          name: unit.name,
-          faction: unit.faction,
-          sub_faction: unit.sub_faction || null,
-          base_cost: unit.base_cost,
-          stats: unit.stats,
-          abilities: unit.abilities,
-          equipment_options: unit.equipment_options,
-          keywords: unit.keywords,
-          source: "pdf_import",
-          source_ref: file?.name || "imported_pdf",
-        });
-        imported++;
-        setImportProgress(Math.round((imported / totalItems) * 100));
+        const filePath = `${campaignId}/${Date.now()}_${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("campaign-documents")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          console.error("Failed to upload PDF:", uploadError);
+        } else {
+          // Save reference to campaign_documents table
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from("campaign_documents").insert({
+              campaign_id: campaignId,
+              name: file.name,
+              file_path: filePath,
+              file_type: "application/pdf",
+              file_size: file.size,
+              uploaded_by: user.id,
+            });
+          }
+        }
       } catch (error) {
-        console.error(`Failed to import unit ${unit.name}:`, error);
+        console.error("Error saving PDF:", error);
       }
     }
 
     // Import rules
-    const rulesToImport = parseResult.rules.filter((_, i) => selectedRules.has(i));
     for (const rule of rulesToImport) {
       try {
         await supabase.from("wargame_rules").upsert({
           campaign_id: campaignId,
           category: rule.category,
           title: rule.title,
-          content: { text: rule.content },
-          rule_key: `pdf_${rule.rule_key}`,
+          content: rule.content,
+          rule_key: `imported_${rule.rule_key}`,
         }, {
           onConflict: "campaign_id,rule_key",
         });
         imported++;
-        setImportProgress(Math.round((imported / totalItems) * 100));
+        setImportProgress(Math.round((imported / rulesToImport.length) * 100));
       } catch (error) {
         console.error(`Failed to import rule ${rule.title}:`, error);
       }
     }
 
     // Invalidate queries
-    queryClient.invalidateQueries({ queryKey: ["campaign_units", campaignId] });
     queryClient.invalidateQueries({ queryKey: ["wargame_rules", campaignId] });
+    queryClient.invalidateQueries({ queryKey: ["campaign_documents", campaignId] });
 
-    toast.success(`Imported ${imported} of ${totalItems} items`);
+    toast.success(`Imported ${imported} of ${rulesToImport.length} rules`);
     
     if (onComplete) {
       onComplete();
@@ -234,48 +240,121 @@ export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
     resetState();
   };
 
+  // Group rules by category for display
+  const groupedRules = extractResult?.rules.reduce((acc, rule, index) => {
+    if (!acc[rule.category]) {
+      acc[rule.category] = [];
+    }
+    acc[rule.category].push({ ...rule, originalIndex: index });
+    return acc;
+  }, {} as Record<string, Array<ExtractedRule & { originalIndex: number }>>) || {};
+
+  const getRuleTypeIcon = (type: string) => {
+    switch (type) {
+      case "roll_table": return "🎲";
+      case "keyword": return "⚡";
+      case "equipment": return "⚔️";
+      case "unit_profile": return "👤";
+      default: return "📜";
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Upload Step */}
-      {step === "upload" && (
+      {/* Input Step */}
+      {step === "input" && (
         <div className="space-y-4">
-          <div className="text-sm text-muted-foreground">
-            Upload your wargame rulebook or army book PDF. The text will be extracted locally in your browser, 
-            then AI will parse it into units and rules.
-          </div>
-          
-          <div
-            className={cn(
-              "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-              "border-primary/30 hover:border-primary/50 hover:bg-primary/5",
-              file && "border-primary bg-primary/5"
-            )}
-            onClick={() => document.getElementById("pdf-import-input")?.click()}
-          >
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={handleFileSelect}
-              className="hidden"
-              id="pdf-import-input"
-            />
-            {file ? (
-              <div className="flex items-center justify-center gap-2 text-primary">
-                <FileText className="w-6 h-6" />
-                <span className="font-mono">{file.name}</span>
+          <Tabs value={inputMethod} onValueChange={(v) => setInputMethod(v as InputMethod)}>
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="pdf" className="flex items-center gap-2">
+                <FileUp className="w-4 h-4" />
+                Upload PDF
+              </TabsTrigger>
+              <TabsTrigger value="paste" className="flex items-center gap-2">
+                <ClipboardPaste className="w-4 h-4" />
+                Paste Text
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="pdf" className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Upload your wargame rulebook or campaign supplement PDF. Text is extracted locally in your browser, 
+                then AI parses it into structured rules.
               </div>
-            ) : (
-              <div className="space-y-2">
-                <FileUp className="w-10 h-10 text-muted-foreground mx-auto" />
-                <p className="text-muted-foreground">
-                  Click to upload a PDF rulebook
-                </p>
-                <p className="text-xs text-muted-foreground/60">
-                  Text extraction happens in your browser - no file upload to servers
-                </p>
+              
+              <div
+                className={cn(
+                  "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+                  "border-primary/30 hover:border-primary/50 hover:bg-primary/5",
+                  file && "border-primary bg-primary/5"
+                )}
+                onClick={() => document.getElementById("pdf-import-input")?.click()}
+              >
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="pdf-import-input"
+                />
+                {file ? (
+                  <div className="flex items-center justify-center gap-2 text-primary">
+                    <FileText className="w-6 h-6" />
+                    <span className="font-mono">{file.name}</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <FileUp className="w-10 h-10 text-muted-foreground mx-auto" />
+                    <p className="text-muted-foreground">
+                      Click to upload a PDF rulebook
+                    </p>
+                    <p className="text-xs text-muted-foreground/60">
+                      Text extraction happens in your browser - no file upload to servers
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              {/* Keep PDF Option */}
+              <div className="flex items-center gap-2 text-sm">
+                <Checkbox
+                  id="keep-pdf"
+                  checked={keepPdf}
+                  onCheckedChange={(checked) => setKeepPdf(checked === true)}
+                />
+                <label htmlFor="keep-pdf" className="text-muted-foreground cursor-pointer">
+                  Keep PDF for future reference (uses storage)
+                </label>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="paste" className="space-y-4">
+              <div className="text-sm text-muted-foreground">
+                Paste text directly from your rulebook. Great for copying specific sections like injury tables,
+                campaign rules, or equipment lists.
+              </div>
+
+              <Textarea
+                placeholder="Paste your rules text here...&#10;&#10;Example:&#10;INJURY TABLE (2D6)&#10;2-4: Dead - Remove model from campaign&#10;5-6: Serious Injury - Miss next game&#10;7-9: Minor Wound - No effect&#10;10-12: Full Recovery"
+                value={pastedText}
+                onChange={(e) => setPastedText(e.target.value)}
+                className="min-h-[200px] font-mono text-sm"
+              />
+
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">
+                  {pastedText.length > 0 && `~${estimateTokens(pastedText).toLocaleString()} tokens`}
+                </span>
+                <TerminalButton
+                  onClick={handlePastedTextProcess}
+                  disabled={!pastedText.trim()}
+                >
+                  <Brain className="w-4 h-4 mr-2" />
+                  Process with AI
+                </TerminalButton>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       )}
 
@@ -302,16 +381,16 @@ export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
         <div className="py-8 text-center space-y-4">
           <Brain className="w-10 h-10 text-primary mx-auto animate-pulse" />
           <div>
-            <p className="text-primary font-mono">AI PARSING CONTENT...</p>
+            <p className="text-primary font-mono">AI EXTRACTING RULES...</p>
             <p className="text-sm text-muted-foreground mt-2">
-              Identifying units, rules, and equipment
+              Detecting tables, keywords, equipment, and campaign rules
             </p>
           </div>
         </div>
       )}
 
       {/* Review Step */}
-      {step === "review" && parseResult && (
+      {step === "review" && extractResult && (
         <div className="space-y-4">
           {/* Summary */}
           <div className="bg-primary/10 border border-primary/30 rounded p-3">
@@ -319,112 +398,42 @@ export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
               <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-mono text-primary">
-                  {parseResult.gameSystem && `${parseResult.gameSystem} • `}
-                  {parseResult.units.length} units, {parseResult.rules.length} rules
+                  {extractResult.gameSystem && `${extractResult.gameSystem} • `}
+                  {extractResult.rules.length} rules extracted
                 </p>
-                {parseResult.summary && (
-                  <p className="text-xs text-muted-foreground mt-1">{parseResult.summary}</p>
+                {extractResult.summary && (
+                  <p className="text-xs text-muted-foreground mt-1">{extractResult.summary}</p>
                 )}
               </div>
             </div>
           </div>
 
-          <ScrollArea className="h-[300px] border border-border/50 rounded">
+          <ScrollArea className="h-[350px] border border-border/50 rounded">
             <div className="p-3 space-y-4">
-              {/* Units Section */}
-              {parseResult.units.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-mono text-primary">
-                      <Shield className="w-4 h-4" />
-                      Units ({selectedUnits.size}/{parseResult.units.length})
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setSelectedUnits(new Set(parseResult.units.map((_, i) => i)))}
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        All
-                      </button>
-                      <button
-                        onClick={() => setSelectedUnits(new Set())}
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        None
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {parseResult.units.map((unit, i) => (
-                    <div
-                      key={`unit-${i}`}
-                      className={cn(
-                        "border rounded text-sm",
-                        selectedUnits.has(i) ? "border-primary/50 bg-primary/5" : "border-border/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-2 px-3 py-2">
-                        <Checkbox
-                          checked={selectedUnits.has(i)}
-                          onCheckedChange={() => {
-                            const newSet = new Set(selectedUnits);
-                            newSet.has(i) ? newSet.delete(i) : newSet.add(i);
-                            setSelectedUnits(newSet);
-                          }}
-                        />
-                        <button
-                          onClick={() => toggleExpanded(`unit-${i}`)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          {expandedItems.has(`unit-${i}`) ? (
-                            <ChevronDown className="w-4 h-4" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4" />
-                          )}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <span className="font-mono">{unit.name}</span>
-                          <span className="text-muted-foreground ml-2">
-                            {unit.faction} • {unit.base_cost} pts
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {expandedItems.has(`unit-${i}`) && (
-                        <div className="px-3 pb-2 pt-1 border-t border-border/30 text-xs space-y-1 text-muted-foreground">
-                          {Object.keys(unit.stats).length > 0 && (
-                            <div>Stats: {Object.entries(unit.stats).map(([k, v]) => `${k}: ${v}`).join(", ")}</div>
-                          )}
-                          {unit.abilities.length > 0 && (
-                            <div>Abilities: {unit.abilities.map(a => a.name).join(", ")}</div>
-                          )}
-                          {unit.keywords.length > 0 && (
-                            <div>Keywords: {unit.keywords.join(", ")}</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Rules Section */}
-              {parseResult.rules.length > 0 && (
-                <div className="space-y-2">
+              {Object.entries(groupedRules).map(([category, rules]) => (
+                <div key={category} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-mono text-primary">
                       <BookOpen className="w-4 h-4" />
-                      Rules ({selectedRules.size}/{parseResult.rules.length})
+                      {category} ({rules.filter(r => selectedRules.has(r.originalIndex)).length}/{rules.length})
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setSelectedRules(new Set(parseResult.rules.map((_, i) => i)))}
+                        onClick={() => {
+                          const newSet = new Set(selectedRules);
+                          rules.forEach(r => newSet.add(r.originalIndex));
+                          setSelectedRules(newSet);
+                        }}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         All
                       </button>
                       <button
-                        onClick={() => setSelectedRules(new Set())}
+                        onClick={() => {
+                          const newSet = new Set(selectedRules);
+                          rules.forEach(r => newSet.delete(r.originalIndex));
+                          setSelectedRules(newSet);
+                        }}
                         className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         None
@@ -432,76 +441,89 @@ export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
                     </div>
                   </div>
                   
-                  {parseResult.rules.map((rule, i) => (
+                  {rules.map((rule) => (
                     <div
-                      key={`rule-${i}`}
+                      key={`rule-${rule.originalIndex}`}
                       className={cn(
                         "border rounded text-sm",
-                        selectedRules.has(i) ? "border-primary/50 bg-primary/5" : "border-border/30"
+                        selectedRules.has(rule.originalIndex) ? "border-primary/50 bg-primary/5" : "border-border/30"
                       )}
                     >
                       <div className="flex items-center gap-2 px-3 py-2">
                         <Checkbox
-                          checked={selectedRules.has(i)}
+                          checked={selectedRules.has(rule.originalIndex)}
                           onCheckedChange={() => {
                             const newSet = new Set(selectedRules);
-                            newSet.has(i) ? newSet.delete(i) : newSet.add(i);
+                            newSet.has(rule.originalIndex) ? newSet.delete(rule.originalIndex) : newSet.add(rule.originalIndex);
                             setSelectedRules(newSet);
                           }}
                         />
                         <button
-                          onClick={() => toggleExpanded(`rule-${i}`)}
+                          onClick={() => toggleExpanded(`rule-${rule.originalIndex}`)}
                           className="text-muted-foreground hover:text-foreground"
                         >
-                          {expandedItems.has(`rule-${i}`) ? (
+                          {expandedItems.has(`rule-${rule.originalIndex}`) ? (
                             <ChevronDown className="w-4 h-4" />
                           ) : (
                             <ChevronRight className="w-4 h-4" />
                           )}
                         </button>
+                        <span className="text-base">{getRuleTypeIcon(rule.content.type)}</span>
                         <div className="flex-1 min-w-0">
                           <span className="font-mono">{rule.title}</span>
                           <span className="text-muted-foreground ml-2 text-xs">
-                            [{rule.category}]
+                            [{rule.content.type}]
                           </span>
                         </div>
                       </div>
                       
-                      {expandedItems.has(`rule-${i}`) && (
-                        <div className="px-3 pb-2 pt-1 border-t border-border/30 text-xs text-muted-foreground whitespace-pre-wrap">
-                          {rule.content.substring(0, 300)}
-                          {rule.content.length > 300 && "..."}
+                      {expandedItems.has(`rule-${rule.originalIndex}`) && (
+                        <div className="px-3 pb-2 pt-1 border-t border-border/30 text-xs text-muted-foreground">
+                          {rule.content.type === "roll_table" && rule.content.entries && (
+                            <div className="space-y-1">
+                              <p className="text-primary font-mono">{rule.content.dice || "Roll"}</p>
+                              {rule.content.entries.slice(0, 5).map((entry, i) => (
+                                <p key={i}><strong>{entry.roll}:</strong> {entry.result} {entry.effect && `- ${entry.effect}`}</p>
+                              ))}
+                              {rule.content.entries.length > 5 && (
+                                <p className="italic">...and {rule.content.entries.length - 5} more entries</p>
+                              )}
+                            </div>
+                          )}
+                          {rule.content.type === "keyword" && (
+                            <p><strong>{rule.content.name}:</strong> {rule.content.effect}</p>
+                          )}
+                          {rule.content.type === "equipment" && (
+                            <div>
+                              <p><strong>{rule.content.name}</strong> {rule.content.cost && `(${rule.content.cost} pts)`}</p>
+                              {rule.content.properties && (
+                                <p>{Object.entries(rule.content.properties).map(([k, v]) => `${k}: ${v}`).join(", ")}</p>
+                              )}
+                            </div>
+                          )}
+                          {rule.content.type === "text" && (
+                            <p className="whitespace-pre-wrap">{rule.content.text?.substring(0, 300)}{(rule.content.text?.length || 0) > 300 && "..."}</p>
+                          )}
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
-              )}
-
-              {parseResult.units.length === 0 && parseResult.rules.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p>No units or rules could be extracted</p>
-                  <p className="text-xs mt-1">Try a different PDF or check the file format</p>
-                </div>
-              )}
+              ))}
             </div>
           </ScrollArea>
 
-          <div className="flex gap-3">
-            <TerminalButton
-              variant="outline"
-              onClick={resetState}
-              className="flex-1"
-            >
-              Cancel
+          <div className="flex justify-between items-center pt-2">
+            <TerminalButton variant="ghost" onClick={resetState}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Start Over
             </TerminalButton>
             <TerminalButton
               onClick={handleImport}
-              disabled={selectedUnits.size === 0 && selectedRules.size === 0}
-              className="flex-1"
+              disabled={selectedRules.size === 0}
             >
-              Import {selectedUnits.size + selectedRules.size} Items
+              <Save className="w-4 h-4 mr-2" />
+              Import {selectedRules.size} Rules
             </TerminalButton>
           </div>
         </div>
@@ -512,9 +534,11 @@ export function RulesImporter({ campaignId, onComplete }: RulesImporterProps) {
         <div className="py-8 text-center space-y-4">
           <Loader2 className="w-10 h-10 text-primary mx-auto animate-spin" />
           <div>
-            <p className="text-primary font-mono">IMPORTING...</p>
-            <Progress value={importProgress} className="w-48 mx-auto mt-3" />
-            <p className="text-sm text-muted-foreground mt-2">{importProgress}%</p>
+            <p className="text-primary font-mono">IMPORTING RULES...</p>
+            <Progress value={importProgress} className="w-48 mx-auto mt-2" />
+            <p className="text-sm text-muted-foreground mt-2">
+              {importProgress}% complete
+            </p>
           </div>
         </div>
       )}

@@ -12,5 +12,5 @@ verify_jwt = false
 [functions.parse-rules-pdf]
 verify_jwt = false
 
-[functions.parse-battlescribe]
+[functions.extract-rules]
 verify_jwt = false
