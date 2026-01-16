@@ -6,8 +6,7 @@ import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { RulesImporter } from "./RulesImporter";
 import { GameSystemPicker } from "./GameSystemPicker";
 import { useCreateCampaign } from "@/hooks/useCampaigns";
-import { useDiscoverRepoRules, useSyncRepoRules } from "@/hooks/useWargameRules";
-import { GitBranch, CheckCircle, AlertCircle, Gamepad2, FileUp, ChevronDown, ChevronUp } from "lucide-react";
+import { Gamepad2, FileUp, ChevronDown, ChevronUp } from "lucide-react";
 
 interface CreateCampaignModalProps {
   open: boolean;
@@ -16,7 +15,7 @@ interface CreateCampaignModalProps {
 
 type CreateFlowStep = "setup" | "pdf";
 
-type WargameOption = "library" | "github" | "pdf";
+type WargameOption = "library" | "pdf";
 
 const WARGAME_PRESETS: Array<{
   value: WargameOption;
@@ -25,8 +24,7 @@ const WARGAME_PRESETS: Array<{
   icon: typeof Gamepad2;
 }> = [
   { value: "library", label: "Game Library", description: "Choose from imported systems", icon: Gamepad2 },
-  { value: "github", label: "GitHub Repo", description: "Link a custom repository", icon: GitBranch },
-  { value: "pdf", label: "Upload PDF", description: "Parse rules from a PDF", icon: FileUp },
+  { value: "pdf", label: "Upload PDF / Paste Text", description: "Import rules from PDF or text", icon: FileUp },
 ];
 
 export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps) {
@@ -42,16 +40,8 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   const [wargameOption, setWargameOption] = useState<WargameOption>("library");
   const [selectedGameSystemId, setSelectedGameSystemId] = useState<string | null>(null);
   const [selectedGameSystemName, setSelectedGameSystemName] = useState<string>("");
-  
-  // GitHub-specific state
-  const [repoUrl, setRepoUrl] = useState("");
-  const [repoValidated, setRepoValidated] = useState<boolean | null>(null);
-  const [repoCategories, setRepoCategories] = useState<string[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
 
   const createCampaign = useCreateCampaign();
-  const discoverRules = useDiscoverRepoRules();
-  const syncRules = useSyncRepoRules();
 
   const resetForm = () => {
     setFlowStep("setup");
@@ -64,29 +54,11 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     setWargameOption("library");
     setSelectedGameSystemId(null);
     setSelectedGameSystemName("");
-    setRepoUrl("");
-    setRepoValidated(null);
-    setRepoCategories([]);
-    setIsSyncing(false);
   };
 
   const handleClose = () => {
     resetForm();
     onClose();
-  };
-
-  const handleValidateRepo = async () => {
-    if (!repoUrl.trim()) return;
-
-    setRepoValidated(null);
-    try {
-      const categories = await discoverRules.mutateAsync(repoUrl);
-      setRepoCategories(categories.map((c) => c.category));
-      setRepoValidated(true);
-    } catch {
-      setRepoValidated(false);
-      setRepoCategories([]);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -97,24 +69,8 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
       name,
       description: description || undefined,
       points_limit: parseInt(pointsLimit) || 1000,
-      rules_repo_url: wargameOption === "github" && repoValidated ? repoUrl : undefined,
       game_system_id: wargameOption === "library" && selectedGameSystemId ? selectedGameSystemId : undefined,
     });
-
-    // If we have a validated repo, sync the rules immediately after creating
-    if (wargameOption === "github" && repoValidated && repoUrl && campaign) {
-      setIsSyncing(true);
-      try {
-        await syncRules.mutateAsync({
-          repoUrl,
-          campaignId: campaign.id,
-        });
-      } catch (error) {
-        console.error("Failed to sync rules:", error);
-        // Don't block campaign creation if sync fails
-      }
-      setIsSyncing(false);
-    }
 
     // PDF flow: keep modal open and jump into importer
     if (wargameOption === "pdf" && campaign?.id) {
@@ -128,7 +84,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     onClose();
   };
 
-  const isCreating = createCampaign.isPending || isSyncing;
+  const isCreating = createCampaign.isPending;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
@@ -141,7 +97,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
       >
         <DialogHeader>
           <DialogTitle className="text-primary uppercase tracking-widest text-sm">
-            {flowStep === "pdf" ? "[Import Rules from PDF]" : "[Create New Campaign]"}
+            {flowStep === "pdf" ? "[Import Rules]" : "[Create New Campaign]"}
           </DialogTitle>
         </DialogHeader>
 
@@ -211,7 +167,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
                 {/* Wargame Source Options */}
                 <div className="space-y-2">
                   <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                    Alternative Rules Source
+                    Import Custom Rules
                   </label>
                   <div className="grid grid-cols-2 gap-2">
                     {WARGAME_PRESETS.filter(p => p.value !== "library").map((option) => {
@@ -226,12 +182,6 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
                             setWargameOption(option.value);
                             setSelectedGameSystemId(null);
                             setSelectedGameSystemName("");
-
-                            if (option.value !== "github") {
-                              setRepoUrl("");
-                              setRepoValidated(null);
-                              setRepoCategories([]);
-                            }
                           }}
                           className={`p-3 border text-left transition-all ${
                             isActive
@@ -249,62 +199,6 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
                     })}
                   </div>
                 </div>
-
-                {/* GitHub Repo Input */}
-                {wargameOption === "github" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <GitBranch className="w-4 h-4" />
-                      <span>Enter the GitHub repository URL containing your wargame rules</span>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <TerminalInput
-                          placeholder="https://github.com/username/repo"
-                          value={repoUrl}
-                          onChange={(e) => {
-                            setRepoUrl(e.target.value);
-                            setRepoValidated(null);
-                            setRepoCategories([]);
-                          }}
-                        />
-                      </div>
-                      <TerminalButton
-                        type="button"
-                        variant="outline"
-                        onClick={handleValidateRepo}
-                        disabled={!repoUrl.trim() || discoverRules.isPending}
-                        className="shrink-0"
-                      >
-                        {discoverRules.isPending ? (
-                          <TerminalLoader text="Validating" size="sm" />
-                        ) : (
-                          "Validate"
-                        )}
-                      </TerminalButton>
-                    </div>
-
-                    {repoValidated === true && (
-                      <div className="flex items-start gap-2 text-xs text-green-400 bg-green-400/10 p-2 border border-green-400/30">
-                        <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium">Repository validated!</p>
-                          <p className="text-green-400/70 mt-1">
-                            Found {repoCategories.length} rule categories: {repoCategories.join(", ")}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {repoValidated === false && (
-                      <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 border border-destructive/30">
-                        <AlertCircle className="w-4 h-4" />
-                        <span>Could not access repository. Check the URL and ensure it's public.</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 
@@ -321,12 +215,12 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               <TerminalButton
                 type="submit"
                 className="flex-1"
-                disabled={!name.trim() || isCreating || (wargameOption === "github" && !repoValidated)}
+                disabled={!name.trim() || isCreating}
               >
                 {isCreating ? (
-                  <TerminalLoader text={isSyncing ? "Syncing Rules" : "Creating"} size="sm" />
+                  <TerminalLoader text="Creating" size="sm" />
                 ) : wargameOption === "pdf" ? (
-                  "Create & Import PDF"
+                  "Create & Import Rules"
                 ) : (
                   "Create Campaign"
                 )}
