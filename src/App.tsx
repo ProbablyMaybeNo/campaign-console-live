@@ -1,4 +1,3 @@
-// Campaign Management App
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,10 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Campaigns from "./pages/Campaigns";
 import CampaignDashboard from "./pages/CampaignDashboard";
-import WarbandBuilder from "./pages/WarbandBuilder";
-import UnitLibrary from "./pages/UnitLibrary";
 import NotFound from "./pages/NotFound";
-import AdminGameLibrary from "./pages/AdminGameLibrary";
 
 const queryClient = new QueryClient();
 
@@ -46,9 +42,6 @@ const App = () => (
           <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
           <Route path="/campaign/:campaignId" element={<ProtectedRoute><CampaignDashboard /></ProtectedRoute>} />
-          <Route path="/campaign/:campaignId/warband-builder" element={<ProtectedRoute><WarbandBuilder /></ProtectedRoute>} />
-          <Route path="/campaign/:campaignId/unit-library" element={<ProtectedRoute><UnitLibrary /></ProtectedRoute>} />
-          <Route path="/admin/game-library" element={<ProtectedRoute><AdminGameLibrary /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

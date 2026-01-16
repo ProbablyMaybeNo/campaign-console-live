@@ -18,7 +18,7 @@ export interface WargameRule {
 export interface RuleCategory {
   category: string;
   ruleCount: number;
-  rules: WargameRule[];
+  rules: Array<{ key: string; title: string }>;
 }
 
 export function useWargameRules(campaignId: string | undefined) {
@@ -41,7 +41,7 @@ export function useWargameRules(campaignId: string | undefined) {
   });
 }
 
-export function useRuleCategories(campaignId: string | undefined): RuleCategory[] {
+export function useRuleCategories(campaignId: string | undefined) {
   const { data: rules } = useWargameRules(campaignId);
 
   const categories = rules?.reduce((acc, rule) => {
@@ -55,8 +55,55 @@ export function useRuleCategories(campaignId: string | undefined): RuleCategory[
   return Object.entries(categories || {}).map(([category, categoryRules]) => ({
     category,
     rules: categoryRules,
-    ruleCount: categoryRules.length,
   }));
+}
+
+export function useDiscoverRepoRules() {
+  return useMutation({
+    mutationFn: async (repoUrl: string): Promise<RuleCategory[]> => {
+      const { data, error } = await supabase.functions.invoke("fetch-rules-repo", {
+        body: { repoUrl, action: "discover" },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || "Failed to discover rules");
+
+      return data.categories;
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to discover rules: ${error.message}`);
+    },
+  });
+}
+
+export function useSyncRepoRules() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      repoUrl,
+      campaignId,
+    }: {
+      repoUrl: string;
+      campaignId: string;
+    }): Promise<{ message: string; categories: string[] }> => {
+      const { data, error } = await supabase.functions.invoke("fetch-rules-repo", {
+        body: { repoUrl, campaignId, action: "sync" },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || "Failed to sync rules");
+
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
+      toast.success(data.message);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to sync rules: ${error.message}`);
+    },
+  });
 }
 
 export function useRulesByCategory(campaignId: string | undefined, category: string | undefined) {
@@ -76,142 +123,5 @@ export function useRulesByCategory(campaignId: string | undefined, category: str
       return data || [];
     },
     enabled: !!campaignId && !!category,
-  });
-}
-
-export function useUpdateWargameRule() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      id,
-      campaign_id,
-      ...updates
-    }: {
-      id: string;
-      campaign_id: string;
-      title?: string;
-      category?: string;
-      content?: Json;
-      metadata?: Json;
-    }) => {
-      const { data, error } = await supabase
-        .from("wargame_rules")
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaign_id] });
-      toast.success("Rule updated successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to update rule: ${error.message}`);
-    },
-  });
-}
-
-export function useDeleteWargameRule() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, campaignId }: { id: string; campaignId: string }) => {
-      const { error } = await supabase
-        .from("wargame_rules")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-      return { id, campaignId };
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
-      toast.success("Rule deleted successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to delete rule: ${error.message}`);
-    },
-  });
-}
-
-export function useCreateWargameRule() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (rule: {
-      campaign_id: string;
-      category: string;
-      rule_key: string;
-      title: string;
-      content: Json;
-      metadata?: Json;
-    }) => {
-      const { data, error } = await supabase
-        .from("wargame_rules")
-        .insert({
-          ...rule,
-          metadata: rule.metadata || null,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaign_id] });
-      toast.success("Rule created successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to create rule: ${error.message}`);
-    },
-  });
-}
-
-export function useBulkImportRules() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      campaignId,
-      rules,
-    }: {
-      campaignId: string;
-      rules: Array<{
-        category: string;
-        rule_key: string;
-        title: string;
-        content: Json;
-      }>;
-    }) => {
-      const rulesToInsert = rules.map(rule => ({
-        campaign_id: campaignId,
-        ...rule,
-      }));
-
-      const { data, error } = await supabase
-        .from("wargame_rules")
-        .upsert(rulesToInsert, {
-          onConflict: "campaign_id,rule_key",
-        })
-        .select();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
-      toast.success(`Imported ${data?.length || 0} rules successfully`);
-    },
-    onError: (error: Error) => {
-      toast.error(`Failed to import rules: ${error.message}`);
-    },
   });
 }

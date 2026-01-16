@@ -17,7 +17,6 @@ interface BuilderRequest {
   sourceContent?: string;
   sourceUrl?: string;
   campaignId?: string;
-  rulesContext?: string;
 }
 
 interface ComponentData {
@@ -51,7 +50,7 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { prompt, conversationHistory = [], sourceContent, sourceUrl, campaignId, rulesContext } = await req.json() as BuilderRequest;
+    const { prompt, conversationHistory = [], sourceContent, sourceUrl, campaignId } = await req.json() as BuilderRequest;
 
     // Fetch campaign data if campaignId is provided
     let campaignContext = "";
@@ -149,12 +148,8 @@ When creating components from live data:
     // Build content context
     let contentContext = "";
     
-    if (rulesContext) {
-      contentContext += `\n\nSELECTED RULES CONTEXT (from campaign's imported rules):\n${rulesContext}`;
-    }
-    
     if (sourceContent) {
-      contentContext += `\n\nSOURCE CONTENT TO EXTRACT FROM:\n${sourceContent.substring(0, 50000)}`;
+      contentContext = `\n\nSOURCE CONTENT TO EXTRACT FROM:\n${sourceContent.substring(0, 50000)}`;
     }
     
     if (sourceUrl) {

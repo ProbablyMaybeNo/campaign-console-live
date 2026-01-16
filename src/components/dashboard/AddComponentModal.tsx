@@ -4,7 +4,6 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useRuleCategories, useRulesByCategory } from "@/hooks/useWargameRules";
-import { useMasterRuleCategories, useMasterRulesByCategory, useGameSystem } from "@/hooks/useGameSystems";
 import { useCampaign } from "@/hooks/useCampaigns";
 import { 
   Table, 
@@ -14,8 +13,7 @@ import {
   Hash,
   Wrench,
   CheckSquare,
-  Library,
-  Gamepad2
+  GitBranch
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -44,34 +42,16 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [manualSetup, setManualSetup] = useState(false);
-  const [ruleSource, setRuleSource] = useState<"game_system" | "campaign">("game_system");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedRuleKey, setSelectedRuleKey] = useState<string>("");
   
   const createComponent = useCreateComponent();
   const { data: campaign } = useCampaign(campaignId);
-  const { data: gameSystem } = useGameSystem(campaign?.game_system_id || undefined);
-  
-  // Campaign-level rules (legacy / custom)
-  const campaignRuleCategories = useRuleCategories(campaignId);
-  const { data: campaignCategoryRules } = useRulesByCategory(campaignId, ruleSource === "campaign" ? selectedCategory : undefined);
-  
-  // Master rules from linked game system
-  const masterRuleCategories = useMasterRuleCategories(campaign?.game_system_id || undefined);
-  const { data: masterCategoryRules } = useMasterRulesByCategory(
-    ruleSource === "game_system" ? campaign?.game_system_id || undefined : undefined,
-    ruleSource === "game_system" ? selectedCategory : undefined
-  );
+  const ruleCategories = useRuleCategories(campaignId);
+  const { data: categoryRules } = useRulesByCategory(campaignId, selectedCategory);
 
-  // Determine available sources
-  const hasGameSystem = !!campaign?.game_system_id && masterRuleCategories.length > 0;
-  const hasCampaignRules = campaignRuleCategories.length > 0;
   const hasRulesRepo = !!campaign?.rules_repo_url;
-  const hasAnyRulesSource = hasGameSystem || hasCampaignRules;
-  
-  // Use appropriate data based on source
-  const activeCategories = ruleSource === "game_system" ? masterRuleCategories : campaignRuleCategories;
-  const activeCategoryRules = ruleSource === "game_system" ? masterCategoryRules : campaignCategoryRules;
+  const hasRulesData = ruleCategories.length > 0;
   
   const selectedTypeData = useMemo(() => 
     COMPONENT_TYPES.find(v => v.type === selectedType), 
@@ -90,14 +70,6 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     setManualSetup(false);
     setSelectedCategory("");
     setSelectedRuleKey("");
-    // Default to game system if available
-    setRuleSource(hasGameSystem ? "game_system" : "campaign");
-  };
-
-  const handleSourceChange = (source: "game_system" | "campaign") => {
-    setRuleSource(source);
-    setSelectedCategory("");
-    setSelectedRuleKey("");
   };
 
   const handleCreate = async () => {
@@ -109,32 +81,13 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     };
 
     // Add rules linking if applicable
-    if (supportsRules && !manualSetup && selectedCategory) {
-      // For tables: populate ALL rules in category (no individual rule selection)
-      // For cards: still use individual rule selection
-      const isTableType = selectedType === "table";
+    if (supportsRules && !manualSetup && selectedCategory && selectedRuleKey) {
+      config.rule_category = selectedCategory;
+      config.rule_key = selectedRuleKey;
       
-      if (isTableType || selectedRuleKey) {
-        if (ruleSource === "game_system") {
-          config.rule_source = "game_system";
-          config.game_system_id = campaign?.game_system_id || null;
-        } else {
-          config.rule_source = "campaign";
-        }
-        
-        config.rule_category = selectedCategory;
-        
-        if (isTableType) {
-          // Tables populate all rules in category
-          config.populate_all_in_category = true;
-        } else {
-          // Cards use individual rule
-          config.rule_key = selectedRuleKey;
-          const selectedRule = activeCategoryRules?.find(r => r.rule_key === selectedRuleKey);
-          if (selectedRule) {
-            config.rule_title = selectedRule.title;
-          }
-        }
+      const selectedRule = categoryRules?.find(r => r.rule_key === selectedRuleKey);
+      if (selectedRule) {
+        config.rule_title = selectedRule.title;
       }
     }
 
@@ -170,7 +123,6 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     setSelectedType(null);
     setName("");
     setManualSetup(false);
-    setRuleSource(hasGameSystem ? "game_system" : "campaign");
     setSelectedCategory("");
     setSelectedRuleKey("");
     onOpenChange(false);
@@ -222,11 +174,11 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               />
 
               {/* Rules Integration - Only for table and card */}
-              {supportsRules && hasAnyRulesSource && (
+              {supportsRules && hasRulesRepo && (
                 <div className="space-y-3 border border-primary/30 p-4 bg-primary/5 rounded">
                   <div className="flex items-center justify-between">
                     <label className="text-xs uppercase tracking-wider text-primary font-medium flex items-center gap-2">
-                      <Library className="w-3 h-3" />
+                      <GitBranch className="w-3 h-3" />
                       Auto-Populate from Rules
                     </label>
                     
@@ -252,131 +204,68 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                     </div>
                   </div>
 
-                  {!manualSetup && (
-                    <>
-                      {/* Rule Source Selection */}
-                      {hasGameSystem && hasCampaignRules && (
-                        <div className="flex gap-2 mb-3">
-                          <button
-                            type="button"
-                            onClick={() => handleSourceChange("game_system")}
-                            className={`flex-1 px-3 py-2 text-xs font-mono uppercase rounded border transition-colors flex items-center justify-center gap-1.5 ${
-                              ruleSource === "game_system"
-                                ? "bg-primary/20 border-primary text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/50"
-                            }`}
-                          >
-                            <Gamepad2 className="w-3 h-3" />
-                            {gameSystem?.name || "Game System"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleSourceChange("campaign")}
-                            className={`flex-1 px-3 py-2 text-xs font-mono uppercase rounded border transition-colors flex items-center justify-center gap-1.5 ${
-                              ruleSource === "campaign"
-                                ? "bg-primary/20 border-primary text-primary"
-                                : "border-border text-muted-foreground hover:border-primary/50"
-                            }`}
-                          >
-                            <Library className="w-3 h-3" />
-                            Campaign Rules
-                          </button>
-                        </div>
-                      )}
-                      
-                      {/* Show game system label if only source */}
-                      {hasGameSystem && !hasCampaignRules && (
-                        <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
-                          <Gamepad2 className="w-3 h-3" />
-                          <span>From: <span className="text-primary font-medium">{gameSystem?.name}</span></span>
-                        </div>
-                      )}
+                  {!manualSetup && hasRulesData && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Rule Category
+                        </label>
+                        <Select 
+                          value={selectedCategory} 
+                          onValueChange={(val) => {
+                            setSelectedCategory(val);
+                            setSelectedRuleKey("");
+                          }}
+                        >
+                          <SelectTrigger className="w-full bg-input border-border">
+                            <SelectValue placeholder="Select category..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border">
+                            {ruleCategories.map(({ category }) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                      {activeCategories.length > 0 ? (
-                        <div className={`grid gap-3 ${selectedType === "table" ? "grid-cols-1" : "grid-cols-2"}`}>
-                          <div className="space-y-1.5">
-                            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                              Rule Category
-                            </label>
-                            <Select 
-                              value={selectedCategory} 
-                              onValueChange={(val) => {
-                                setSelectedCategory(val);
-                                setSelectedRuleKey("");
-                              }}
-                            >
-                              <SelectTrigger className="w-full bg-input border-border">
-                                <SelectValue placeholder="Select category..." />
-                              </SelectTrigger>
-                              <SelectContent className="bg-card border-border max-h-48">
-                                {activeCategories.map(({ category, ruleCount }) => (
-                                  <SelectItem key={category} value={category}>
-                                    {category} ({ruleCount})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {/* Rule Set dropdown - only show for non-table types */}
-                          {selectedType !== "table" && (
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                Rule Set
-                              </label>
-                              <Select 
-                                value={selectedRuleKey} 
-                                onValueChange={setSelectedRuleKey}
-                                disabled={!selectedCategory || !activeCategoryRules?.length}
-                              >
-                                <SelectTrigger className="w-full bg-input border-border">
-                                  <SelectValue placeholder="Select rule set..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-card border-border max-h-48">
-                                  {activeCategoryRules?.map((rule) => (
-                                    <SelectItem key={rule.rule_key} value={rule.rule_key}>
-                                      {rule.title}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-yellow-400">
-                          {ruleSource === "game_system" 
-                            ? "No rules found in the linked game system."
-                            : "No campaign-specific rules found."
-                          }
-                        </p>
-                      )}
-
-                      {/* Confirmation message - different for tables vs cards */}
-                      {selectedType === "table" && selectedCategory && (
-                        <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
-                          <CheckSquare className="w-4 h-4" />
-                          <span>Table will auto-populate with all {activeCategoryRules?.length || 0} rules from "{selectedCategory}"</span>
-                        </div>
-                      )}
-                      {selectedType !== "table" && selectedRuleKey && (
-                        <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
-                          <CheckSquare className="w-4 h-4" />
-                          <span>Component will auto-populate with "{activeCategoryRules?.find(r => r.rule_key === selectedRuleKey)?.title}"</span>
-                        </div>
-                      )}
-                    </>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Rule Set
+                        </label>
+                        <Select 
+                          value={selectedRuleKey} 
+                          onValueChange={setSelectedRuleKey}
+                          disabled={!selectedCategory || !categoryRules?.length}
+                        >
+                          <SelectTrigger className="w-full bg-input border-border">
+                            <SelectValue placeholder="Select rule set..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-card border-border max-h-48">
+                            {categoryRules?.map((rule) => (
+                              <SelectItem key={rule.rule_key} value={rule.rule_key}>
+                                {rule.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                   )}
-                </div>
-              )}
 
-              {/* No rules available message */}
-              {supportsRules && !hasAnyRulesSource && (
-                <div className="border border-border p-4 bg-muted/10 rounded">
-                  <p className="text-xs text-muted-foreground flex items-center gap-2">
-                    <Library className="w-4 h-4" />
-                    No game system linked. Go to Settings to select a rules system, or the component will start empty.
-                  </p>
+                  {!manualSetup && !hasRulesData && (
+                    <p className="text-xs text-yellow-400">
+                      No rules synced. Go to Campaign Settings to sync your rules repository.
+                    </p>
+                  )}
+
+                  {!manualSetup && selectedRuleKey && (
+                    <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
+                      <CheckSquare className="w-4 h-4" />
+                      <span>Component will auto-populate with "{categoryRules?.find(r => r.rule_key === selectedRuleKey)?.title}"</span>
+                    </div>
+                  )}
                 </div>
               )}
 

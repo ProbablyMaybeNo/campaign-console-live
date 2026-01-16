@@ -7,7 +7,7 @@ import { CreateCampaignModal } from "@/components/campaigns/CreateCampaignModal"
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Library } from "lucide-react";
+import { ArrowLeft, UserPlus, Crown, User, AlertCircle } from "lucide-react";
 
 export default function Campaigns() {
   const { user, signOut } = useAuth();
@@ -51,14 +51,10 @@ export default function Campaigns() {
       <div className="absolute inset-4 border border-cyan-500/30 pointer-events-none" />
       <div className="absolute inset-6 border border-cyan-500/20 pointer-events-none" />
 
-      {/* Admin Library Link */}
-      <Link 
-        to="/admin/game-library" 
-        className="absolute top-8 right-8 p-3 border border-primary/40 text-primary hover:bg-primary/10 transition-colors"
-        title="Admin Game Library"
-      >
-        <Library className="w-6 h-6" />
-      </Link>
+      {/* User icon */}
+      <div className="absolute top-8 right-8 p-3 border border-primary/40 text-primary">
+        <UserPlus className="w-6 h-6" />
+      </div>
 
       <div className="max-w-5xl mx-auto pt-8 relative z-10">
         {/* Back button */}
