@@ -3,9 +3,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useCampaignDocuments, useUploadCampaignDocument, getDocumentContent } from "@/hooks/useCampaignDocuments";
+import { useWargameRules, useRuleCategories, type RuleCategory, type WargameRule } from "@/hooks/useWargameRules";
+import { RulesCategoryBrowser } from "./RulesCategoryBrowser";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -25,7 +28,9 @@ import {
   CheckCircle,
   Table,
   LayoutList,
-  FolderOpen
+  FolderOpen,
+  Book,
+  Sparkles
 } from "lucide-react";
 
 interface AIComponentBuilderProps {
@@ -64,6 +69,16 @@ interface ChatMessage {
   isLoading?: boolean;
 }
 
+// Pre-defined suggestion templates based on common wargame rule categories
+const SUGGESTION_TEMPLATES: Record<string, string[]> = {
+  "Injury": ["Create an injury table widget", "Show me all injury effects as cards"],
+  "Exploration": ["Build an exploration rewards table", "Create loot cards from exploration rules"],
+  "Equipment": ["Create an equipment reference table", "Show weapon stats as a sortable table"],
+  "Advancement": ["Build an advancement table for experience", "Create skill cards for leveling"],
+  "Scenarios": ["Create scenario cards with objectives", "Build a scenario selection table"],
+  "Warband": ["Create a warband composition reference", "Build a quick-reference for warband rules"],
+};
+
 export function AIComponentBuilder({ open, onOpenChange, campaignId }: AIComponentBuilderProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -73,15 +88,42 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDocument, setIsLoadingDocument] = useState(false);
+  const [sourceTab, setSourceTab] = useState<"documents" | "rules">("rules");
+  const [selectedRulesContext, setSelectedRulesContext] = useState<string>("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const createComponent = useCreateComponent();
   
-  // Fetch saved campaign documents
+  // Fetch saved campaign documents and rules
   const { data: campaignDocuments = [] } = useCampaignDocuments(campaignId);
+  const { data: campaignRules = [] } = useWargameRules(campaignId);
+  const ruleCategories = useRuleCategories(campaignId);
   const uploadDocument = useUploadCampaignDocument(campaignId);
+
+  // Get smart suggestions based on available rule categories
+  const getSuggestions = (): string[] => {
+    const suggestions: string[] = [];
+    
+    ruleCategories.forEach(category => {
+      // Check for matching templates
+      const categoryLower = category.category.toLowerCase();
+      Object.entries(SUGGESTION_TEMPLATES).forEach(([key, templates]) => {
+        if (categoryLower.includes(key.toLowerCase())) {
+          suggestions.push(...templates.slice(0, 1));
+        }
+      });
+    });
+    
+    // Add generic suggestions if we have rules
+    if (campaignRules.length > 0 && suggestions.length < 3) {
+      suggestions.push("Create a quick reference table from my rules");
+      suggestions.push("Build cards for all rules in a category");
+    }
+    
+    return suggestions.slice(0, 4);
+  };
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -185,6 +227,9 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
           : "")
       }));
 
+      // Include rules context if selected
+      const rulesContext = selectedRulesContext || undefined;
+
       const { data, error } = await supabase.functions.invoke("ai-component-builder", {
         body: {
           prompt: trimmedInput,
@@ -192,6 +237,7 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
           conversationHistory,
           sourceContent: sourceContent || undefined,
           sourceUrl: sourceUrl || undefined,
+          rulesContext,
         },
       });
 
@@ -303,6 +349,7 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
     setSourceContent("");
     setFileName("");
     setSelectedDocumentId("");
+    setSelectedRulesContext("");
     onOpenChange(false);
   };
 
@@ -313,6 +360,41 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  // Handle rule category selection for context
+  const handleSelectCategory = (category: RuleCategory) => {
+    const rulesText = category.rules
+      .map(r => `${r.title}: ${typeof r.content === 'object' && r.content !== null && 'text' in r.content ? (r.content as {text?: string}).text : JSON.stringify(r.content)}`)
+      .join('\n');
+    setSelectedRulesContext(`[Rules from category "${category.category}"]\n${rulesText}`);
+    toast.success(`Loaded ${category.ruleCount} rules from "${category.category}"`);
+  };
+
+  // Handle single rule selection
+  const handleSelectRule = (rule: WargameRule) => {
+    const ruleText = typeof rule.content === 'object' && rule.content !== null && 'text' in rule.content 
+      ? (rule.content as {text?: string}).text 
+      : JSON.stringify(rule.content);
+    setSelectedRulesContext(`[Rule: ${rule.title}]\n${ruleText}`);
+    toast.success(`Loaded rule "${rule.title}"`);
+  };
+
+  // Create component directly from category
+  const handleCreateFromCategory = async (category: RuleCategory, type: "table" | "card") => {
+    const prompt = type === "table" 
+      ? `Create a table widget from all the rules in the "${category.category}" category. Include Name and Effect columns.`
+      : `Create card widgets for each rule in the "${category.category}" category.`;
+    
+    // Set context and auto-send
+    handleSelectCategory(category);
+    setInput(prompt);
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: string) => {
+    setInput(suggestion);
+    inputRef.current?.focus();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -332,72 +414,112 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
           </DialogTitle>
         </DialogHeader>
 
-        {/* Source Input Bar */}
-        <div className="px-4 py-2 border-b border-border bg-muted/30 flex flex-wrap items-center gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,.txt,.md"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          
-          {/* Saved Documents Dropdown */}
-          {campaignDocuments.length > 0 && !fileName && (
-            <Select
-              value={selectedDocumentId}
-              onValueChange={handleSelectSavedDocument}
-              disabled={isLoadingDocument}
-            >
-              <SelectTrigger className="w-[180px] h-8 text-xs bg-input border-border">
-                <FolderOpen className="w-3 h-3 mr-2" />
-                <SelectValue placeholder="Saved documents" />
-              </SelectTrigger>
-              <SelectContent>
-                {campaignDocuments.map((doc) => (
-                  <SelectItem key={doc.id} value={doc.id} className="text-xs">
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-3 h-3" />
-                      <span className="truncate max-w-[140px]">{doc.name}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-          
-          {fileName ? (
-            <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 px-3 py-1.5 rounded">
-              {isLoadingDocument ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <FileText className="w-3 h-3" />
-              )}
-              <span className="truncate max-w-[150px]">{fileName}</span>
-              <button onClick={clearFile} className="hover:text-destructive">
-                <X className="w-3 h-3" />
-              </button>
+        {/* Source Tabs: Rules Browser & Documents */}
+        <div className="border-b border-border">
+          <Tabs value={sourceTab} onValueChange={(v) => setSourceTab(v as "documents" | "rules")} className="w-full">
+            <div className="px-4 py-2 bg-muted/30">
+              <TabsList className="h-8">
+                <TabsTrigger value="rules" className="text-xs gap-1.5">
+                  <Book className="w-3 h-3" />
+                  Campaign Rules
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="text-xs gap-1.5">
+                  <FolderOpen className="w-3 h-3" />
+                  Documents
+                </TabsTrigger>
+              </TabsList>
             </div>
-          ) : (
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 border border-dashed border-border rounded hover:border-primary/50"
-            >
-              <Upload className="w-3 h-3" />
-              Upload New
-            </button>
-          )}
 
-          <div className="flex-1 min-w-[150px] relative">
-            <Link className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
-            <input
-              type="url"
-              value={sourceUrl}
-              onChange={(e) => setSourceUrl(e.target.value)}
-              placeholder="Or paste a URL..."
-              className="w-full pl-7 pr-3 py-1.5 bg-input border border-border rounded text-xs focus:outline-none focus:border-primary"
-            />
-          </div>
+            <TabsContent value="rules" className="px-4 py-2 m-0 max-h-[180px] overflow-auto">
+              <RulesCategoryBrowser
+                campaignId={campaignId}
+                onSelectCategory={handleSelectCategory}
+                onSelectRule={handleSelectRule}
+                onCreateFromCategory={handleCreateFromCategory}
+              />
+              {selectedRulesContext && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-primary bg-primary/10 px-3 py-1.5 rounded">
+                  <Book className="w-3 h-3" />
+                  <span className="truncate">Rules context loaded</span>
+                  <button 
+                    onClick={() => setSelectedRulesContext("")} 
+                    className="hover:text-destructive ml-auto"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="documents" className="px-4 py-2 m-0">
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.txt,.md"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                
+                {/* Saved Documents Dropdown */}
+                {campaignDocuments.length > 0 && !fileName && (
+                  <Select
+                    value={selectedDocumentId}
+                    onValueChange={handleSelectSavedDocument}
+                    disabled={isLoadingDocument}
+                  >
+                    <SelectTrigger className="w-[180px] h-8 text-xs bg-input border-border">
+                      <FolderOpen className="w-3 h-3 mr-2" />
+                      <SelectValue placeholder="Saved documents" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {campaignDocuments.map((doc) => (
+                        <SelectItem key={doc.id} value={doc.id} className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-3 h-3" />
+                            <span className="truncate max-w-[140px]">{doc.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {fileName ? (
+                  <div className="flex items-center gap-2 text-xs text-primary bg-primary/10 px-3 py-1.5 rounded">
+                    {isLoadingDocument ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <FileText className="w-3 h-3" />
+                    )}
+                    <span className="truncate max-w-[150px]">{fileName}</span>
+                    <button onClick={clearFile} className="hover:text-destructive">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 border border-dashed border-border rounded hover:border-primary/50"
+                  >
+                    <Upload className="w-3 h-3" />
+                    Upload New
+                  </button>
+                )}
+
+                <div className="flex-1 min-w-[150px] relative">
+                  <Link className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+                  <input
+                    type="url"
+                    value={sourceUrl}
+                    onChange={(e) => setSourceUrl(e.target.value)}
+                    placeholder="Or paste a URL..."
+                    className="w-full pl-7 pr-3 py-1.5 bg-input border border-border rounded text-xs focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Chat Messages */}
@@ -407,14 +529,37 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
               <Bot className="w-12 h-12 mb-4 opacity-30" />
               <p className="text-sm font-mono mb-2">How can I help you create components?</p>
               <p className="text-xs max-w-md">
-                Upload a PDF or provide a URL, then ask me to extract specific tables or cards. 
-                I can create multiple components at once!
+                Browse your campaign rules or upload a document, then ask me to create tables or cards.
               </p>
-              <div className="mt-4 space-y-2 text-xs text-left">
-                <p className="text-primary/70">Try saying:</p>
-                <p className="italic">"List all the tables found in the post-battle sequence"</p>
-                <p className="italic">"Create table components for Injury, Exploration, and Advancement"</p>
-              </div>
+              
+              {/* Smart Suggestions */}
+              {getSuggestions().length > 0 && (
+                <div className="mt-4 w-full max-w-md">
+                  <p className="text-xs text-primary/70 mb-2 flex items-center gap-1 justify-center">
+                    <Sparkles className="w-3 h-3" />
+                    Suggested actions:
+                  </p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {getSuggestions().map((suggestion, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="text-xs px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-full transition-colors"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {getSuggestions().length === 0 && (
+                <div className="mt-4 space-y-2 text-xs text-left">
+                  <p className="text-primary/70">Try saying:</p>
+                  <p className="italic">"Create a table from the Injury rules"</p>
+                  <p className="italic">"Build reference cards for all equipment"</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
