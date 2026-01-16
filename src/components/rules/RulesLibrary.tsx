@@ -5,7 +5,7 @@ import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { RulesImporter } from "./RulesImporter";
 import { RuleCard } from "./RuleCard";
 import { useWargameRules } from "@/hooks/useWargameRules";
-import { useSaveRules, ExtractedRule, useClearCampaignRules } from "@/hooks/useRulesManagement";
+import { useClearCampaignRules } from "@/hooks/useRulesManagement";
 import { 
   Search, 
   Plus, 
@@ -30,7 +30,6 @@ export function RulesLibrary({ campaignId, isGM }: RulesLibraryProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   const { data: rules = [], isLoading } = useWargameRules(campaignId);
-  const saveRules = useSaveRules();
   const clearRules = useClearCampaignRules();
 
   // Get unique categories
@@ -52,11 +51,8 @@ export function RulesLibrary({ campaignId, isGM }: RulesLibraryProps) {
     return acc;
   }, {} as Record<string, typeof rules>);
 
-  const handleRulesExtracted = async (extractedRules: ExtractedRule[]) => {
-    await saveRules.mutateAsync({
-      campaignId,
-      rules: extractedRules,
-    });
+  const handleExtractionComplete = () => {
+    // Rules are already saved by the importer, just close the dialog
     setShowImporter(false);
   };
 
@@ -111,7 +107,8 @@ export function RulesLibrary({ campaignId, isGM }: RulesLibraryProps) {
               </DialogTitle>
             </DialogHeader>
             <RulesImporter
-              onRulesExtracted={handleRulesExtracted}
+              campaignId={campaignId}
+              onExtractionComplete={handleExtractionComplete}
               onCancel={() => setShowImporter(false)}
               showCancelButton
             />
@@ -234,7 +231,8 @@ export function RulesLibrary({ campaignId, isGM }: RulesLibraryProps) {
             </DialogTitle>
           </DialogHeader>
           <RulesImporter
-            onRulesExtracted={handleRulesExtracted}
+            campaignId={campaignId}
+            onExtractionComplete={handleExtractionComplete}
             onCancel={() => setShowImporter(false)}
             showCancelButton
           />

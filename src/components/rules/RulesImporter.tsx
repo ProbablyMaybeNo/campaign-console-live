@@ -17,13 +17,15 @@ import {
 import { toast } from "sonner";
 
 interface RulesImporterProps {
-  onRulesExtracted: (rules: ExtractedRule[]) => void;
+  campaignId: string;
+  onExtractionComplete: (summary: { totalRules: number; categories: Record<string, number> }) => void;
   onCancel?: () => void;
   showCancelButton?: boolean;
 }
 
 export function RulesImporter({ 
-  onRulesExtracted, 
+  campaignId,
+  onExtractionComplete, 
   onCancel,
   showCancelButton = false 
 }: RulesImporterProps) {
@@ -34,7 +36,7 @@ export function RulesImporter({
   const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [extractedRules, setExtractedRules] = useState<ExtractedRule[]>([]);
+  const [extractionResult, setExtractionResult] = useState<{ totalRules: number; categories: Record<string, number> } | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [aiProgress, setAiProgress] = useState<{ stage: string; percent: number } | null>(null);
   
@@ -95,8 +97,7 @@ export function RulesImporter({
       { stage: "Scanning for campaign rules", percent: 40 },
       { stage: "Extracting exploration tables", percent: 55 },
       { stage: "Extracting skill tables", percent: 70 },
-      { stage: "Processing equipment & injuries", percent: 85 },
-      { stage: "Finalizing rules structure", percent: 95 },
+      { stage: "Saving to database", percent: 90 },
     ];
 
     let stageIndex = 0;
@@ -105,7 +106,7 @@ export function RulesImporter({
         setAiProgress(stages[stageIndex]);
         stageIndex++;
       }
-    }, 2500);
+    }, 3000);
 
     setAiProgress({ stage: "Initializing AI extraction", percent: 5 });
 
@@ -114,19 +115,21 @@ export function RulesImporter({
         content,
         sourceType: activeTab,
         sourceName: activeTab === "pdf" ? pdfFile?.name : "Pasted text",
+        campaignId,
       });
 
       clearInterval(progressInterval);
       setAiProgress({ stage: "Complete!", percent: 100 });
 
-      setExtractedRules(result.rules);
+      // Store summary for confirmation UI
+      setExtractionResult(result.summary);
       
       // Expand all categories by default
-      const categories = new Set(result.rules.map(r => r.category));
+      const categories = new Set(Object.keys(result.summary.categories));
       setExpandedCategories(categories);
       
       setTimeout(() => setAiProgress(null), 500);
-      toast.success(`Found ${result.rules.length} rules across ${Object.keys(result.summary.categories).length} categories`);
+      toast.success(`Saved ${result.saved} rules to campaign`);
     } catch (error) {
       clearInterval(progressInterval);
       setAiProgress(null);
@@ -135,8 +138,8 @@ export function RulesImporter({
   };
 
   const handleConfirmRules = () => {
-    if (extractedRules.length > 0) {
-      onRulesExtracted(extractedRules);
+    if (extractionResult) {
+      onExtractionComplete(extractionResult);
     }
   };
 
@@ -144,7 +147,7 @@ export function RulesImporter({
     setPdfFile(null);
     setExtractedText("");
     setPastedText("");
-    setExtractedRules([]);
+    setExtractionResult(null);
     setShowPreview(false);
   };
 
@@ -158,55 +161,33 @@ export function RulesImporter({
     setExpandedCategories(next);
   };
 
-  const groupedRules = extractedRules.reduce((acc, rule) => {
-    if (!acc[rule.category]) acc[rule.category] = [];
-    acc[rule.category].push(rule);
-    return acc;
-  }, {} as Record<string, ExtractedRule[]>);
-
-  // Show extracted rules for confirmation
-  if (extractedRules.length > 0) {
+  // Show extraction result for confirmation (rules already saved to DB)
+  if (extractionResult) {
+    const { totalRules, categories } = extractionResult;
+    const categoryCount = Object.keys(categories).length;
+    
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-primary">
             <CheckCircle className="w-5 h-5" />
             <span className="text-sm font-medium">
-              Found {extractedRules.length} rules in {Object.keys(groupedRules).length} categories
+              Saved {totalRules} rules in {categoryCount} categories
             </span>
           </div>
           <TerminalButton variant="ghost" size="sm" onClick={handleReset}>
             <X className="w-4 h-4 mr-1" />
-            Start Over
+            Import More
           </TerminalButton>
         </div>
 
         <div className="border border-border rounded max-h-64 overflow-y-auto">
-          {Object.entries(groupedRules).map(([category, rules]) => (
+          {Object.entries(categories).map(([category, count]) => (
             <div key={category} className="border-b border-border last:border-b-0">
-              <button
-                onClick={() => toggleCategory(category)}
-                className="w-full flex items-center justify-between p-3 hover:bg-accent/30 text-left"
-              >
+              <div className="w-full flex items-center justify-between p-3 text-left">
                 <span className="text-sm font-mono text-primary">{category}</span>
-                <span className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">{rules.length} rules</span>
-                  {expandedCategories.has(category) ? (
-                    <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </span>
-              </button>
-              {expandedCategories.has(category) && (
-                <div className="px-3 pb-3 space-y-1">
-                  {rules.map((rule, idx) => (
-                    <div key={idx} className="text-xs text-muted-foreground pl-3 border-l border-border">
-                      {rule.title}
-                    </div>
-                  ))}
-                </div>
-              )}
+                <span className="text-xs text-muted-foreground">{count} rules</span>
+              </div>
             </div>
           ))}
         </div>
@@ -219,7 +200,7 @@ export function RulesImporter({
           )}
           <TerminalButton onClick={handleConfirmRules} className="flex-1">
             <CheckCircle className="w-4 h-4 mr-2" />
-            Use These Rules
+            Done
           </TerminalButton>
         </div>
       </div>

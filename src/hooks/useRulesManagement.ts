@@ -13,7 +13,7 @@ export interface ExtractedRule {
 
 export interface ExtractionResult {
   success: boolean;
-  rules: ExtractedRule[];
+  saved: number;
   summary: {
     totalRules: number;
     categories: Record<string, number>;
@@ -25,24 +25,32 @@ export interface ExtractionResult {
  * Extract rules from text content using AI
  */
 export function useExtractRules() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: async ({
       content,
       sourceType,
       sourceName,
+      campaignId,
     }: {
       content: string;
       sourceType: "pdf" | "text";
       sourceName?: string;
+      campaignId: string;
     }): Promise<ExtractionResult> => {
       const { data, error } = await supabase.functions.invoke("extract-rules", {
-        body: { content, sourceType, sourceName },
+        body: { content, sourceType, sourceName, campaignId },
       });
 
       if (error) throw error;
       if (!data.success) throw new Error(data.error || "Failed to extract rules");
 
       return data;
+    },
+    onSuccess: (result, variables) => {
+      // Invalidate the rules query so UI fetches fresh data
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to extract rules: ${error.message}`);

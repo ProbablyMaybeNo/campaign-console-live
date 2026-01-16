@@ -4,7 +4,6 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useCreateCampaign } from "@/hooks/useCampaigns";
-import { useSaveRules, ExtractedRule } from "@/hooks/useRulesManagement";
 import { RulesImporter } from "@/components/rules/RulesImporter";
 import { Gamepad2, FileText, SkipForward, CheckCircle } from "lucide-react";
 
@@ -17,25 +16,14 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pointsLimit, setPointsLimit] = useState("1000");
-  const [step, setStep] = useState<"details" | "rules">("details");
-  const [extractedRules, setExtractedRules] = useState<ExtractedRule[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
+  const [step, setStep] = useState<"details" | "creating" | "rules" | "done">("details");
+  const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
+  const [rulesSummary, setRulesSummary] = useState<{ totalRules: number; categories: Record<string, number> } | null>(null);
   
   const createCampaign = useCreateCampaign();
-  const saveRules = useSaveRules();
 
-  const handleDetailsNext = () => {
-    if (name.trim()) {
-      setStep("rules");
-    }
-  };
-
-  const handleRulesExtracted = (rules: ExtractedRule[]) => {
-    setExtractedRules(rules);
-  };
-
-  const handleCreateCampaign = async (skipRules: boolean = false) => {
-    setIsSaving(true);
+  const handleCreateAndImportRules = async () => {
+    setStep("creating");
     try {
       const campaign = await createCampaign.mutateAsync({
         name,
@@ -43,21 +31,41 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
         points_limit: parseInt(pointsLimit) || 1000,
       });
 
-      // Save rules if we have them
-      if (!skipRules && extractedRules.length > 0 && campaign) {
-        await saveRules.mutateAsync({
-          campaignId: campaign.id,
-          rules: extractedRules,
-        });
+      if (campaign) {
+        setCreatedCampaignId(campaign.id);
+        setStep("rules");
       }
+    } catch (error) {
+      console.error("Failed to create campaign:", error);
+      setStep("details");
+    }
+  };
+
+  const handleSkipRules = async () => {
+    setStep("creating");
+    try {
+      await createCampaign.mutateAsync({
+        name,
+        description: description || undefined,
+        points_limit: parseInt(pointsLimit) || 1000,
+      });
 
       resetForm();
       onClose();
     } catch (error) {
       console.error("Failed to create campaign:", error);
-    } finally {
-      setIsSaving(false);
+      setStep("details");
     }
+  };
+
+  const handleExtractionComplete = (summary: { totalRules: number; categories: Record<string, number> }) => {
+    setRulesSummary(summary);
+    setStep("done");
+  };
+
+  const handleFinish = () => {
+    resetForm();
+    onClose();
   };
 
   const resetForm = () => {
@@ -65,23 +73,31 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     setDescription("");
     setPointsLimit("1000");
     setStep("details");
-    setExtractedRules([]);
-    setIsSaving(false);
+    setCreatedCampaignId(null);
+    setRulesSummary(null);
   };
 
   const handleClose = () => {
-    resetForm();
-    onClose();
+    // If campaign was created, just close (don't reset)
+    if (createdCampaignId) {
+      onClose();
+      // Reset after close animation
+      setTimeout(resetForm, 300);
+    } else {
+      resetForm();
+      onClose();
+    }
   };
-
-  const isCreating = createCampaign.isPending || saveRules.isPending || isSaving;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="bg-card border-primary/30 max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-primary uppercase tracking-widest text-sm">
-            {step === "details" ? "[Create New Campaign]" : "[Import Rules]"}
+            {step === "details" && "[Create New Campaign]"}
+            {step === "creating" && "[Creating Campaign]"}
+            {step === "rules" && "[Import Rules]"}
+            {step === "done" && "[Campaign Created]"}
           </DialogTitle>
         </DialogHeader>
 
@@ -125,7 +141,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
                 Cancel
               </TerminalButton>
               <TerminalButton
-                onClick={handleDetailsNext}
+                onClick={handleCreateAndImportRules}
                 className="flex-1"
                 disabled={!name.trim()}
               >
@@ -135,89 +151,61 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
           </div>
         )}
 
-        {step === "rules" && (
+        {step === "creating" && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <TerminalLoader text="Creating campaign" />
+          </div>
+        )}
+
+        {step === "rules" && createdCampaignId && (
           <div className="space-y-4">
-            {extractedRules.length === 0 ? (
-              <>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 p-3 rounded border border-border">
-                  <Gamepad2 className="w-4 h-4" />
-                  <span>Upload a PDF or paste text to import your wargame rules</span>
-                </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 p-3 rounded border border-border">
+              <Gamepad2 className="w-4 h-4" />
+              <span>Upload a PDF or paste text to import your wargame rules</span>
+            </div>
 
-                <RulesImporter
-                  onRulesExtracted={handleRulesExtracted}
-                  onCancel={() => setStep("details")}
-                  showCancelButton={false}
-                />
+            <RulesImporter
+              campaignId={createdCampaignId}
+              onExtractionComplete={handleExtractionComplete}
+              onCancel={handleFinish}
+              showCancelButton={false}
+            />
 
-                <div className="flex gap-3 pt-2 border-t border-border">
-                  <TerminalButton
-                    variant="outline"
-                    onClick={() => setStep("details")}
-                    className="flex-1"
-                  >
-                    Back
-                  </TerminalButton>
-                  <TerminalButton
-                    variant="ghost"
-                    onClick={() => handleCreateCampaign(true)}
-                    disabled={isCreating}
-                    className="flex-1"
-                  >
-                    <SkipForward className="w-4 h-4 mr-2" />
-                    Skip for Now
-                  </TerminalButton>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 text-primary bg-primary/10 p-3 rounded border border-primary/30">
-                  <CheckCircle className="w-5 h-5" />
-                  <span className="text-sm font-medium">
-                    {extractedRules.length} rules ready to import
-                  </span>
-                </div>
+            <div className="flex gap-3 pt-2 border-t border-border">
+              <TerminalButton
+                variant="ghost"
+                onClick={handleFinish}
+                className="flex-1"
+              >
+                <SkipForward className="w-4 h-4 mr-2" />
+                Skip for Now
+              </TerminalButton>
+            </div>
+          </div>
+        )}
 
-                <div className="border border-border rounded max-h-48 overflow-y-auto p-3">
-                  {Object.entries(
-                    extractedRules.reduce((acc, r) => {
-                      acc[r.category] = (acc[r.category] || 0) + 1;
-                      return acc;
-                    }, {} as Record<string, number>)
-                  ).map(([cat, count]) => (
-                    <div key={cat} className="flex justify-between text-xs py-1">
-                      <span className="text-muted-foreground">{cat}</span>
-                      <span className="font-mono text-primary">{count}</span>
-                    </div>
-                  ))}
-                </div>
+        {step === "done" && rulesSummary && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-primary bg-primary/10 p-3 rounded border border-primary/30">
+              <CheckCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">
+                Campaign created with {rulesSummary.totalRules} rules
+              </span>
+            </div>
 
-                <div className="flex gap-3 pt-2">
-                  <TerminalButton
-                    variant="outline"
-                    onClick={() => setExtractedRules([])}
-                    className="flex-1"
-                    disabled={isCreating}
-                  >
-                    Import Different
-                  </TerminalButton>
-                  <TerminalButton
-                    onClick={() => handleCreateCampaign(false)}
-                    className="flex-1"
-                    disabled={isCreating}
-                  >
-                    {isCreating ? (
-                      <TerminalLoader text="Creating" size="sm" />
-                    ) : (
-                      <>
-                        <FileText className="w-4 h-4 mr-2" />
-                        Create Campaign
-                      </>
-                    )}
-                  </TerminalButton>
+            <div className="border border-border rounded max-h-48 overflow-y-auto p-3">
+              {Object.entries(rulesSummary.categories).map(([cat, count]) => (
+                <div key={cat} className="flex justify-between text-xs py-1">
+                  <span className="text-muted-foreground">{cat}</span>
+                  <span className="font-mono text-primary">{count}</span>
                 </div>
-              </>
-            )}
+              ))}
+            </div>
+
+            <TerminalButton onClick={handleFinish} className="w-full">
+              <FileText className="w-4 h-4 mr-2" />
+              Open Campaign
+            </TerminalButton>
           </div>
         )}
       </DialogContent>

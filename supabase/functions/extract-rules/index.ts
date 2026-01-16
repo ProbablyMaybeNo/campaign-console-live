@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,7 @@ interface ExtractRequest {
   content: string;
   sourceType: "pdf" | "text";
   sourceName?: string;
+  campaignId: string;  // Required for save-first mode
 }
 
 interface ExtractedRule {
@@ -37,7 +39,16 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { content, sourceType, sourceName } = await req.json() as ExtractRequest;
+    const { content, sourceType, sourceName, campaignId } = await req.json() as ExtractRequest;
+
+    if (!campaignId) {
+      return new Response(JSON.stringify({ 
+        error: "Campaign ID is required for save-first extraction." 
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!content || content.trim().length < 50) {
       return new Response(JSON.stringify({ 
@@ -48,8 +59,20 @@ serve(async (req) => {
       });
     }
 
+    // Get auth token from request for Supabase client
+    const authHeader = req.headers.get("Authorization");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: authHeader ? { Authorization: authHeader } : {},
+      },
+    });
+
     console.log(`Extracting rules from ${sourceType} source: ${sourceName || "unnamed"}`);
     console.log(`Content length: ${content.length} characters`);
+    console.log(`Campaign ID: ${campaignId}`);
 
     const systemPrompt = `You are an expert at extracting and structuring tabletop wargaming rules from raw text.
 Your task is to identify and categorize ALL rules, tables, and game content into structured data.
@@ -391,19 +414,45 @@ ${sourceText}`;
     console.log("Extracted rules:", rules.length);
     console.log("Categories:", categorySummary);
 
-    // Return summary info plus rules - client handles large payload
+    // SAVE-FIRST: Insert rules directly into database
+    const dbRules = rules.map((rule) => ({
+      campaign_id: campaignId,
+      category: rule.category,
+      rule_key: rule.rule_key,
+      title: rule.title,
+      content: rule.content,
+      metadata: rule.metadata,
+    }));
+
+    const { data: insertedRules, error: insertError } = await supabase
+      .from("wargame_rules")
+      .insert(dbRules)
+      .select("id, category, title");
+
+    if (insertError) {
+      console.error("Failed to save rules:", insertError);
+      return new Response(JSON.stringify({ 
+        error: `Failed to save rules to database: ${insertError.message}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("Saved rules to database:", insertedRules?.length || 0);
+
+    // Return only summary - client will fetch full rules from database
     return new Response(JSON.stringify({ 
       success: true,
-      rules,
+      saved: insertedRules?.length || 0,
       summary: {
         totalRules: rules.length,
         categories: categorySummary
       }
-    }, null, 0), {  // No pretty-printing to reduce size
+    }, null, 0), {
       headers: { 
         ...corsHeaders, 
         "Content-Type": "application/json",
-        "Content-Encoding": "identity"  // No compression, let client handle it
       },
     });
 
