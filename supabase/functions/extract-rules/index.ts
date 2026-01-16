@@ -391,6 +391,7 @@ ${sourceText}`;
     console.log("Extracted rules:", rules.length);
     console.log("Categories:", categorySummary);
 
+    // Return summary info plus rules - client handles large payload
     return new Response(JSON.stringify({ 
       success: true,
       rules,
@@ -398,8 +399,12 @@ ${sourceText}`;
         totalRules: rules.length,
         categories: categorySummary
       }
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    }, null, 0), {  // No pretty-printing to reduce size
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "application/json",
+        "Content-Encoding": "identity"  // No compression, let client handle it
+      },
     });
 
   } catch (error) {
