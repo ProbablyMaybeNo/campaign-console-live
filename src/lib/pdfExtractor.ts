@@ -1,7 +1,5 @@
-import * as pdfjsLib from "pdfjs-dist";
-
-// Configure PDF.js worker from CDN (matching version 3.11.174)
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js`;
+// PDF.js loaded dynamically from CDN to avoid large package install
+let pdfjsLib: any = null;
 
 export interface PDFExtractionResult {
   text: string;
@@ -15,6 +13,33 @@ export interface ExtractionProgress {
   percentage: number;
 }
 
+async function loadPdfJs(): Promise<any> {
+  if (pdfjsLib) return pdfjsLib;
+  
+  // Check if already loaded globally
+  if ((window as any).pdfjsLib) {
+    pdfjsLib = (window as any).pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    return pdfjsLib;
+  }
+  
+  // Dynamically load PDF.js from CDN
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  
+  await new Promise<void>((resolve, reject) => {
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load PDF.js'));
+    document.head.appendChild(script);
+  });
+  
+  // Access the global pdfjsLib
+  pdfjsLib = (window as any).pdfjsLib;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  
+  return pdfjsLib;
+}
+
 /**
  * Extract text content from a PDF file
  * @param file The PDF file to extract from
@@ -25,8 +50,9 @@ export async function extractTextFromPDF(
   file: File,
   onProgress?: (progress: ExtractionProgress) => void
 ): Promise<PDFExtractionResult> {
+  const pdfjs = await loadPdfJs();
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
   
   const pageCount = pdf.numPages;
   const textParts: string[] = [];
@@ -37,7 +63,7 @@ export async function extractTextFromPDF(
     
     // Extract text items and join them
     const pageText = textContent.items
-      .map((item) => {
+      .map((item: any) => {
         if ("str" in item && typeof item.str === "string") {
           return item.str;
         }
