@@ -166,7 +166,85 @@ CRITICAL INSTRUCTIONS:
 7. If a table has 6 entries, include all 6. If it has 36, include all 36.
 8. Generate unique rule_key values (lowercase_with_underscores)`;
 
-    const userPrompt = `Extract ALL rules and tables from this wargaming rulebook. 
+    function buildSourceTextForExtraction(raw: string): string {
+      const total = raw.length;
+      const lower = raw.toLowerCase();
+
+      const keywords = [
+        "campaign rules",
+        "campaign",
+        "post-battle",
+        "between games",
+        "exploration",
+        "common exploration",
+        "rare exploration",
+        "legendary exploration",
+        "skills",
+        "skill",
+        "advancement",
+        "injury",
+      ];
+
+      type Interval = { start: number; end: number; reason: string };
+      const intervals: Interval[] = [];
+
+      const addInterval = (start: number, end: number, reason: string) => {
+        const s = Math.max(0, Math.min(total, start));
+        const e = Math.max(0, Math.min(total, end));
+        if (e - s < 200) return;
+        intervals.push({ start: Math.min(s, e), end: Math.max(s, e), reason });
+      };
+
+      // Always include start + end, because many books place tables later.
+      addInterval(0, Math.min(120_000, total), "start");
+      addInterval(Math.max(0, total - 90_000), total, "end");
+
+      for (const kw of keywords) {
+        const idx = lower.indexOf(kw);
+        if (idx === -1) continue;
+        console.log(`Keyword hit: "${kw}" at ${idx}`);
+        addInterval(idx - 15_000, idx + 55_000, `kw:${kw}`);
+      }
+
+      // Merge overlaps
+      intervals.sort((a, b) => a.start - b.start);
+      const merged: Interval[] = [];
+      for (const it of intervals) {
+        const last = merged[merged.length - 1];
+        if (!last) {
+          merged.push({ ...it });
+          continue;
+        }
+        if (it.start <= last.end + 2_000) {
+          last.end = Math.max(last.end, it.end);
+          last.reason = `${last.reason}|${it.reason}`;
+        } else {
+          merged.push({ ...it });
+        }
+      }
+
+      const maxTotalChars = 180_000;
+      let used = 0;
+      const parts: string[] = [];
+
+      for (const m of merged) {
+        if (used >= maxTotalChars) break;
+        let slice = raw.slice(m.start, m.end);
+        if (used + slice.length > maxTotalChars) {
+          slice = slice.slice(0, maxTotalChars - used);
+        }
+        parts.push(`\n\n--- EXCERPT (${m.start}-${m.end}) [${m.reason}] ---\n\n`);
+        parts.push(slice);
+        used += slice.length;
+      }
+
+      return parts.join("");
+    }
+
+    const sourceText = buildSourceTextForExtraction(content);
+    console.log(`Extraction source length: ${sourceText.length} characters`);
+
+    const userPrompt = `Extract ALL rules and tables from this wargaming rulebook.
 
 IMPORTANT - THOROUGHLY SCAN FOR:
 1. CAMPAIGN RULES SECTION - Post-battle, between games, territory, income
@@ -174,13 +252,15 @@ IMPORTANT - THOROUGHLY SCAN FOR:
 3. ALL SKILL TABLES - Every skill category as a separate entry
 4. ALL EQUIPMENT/WEAPON TABLES
 5. ALL INJURY/CASUALTY TABLES
-6. EVERY OTHER TABLE in the document
+6. EVERY OTHER TABLE or titled results section in the document
 
-Create a SEPARATE rule entry for each distinct table. Do not combine tables.
+If something is clearly a named section (e.g. "Common Exploration", "Shooting Skills") but the formatting is messy, STILL extract it as a rule entry (use type "list" or "text" if needed).
+
+Create a SEPARATE rule entry for each distinct table/section. Do not combine tables.
 Include EVERY entry in each table - if a D6 table has 6 results, include all 6.
 
 SOURCE TEXT:
-${content.substring(0, 100000)}`;
+${sourceText}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -189,7 +269,8 @@ ${content.substring(0, 100000)}`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-pro",
+        max_tokens: 8192,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
