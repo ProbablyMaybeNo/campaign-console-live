@@ -45,6 +45,14 @@ export default function CampaignDashboard() {
   const [showAIBuilder, setShowAIBuilder] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeView, setActiveView] = useState<DashboardView>("dashboard");
+  const [dismissedGettingStarted, setDismissedGettingStarted] = useState(() => {
+    return localStorage.getItem(`campaign-${campaignId}-dismissed-welcome`) === "true";
+  });
+
+  const handleDismissWelcome = () => {
+    localStorage.setItem(`campaign-${campaignId}-dismissed-welcome`, "true");
+    setDismissedGettingStarted(true);
+  };
 
   const isLoading = campaignLoading || componentsLoading;
 
@@ -72,12 +80,13 @@ export default function CampaignDashboard() {
   const renderMainContent = () => {
     switch (activeView) {
       case "dashboard":
-        // Show getting started card for new campaigns with no components
-        if (isNewCampaign && isGM) {
+        // Show getting started card for new campaigns with no components (unless dismissed)
+        if (isNewCampaign && isGM && !dismissedGettingStarted) {
           return (
             <GettingStartedCard
               onOpenAIBuilder={() => setShowAIBuilder(true)}
               onOpenRules={() => setActiveView("rules")}
+              onDismiss={handleDismissWelcome}
             />
           );
         }
