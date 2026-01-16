@@ -90,14 +90,11 @@ export function RulesImporter({
       return;
     }
 
-    // Simulate progress stages for AI processing
+    // Lightweight progress indicator (real work happens server-side and can take a few minutes)
     const stages = [
       { stage: "Preparing document excerpts", percent: 10 },
       { stage: "Sending to AI for analysis", percent: 25 },
-      { stage: "Scanning for campaign rules", percent: 40 },
-      { stage: "Extracting exploration tables", percent: 55 },
-      { stage: "Extracting skill tables", percent: 70 },
-      { stage: "Saving to database", percent: 90 },
+      { stage: "Extracting rules & tables (this can take 1–3 minutes)", percent: 70 },
     ];
 
     let stageIndex = 0;
@@ -105,8 +102,13 @@ export function RulesImporter({
       if (stageIndex < stages.length) {
         setAiProgress(stages[stageIndex]);
         stageIndex++;
+
+        // Hold on the last stage (avoid misleading 'saving to database' while still processing)
+        if (stageIndex >= stages.length) {
+          clearInterval(progressInterval);
+        }
       }
-    }, 3000);
+    }, 4000);
 
     setAiProgress({ stage: "Initializing AI extraction", percent: 5 });
 
