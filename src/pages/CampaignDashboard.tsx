@@ -14,6 +14,7 @@ import { MessagesWidget } from "@/components/dashboard/widgets/MessagesWidget";
 import { NarrativeWidget } from "@/components/dashboard/widgets/NarrativeWidget";
 import { ScheduleWidget } from "@/components/dashboard/widgets/ScheduleWidget";
 import { RulesLibrary } from "@/components/rules/RulesLibrary";
+import { GettingStartedCard } from "@/components/dashboard/GettingStartedCard";
 import { 
   ArrowLeft, 
   Settings, 
@@ -66,9 +67,20 @@ export default function CampaignDashboard() {
     );
   }
 
+  const isNewCampaign = components.length === 0;
+
   const renderMainContent = () => {
     switch (activeView) {
       case "dashboard":
+        // Show getting started card for new campaigns with no components
+        if (isNewCampaign && isGM) {
+          return (
+            <GettingStartedCard
+              onOpenAIBuilder={() => setShowAIBuilder(true)}
+              onOpenRules={() => setActiveView("rules")}
+            />
+          );
+        }
         return (
           <InfiniteCanvas
             components={components}
