@@ -164,18 +164,19 @@ export function RulesPreview({
           </p>
         </div>
         <div className="flex gap-2">
-          {sourceTexts.length > 0 && (
-            <TerminalButton 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowSourceText(!showSourceText)}
-            >
-              {showSourceText ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-              {showSourceText ? "Hide" : "View"} Source
-            </TerminalButton>
-          )}
           <TerminalButton 
             variant="ghost" 
+            size="sm" 
+            onClick={() => setShowSourceText(!showSourceText)}
+            disabled={sourceTexts.length === 0}
+            title={sourceTexts.length === 0 ? "No source text available" : "View raw unparsed text"}
+          >
+            {showSourceText ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+            {showSourceText ? "Hide" : "View"} Source
+            {sourceTexts.length > 0 && <span className="ml-1 text-xs text-muted-foreground">({sourceTexts.length})</span>}
+          </TerminalButton>
+          <TerminalButton 
+            variant={rules.length === 0 ? "default" : "ghost"}
             size="sm" 
             onClick={() => setIsAddingManual(!isAddingManual)}
           >
@@ -289,8 +290,12 @@ export function RulesPreview({
         {rules.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-yellow-400" />
-            <p className="text-sm">No rules were auto-extracted.</p>
-            <p className="text-xs mt-1">Use "View Source" to see the raw text and "Add Rule" to manually create rules.</p>
+            <p className="text-sm font-medium">No rules were auto-extracted</p>
+            <p className="text-xs mt-2 max-w-sm mx-auto">
+              {sourceTexts.length > 0 
+                ? "Click 'View Source' above to see the raw extracted text, then use 'Add Rule' to manually create rules from it."
+                : "Click 'Add Rule' above to manually create rules by typing or pasting content."}
+            </p>
           </div>
         ) : (
           rules.map((rule, index) => (
@@ -322,7 +327,7 @@ export function RulesPreview({
           className="flex-1"
         >
           <Save className="w-4 h-4 mr-2" />
-          {isSaving ? "Saving..." : `Save ${rules.length} Rules`}
+          {isSaving ? "Saving..." : rules.length === 0 ? "Add rules to save" : `Save ${rules.length} Rules`}
         </TerminalButton>
       </div>
     </div>
