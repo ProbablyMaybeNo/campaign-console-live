@@ -350,6 +350,7 @@ export function RulesImporter({
               <Checkbox 
                 checked={selectedSectionIds.has(section.id)} 
                 onCheckedChange={() => toggleSection(section.id)}
+                onClick={(e) => e.stopPropagation()}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
