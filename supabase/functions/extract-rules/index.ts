@@ -198,7 +198,7 @@ serve(async (req) => {
     console.log("Extracted rules:", rules.length);
     console.log("Categories:", categorySummary);
 
-    // If preview mode, return rules without saving
+    // If preview mode, return rules without saving - include source text for unparsed content view
     if (previewMode) {
       console.log("Preview mode: returning rules without saving");
       return new Response(JSON.stringify({ 
@@ -213,6 +213,8 @@ serve(async (req) => {
           validation_status: r.validation_status,
         })),
         section: focusedSection?.name || "full_document",
+        // Include source text for user to review unparsed content
+        sourceText: sourceText.length > 100000 ? sourceText.slice(0, 100000) : sourceText,
         summary: {
           totalRules: rules.length,
           categories: categorySummary,

@@ -83,9 +83,10 @@ export function usePreviewExtraction() {
       sections: DetectedSection[];
       sourceType: "pdf" | "text";
       sourceName?: string;
-    }): Promise<{ rules: ExtractedRule[]; summary: { totalRules: number; categories: Record<string, number> } }> => {
+    }): Promise<{ rules: ExtractedRule[]; summary: { totalRules: number; categories: Record<string, number> }; sourceTexts: Array<{ section: string; text: string }> }> => {
       const allRules: ExtractedRule[] = [];
       const allCategories: Record<string, number> = {};
+      const sourceTexts: Array<{ section: string; text: string }> = [];
 
       // Process sections in batches of 2 for preview
       for (let i = 0; i < sections.length; i += 2) {
@@ -111,23 +112,35 @@ export function usePreviewExtraction() {
             if (error) throw error;
             if (!data.success) throw new Error(data.error || "Extraction failed");
             
-            return data.rules as ExtractedRule[];
+            return { 
+              rules: data.rules as ExtractedRule[], 
+              sourceText: data.sourceText as string | undefined,
+              section: section.name
+            };
           })
         );
 
         results.forEach((result) => {
           if (result.status === "fulfilled" && result.value) {
-            allRules.push(...result.value);
-            result.value.forEach(rule => {
+            allRules.push(...result.value.rules);
+            result.value.rules.forEach(rule => {
               allCategories[rule.category] = (allCategories[rule.category] || 0) + 1;
             });
+            // Collect source text for unparsed content viewing
+            if (result.value.sourceText) {
+              sourceTexts.push({ 
+                section: result.value.section, 
+                text: result.value.sourceText 
+              });
+            }
           }
         });
       }
 
       return {
         rules: allRules,
-        summary: { totalRules: allRules.length, categories: allCategories }
+        summary: { totalRules: allRules.length, categories: allCategories },
+        sourceTexts
       };
     },
     onError: (error: Error) => {

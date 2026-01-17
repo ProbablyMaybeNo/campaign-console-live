@@ -17,7 +17,11 @@ import {
   Save,
   AlertTriangle,
   Check,
-  X
+  X,
+  FileText,
+  Plus,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 export interface PreviewRule {
@@ -38,10 +42,17 @@ type RuleContent =
   | { type: "stats_table"; columns: string[]; rows: Array<Record<string, string>> }
   | { type: "equipment"; items: Array<{ name: string; cost?: string; stats?: string; effect?: string }> };
 
+interface SourceText {
+  section: string;
+  text: string;
+}
+
 interface RulesPreviewProps {
   rules: PreviewRule[];
+  sourceTexts?: SourceText[];
   onUpdateRule: (index: number, rule: PreviewRule) => void;
   onDeleteRule: (index: number) => void;
+  onAddRule: (rule: PreviewRule) => void;
   onSaveAll: () => void;
   onCancel: () => void;
   isSaving?: boolean;
@@ -66,14 +77,22 @@ const CATEGORIES = [
 
 export function RulesPreview({ 
   rules, 
+  sourceTexts = [],
   onUpdateRule, 
-  onDeleteRule, 
+  onDeleteRule,
+  onAddRule,
   onSaveAll,
   onCancel,
   isSaving 
 }: RulesPreviewProps) {
   const [expandedRules, setExpandedRules] = useState<Set<number>>(new Set([0]));
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showSourceText, setShowSourceText] = useState(false);
+  const [selectedSourceSection, setSelectedSourceSection] = useState<string | null>(null);
+  const [isAddingManual, setIsAddingManual] = useState(false);
+  const [newRuleTitle, setNewRuleTitle] = useState("");
+  const [newRuleCategory, setNewRuleCategory] = useState("Core Rules");
+  const [newRuleContent, setNewRuleContent] = useState("");
 
   const toggleExpand = (index: number) => {
     setExpandedRules(prev => {
@@ -101,11 +120,33 @@ export function RulesPreview({
     setEditingIndex(null);
   };
 
+  const handleAddManualRule = () => {
+    if (!newRuleTitle.trim() || !newRuleContent.trim()) return;
+    
+    const newRule: PreviewRule = {
+      category: newRuleCategory,
+      rule_key: `manual_${Date.now()}`,
+      title: newRuleTitle.trim(),
+      content: { type: "text", text: newRuleContent.trim() },
+      metadata: { source_type: "manual", manual_entry: true },
+      validation_status: "complete"
+    };
+    
+    onAddRule(newRule);
+    setNewRuleTitle("");
+    setNewRuleContent("");
+    setIsAddingManual(false);
+  };
+
   const incompleteCount = rules.filter(r => r.validation_status !== "complete").length;
   const categories = rules.reduce((acc, rule) => {
     acc[rule.category] = (acc[rule.category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const currentSourceText = selectedSourceSection 
+    ? sourceTexts.find(s => s.section === selectedSourceSection)?.text 
+    : sourceTexts[0]?.text;
 
   return (
     <div className="space-y-4">
@@ -122,24 +163,151 @@ export function RulesPreview({
             )}
           </p>
         </div>
+        <div className="flex gap-2">
+          {sourceTexts.length > 0 && (
+            <TerminalButton 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowSourceText(!showSourceText)}
+            >
+              {showSourceText ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+              {showSourceText ? "Hide" : "View"} Source
+            </TerminalButton>
+          )}
+          <TerminalButton 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setIsAddingManual(!isAddingManual)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Rule
+          </TerminalButton>
+        </div>
       </div>
+
+      {/* Manual Rule Creator */}
+      {isAddingManual && (
+        <div className="border border-primary/30 rounded p-3 bg-primary/5 space-y-3">
+          <p className="text-xs font-medium text-primary">Add Rule Manually</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase">Title</label>
+              <Input 
+                value={newRuleTitle} 
+                onChange={(e) => setNewRuleTitle(e.target.value)} 
+                placeholder="Rule title..."
+                className="h-8 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] text-muted-foreground uppercase">Category</label>
+              <Select value={newRuleCategory} onValueChange={setNewRuleCategory}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-muted-foreground uppercase">Content</label>
+            <Textarea 
+              value={newRuleContent} 
+              onChange={(e) => setNewRuleContent(e.target.value)} 
+              placeholder="Paste or type the rule content..."
+              className="h-20 text-sm resize-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <TerminalButton 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsAddingManual(false)}
+            >
+              Cancel
+            </TerminalButton>
+            <TerminalButton 
+              size="sm" 
+              onClick={handleAddManualRule}
+              disabled={!newRuleTitle.trim() || !newRuleContent.trim()}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add Rule
+            </TerminalButton>
+          </div>
+        </div>
+      )}
+
+      {/* Source Text Viewer */}
+      {showSourceText && sourceTexts.length > 0 && (
+        <div className="border border-border rounded bg-muted/20">
+          <div className="flex items-center justify-between p-2 border-b border-border">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs font-medium">Source Text (Unparsed Content)</span>
+            </div>
+            {sourceTexts.length > 1 && (
+              <Select 
+                value={selectedSourceSection || sourceTexts[0]?.section} 
+                onValueChange={setSelectedSourceSection}
+              >
+                <SelectTrigger className="h-6 text-xs w-40">
+                  <SelectValue placeholder="Select section" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceTexts.map(st => (
+                    <SelectItem key={st.section} value={st.section} className="text-xs">
+                      {st.section}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+          <div className="p-3 max-h-40 overflow-y-auto">
+            <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">
+              {currentSourceText?.slice(0, 5000) || "No source text available"}
+              {currentSourceText && currentSourceText.length > 5000 && (
+                <span className="text-primary">... ({(currentSourceText.length - 5000).toLocaleString()} more characters)</span>
+              )}
+            </pre>
+          </div>
+          <div className="p-2 border-t border-border bg-muted/30">
+            <p className="text-[10px] text-muted-foreground">
+              💡 Tip: Select text you want to capture, then use "Add Rule" above to manually create a rule from it.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Rules list */}
       <div className="border border-border rounded max-h-80 overflow-y-auto">
-        {rules.map((rule, index) => (
-          <RulePreviewItem
-            key={`${rule.rule_key}-${index}`}
-            rule={rule}
-            index={index}
-            isExpanded={expandedRules.has(index)}
-            isEditing={editingIndex === index}
-            onToggle={() => toggleExpand(index)}
-            onEdit={() => startEditing(index)}
-            onDelete={() => onDeleteRule(index)}
-            onSave={(updated) => saveEdit(index, updated)}
-            onCancelEdit={cancelEditing}
-          />
-        ))}
+        {rules.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground">
+            <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-yellow-400" />
+            <p className="text-sm">No rules were auto-extracted.</p>
+            <p className="text-xs mt-1">Use "View Source" to see the raw text and "Add Rule" to manually create rules.</p>
+          </div>
+        ) : (
+          rules.map((rule, index) => (
+            <RulePreviewItem
+              key={`${rule.rule_key}-${index}`}
+              rule={rule}
+              index={index}
+              isExpanded={expandedRules.has(index)}
+              isEditing={editingIndex === index}
+              onToggle={() => toggleExpand(index)}
+              onEdit={() => startEditing(index)}
+              onDelete={() => onDeleteRule(index)}
+              onSave={(updated) => saveEdit(index, updated)}
+              onCancelEdit={cancelEditing}
+            />
+          ))
+        )}
       </div>
 
       {/* Actions */}
