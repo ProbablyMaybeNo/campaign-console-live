@@ -20,8 +20,7 @@ import {
   BookOpen,
   Sword,
   Star,
-  Loader2,
-  Eye
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -360,34 +359,90 @@ export function RulesImporter({
   // Step: Extracting with progress
   if (step === "extracting") {
     const selectedCount = detectedSections.filter(s => selectedSectionIds.has(s.id)).length || 1;
+    const selectedSections = detectedSections.filter(s => selectedSectionIds.has(s.id));
     // Estimate: ~30 seconds per section, minimum 1 minute
     const estimatedMinutes = Math.max(1, Math.ceil((selectedCount * 30) / 60));
+    
+    // Get real progress from the hook
+    const progress = previewExtraction.progress;
+    const progressPercentage = progress 
+      ? Math.round((progress.currentIndex / progress.totalSections) * 100)
+      : 0;
 
     return (
-      <div className="space-y-4 py-8">
+      <div className="space-y-4 py-6">
         <div className="text-center">
           <Loader2 className="w-8 h-8 text-primary mx-auto mb-4 animate-spin" />
           <p className="text-sm font-medium mb-2">Extracting Rules...</p>
-          <p className="text-xs text-muted-foreground">
-            Processing {selectedCount} section{selectedCount !== 1 ? "s" : ""}
-          </p>
+          {progress ? (
+            <p className="text-xs text-muted-foreground">
+              {progress.currentIndex} of {progress.totalSections} sections complete
+              {progress.rulesExtracted > 0 && (
+                <span className="text-primary ml-1">• {progress.rulesExtracted} rules found</span>
+              )}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Preparing {selectedCount} section{selectedCount !== 1 ? "s" : ""}...
+            </p>
+          )}
         </div>
 
+        {/* Progress bar */}
         <div className="space-y-2">
           <div className="h-2 bg-muted rounded overflow-hidden">
             <div 
-              className="h-full bg-primary animate-pulse"
-              style={{ width: "60%" }}
+              className="h-full bg-primary transition-all duration-500 ease-out"
+              style={{ width: `${Math.max(5, progressPercentage)}%` }}
             />
           </div>
           <p className="text-[10px] text-muted-foreground text-center">
-            AI is analyzing document sections...
+            {progressPercentage}% complete
           </p>
+        </div>
+
+        {/* Current section being processed */}
+        {progress?.currentSection && (
+          <div className="bg-primary/5 border border-primary/20 rounded p-3">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Currently Processing</p>
+            <p className="text-xs font-mono text-primary truncate">{progress.currentSection}</p>
+          </div>
+        )}
+
+        {/* Section list with status */}
+        <div className="border border-border rounded max-h-32 overflow-y-auto">
+          {selectedSections.map((section, idx) => {
+            const isCompleted = progress?.completedSections.includes(section.name);
+            const isFailed = progress?.failedSections.includes(section.name);
+            const isCurrent = progress?.currentSection.includes(section.name);
+            
+            return (
+              <div 
+                key={section.id}
+                className={`flex items-center gap-2 px-3 py-2 border-b border-border last:border-b-0 text-xs ${
+                  isCurrent ? "bg-primary/10" : ""
+                }`}
+              >
+                {isCompleted ? (
+                  <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                ) : isFailed ? (
+                  <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
+                ) : isCurrent ? (
+                  <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 rounded-full border border-muted-foreground/30 flex-shrink-0" />
+                )}
+                <span className={`truncate ${isCompleted ? "text-muted-foreground" : isCurrent ? "text-primary font-medium" : ""}`}>
+                  {section.name}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
         <div className="bg-muted/30 border border-border rounded p-3 text-center">
           <p className="text-xs text-muted-foreground">
-            ⏱️ This typically takes <span className="text-primary font-medium">{estimatedMinutes}-{estimatedMinutes + 1} minute{estimatedMinutes > 1 ? "s" : ""}</span> depending on document complexity
+            ⏱️ Estimated time: <span className="text-primary font-medium">{estimatedMinutes}-{estimatedMinutes + 1} minute{estimatedMinutes > 1 ? "s" : ""}</span>
           </p>
         </div>
       </div>
