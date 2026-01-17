@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,29 +23,15 @@ import {
   Eye,
   EyeOff
 } from "lucide-react";
+import { 
+  PreviewRule, 
+  SourceText, 
+  RuleContent, 
+  RULE_CATEGORIES 
+} from "@/types/rules";
 
-export interface PreviewRule {
-  id?: string;
-  category: string;
-  rule_key: string;
-  title: string;
-  content: RuleContent;
-  metadata?: Record<string, unknown>;
-  validation_status?: string;
-  isEditing?: boolean;
-}
-
-type RuleContent = 
-  | { type: "text"; text: string }
-  | { type: "list"; items: string[] }
-  | { type: "roll_table"; dice: string; entries: Array<{ roll: string; result: string }> }
-  | { type: "stats_table"; columns: string[]; rows: Array<Record<string, string>> }
-  | { type: "equipment"; items: Array<{ name: string; cost?: string; stats?: string; effect?: string }> };
-
-interface SourceText {
-  section: string;
-  text: string;
-}
+// Re-export for backward compatibility
+export type { PreviewRule };
 
 interface RulesPreviewProps {
   rules: PreviewRule[];
@@ -56,24 +42,8 @@ interface RulesPreviewProps {
   onSaveAll: () => void;
   onCancel: () => void;
   isSaving?: boolean;
+  failedSections?: string[];
 }
-
-const CATEGORIES = [
-  "Campaign Rules",
-  "Exploration Tables", 
-  "Skill Tables",
-  "Roll Tables",
-  "Injury Tables",
-  "Equipment",
-  "Keywords",
-  "Core Rules",
-  "Unit Profiles",
-  "Abilities",
-  "Scenarios",
-  "Advancement",
-  "Warband Rules",
-  "Custom",
-];
 
 export function RulesPreview({ 
   rules, 
@@ -83,7 +53,8 @@ export function RulesPreview({
   onAddRule,
   onSaveAll,
   onCancel,
-  isSaving 
+  isSaving,
+  failedSections = []
 }: RulesPreviewProps) {
   const [expandedRules, setExpandedRules] = useState<Set<number>>(new Set([0]));
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -150,6 +121,23 @@ export function RulesPreview({
 
   return (
     <div className="space-y-4">
+      {/* Failed sections warning */}
+      {failedSections.length > 0 && (
+        <div className="bg-destructive/10 border border-destructive/30 rounded p-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-medium text-destructive">
+                {failedSections.length} section{failedSections.length !== 1 ? "s" : ""} failed to extract
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {failedSections.join(", ")}. Use "View Source" to manually add rules from these sections.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -207,7 +195,7 @@ export function RulesPreview({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map(cat => (
+                  {RULE_CATEGORIES.map(cat => (
                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                   ))}
                 </SelectContent>
@@ -387,7 +375,7 @@ function RulePreviewItem({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map(cat => (
+                  {RULE_CATEGORIES.map(cat => (
                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                   ))}
                 </SelectContent>

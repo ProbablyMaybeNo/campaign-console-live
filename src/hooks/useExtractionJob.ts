@@ -3,47 +3,16 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
+import type { 
+  DetectedSection, 
+  ExtractionJob, 
+  ExtractedRule, 
+  RuleContent,
+  SourceText 
+} from "@/types/rules";
 
-export interface DetectedSection {
-  id: string;
-  name: string;
-  type: "table" | "rules" | "equipment" | "skills" | "other";
-  priority: "high" | "medium" | "low";
-  estimatedComplexity: number;
-  startPosition: number;
-  endPosition: number;
-  indicators: string[];
-  selected?: boolean;
-  status?: "pending" | "extracting" | "complete" | "failed";
-  extractedCount?: number;
-}
-
-export interface ExtractionJob {
-  id: string;
-  campaignId: string;
-  status: "pending" | "scanning" | "extracting" | "complete" | "failed";
-  totalSections: number;
-  completedSections: number;
-  detectedSections: DetectedSection[];
-  sourceName?: string;
-  errorMessage?: string;
-}
-
-export interface ExtractedRule {
-  category: string;
-  rule_key: string;
-  title: string;
-  content: RuleContent;
-  metadata?: Record<string, unknown>;
-  validation_status?: string;
-}
-
-type RuleContent = 
-  | { type: "text"; text: string }
-  | { type: "list"; items: string[] }
-  | { type: "roll_table"; dice: string; entries: Array<{ roll: string; result: string }> }
-  | { type: "stats_table"; columns: string[]; rows: Array<Record<string, string>> }
-  | { type: "equipment"; items: Array<{ name: string; cost?: string; stats?: string; effect?: string }> };
+// Re-export types for backward compatibility
+export type { DetectedSection, ExtractionJob, ExtractedRule };
 
 /**
  * Hook to analyze document structure before extraction
@@ -83,10 +52,16 @@ export function usePreviewExtraction() {
       sections: DetectedSection[];
       sourceType: "pdf" | "text";
       sourceName?: string;
-    }): Promise<{ rules: ExtractedRule[]; summary: { totalRules: number; categories: Record<string, number> }; sourceTexts: Array<{ section: string; text: string }> }> => {
+    }): Promise<{ 
+      rules: ExtractedRule[]; 
+      summary: { totalRules: number; categories: Record<string, number> }; 
+      sourceTexts: SourceText[];
+      failedSections: string[];
+    }> => {
       const allRules: ExtractedRule[] = [];
       const allCategories: Record<string, number> = {};
-      const sourceTexts: Array<{ section: string; text: string }> = [];
+      const sourceTexts: SourceText[] = [];
+      const failedSections: string[] = [];
 
       // Process sections in batches of 2 for preview
       for (let i = 0; i < sections.length; i += 2) {
@@ -120,7 +95,7 @@ export function usePreviewExtraction() {
           })
         );
 
-        results.forEach((result) => {
+        results.forEach((result, idx) => {
           if (result.status === "fulfilled" && result.value) {
             allRules.push(...result.value.rules);
             result.value.rules.forEach(rule => {
@@ -133,6 +108,9 @@ export function usePreviewExtraction() {
                 text: result.value.sourceText 
               });
             }
+          } else if (result.status === "rejected") {
+            failedSections.push(batch[idx].name);
+            console.error(`Failed to extract section "${batch[idx].name}":`, result.reason);
           }
         });
       }
@@ -140,7 +118,8 @@ export function usePreviewExtraction() {
       return {
         rules: allRules,
         summary: { totalRules: allRules.length, categories: allCategories },
-        sourceTexts
+        sourceTexts,
+        failedSections
       };
     },
     onError: (error: Error) => {
@@ -148,6 +127,7 @@ export function usePreviewExtraction() {
     },
   });
 }
+
 
 /**
  * Hook to save previewed rules to the database
