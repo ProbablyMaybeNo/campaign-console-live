@@ -350,6 +350,8 @@ export function RulesImporter({
   // Step: Extracting with progress
   if (step === "extracting") {
     const selectedCount = detectedSections.filter(s => selectedSectionIds.has(s.id)).length || 1;
+    // Estimate: ~30 seconds per section, minimum 1 minute
+    const estimatedMinutes = Math.max(1, Math.ceil((selectedCount * 30) / 60));
 
     return (
       <div className="space-y-4 py-8">
@@ -370,6 +372,12 @@ export function RulesImporter({
           </div>
           <p className="text-[10px] text-muted-foreground text-center">
             AI is analyzing document sections...
+          </p>
+        </div>
+
+        <div className="bg-muted/30 border border-border rounded p-3 text-center">
+          <p className="text-xs text-muted-foreground">
+            ⏱️ This typically takes <span className="text-primary font-medium">{estimatedMinutes}-{estimatedMinutes + 1} minute{estimatedMinutes > 1 ? "s" : ""}</span> depending on document complexity
           </p>
         </div>
       </div>
