@@ -78,7 +78,7 @@ serve(async (req) => {
 Your task is to identify and categorize ALL rules, tables, and game content into structured data.
 
 PRIORITY SECTIONS TO FIND:
-1. CAMPAIGN RULES - Any section titled "Campaign", "Campaign Rules", "Campaign Phase", "Post-Battle", "Between Games"
+1. CAMPAIGN RULES - Any section titled "Campaign", "Campaign Rules", "Campaign Phase", "Post-Battle", "Post-Game", "Post-Game Sequence", "After Action", "Between Games"
 2. ALL TABLES - Every single table in the document, no exceptions
 
 CRITICAL: FIND ALL TABLES!
@@ -193,17 +193,43 @@ CRITICAL INSTRUCTIONS:
       const total = raw.length;
       const lower = raw.toLowerCase();
 
+      // NOTE: PDF text extraction can vary (hyphens/line breaks), so we include multiple phrasing variants.
+      // Goal: ensure "Post-Game Sequence" sections (often mid-book) and their tables are included.
       const keywords = [
-        "campaign rules",
-        "campaign",
+        "post game sequence",
+        "post-game sequence",
+        "post game",
+        "post-game",
+        "postgame",
+        "post battle sequence",
+        "post-battle sequence",
+        "post battle",
         "post-battle",
+        "after action",
+        "after-action",
+        "after the battle",
+        "after battle",
         "between games",
+        "between battles",
+        "campaign phase",
+        "quartermaster",
+        "trauma step",
+        "promotions",
+        "promotion",
+        "experience",
         "exploration",
-        "common exploration",
-        "rare exploration",
-        "legendary exploration",
-        "skills",
-        "skill",
+        "loot",
+        "treasure",
+        "salvage",
+        "scavenge",
+        "skill tables",
+        "skill table",
+        "combat skills",
+        "shooting skills",
+        "academic skills",
+        "strength skills",
+        "speed skills",
+        "agility skills",
         "advancement",
         "injury",
       ];
@@ -218,15 +244,22 @@ CRITICAL INSTRUCTIONS:
         intervals.push({ start: Math.min(s, e), end: Math.max(s, e), reason });
       };
 
-      // Always include start + end, because many books place tables later.
-      addInterval(0, Math.min(120_000, total), "start");
-      addInterval(Math.max(0, total - 90_000), total, "end");
+      // Balanced baseline coverage across the book so we don't "spend" the entire budget on the first pages.
+      // Many rulebooks place campaign/post-game tables in the middle.
+      const sliceSize = 60_000;
+      addInterval(0, Math.min(sliceSize, total), "start");
 
+      const midStart = Math.max(0, Math.floor(total / 2) - Math.floor(sliceSize / 2));
+      addInterval(midStart, Math.min(midStart + sliceSize, total), "middle");
+
+      addInterval(Math.max(0, total - sliceSize), total, "end");
+
+      // Keyword hits: include a window around the first match for each keyword.
       for (const kw of keywords) {
         const idx = lower.indexOf(kw);
         if (idx === -1) continue;
         console.log(`Keyword hit: "${kw}" at ${idx}`);
-        addInterval(idx - 15_000, idx + 55_000, `kw:${kw}`);
+        addInterval(idx - 12_000, idx + 48_000, `kw:${kw}`);
       }
 
       // Merge overlaps
