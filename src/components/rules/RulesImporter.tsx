@@ -4,9 +4,10 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useExtractRules } from "@/hooks/useRulesManagement";
-import { useAnalyzeDocument, usePreviewExtraction, useSavePreviewedRules, DetectedSection, ExtractedRule } from "@/hooks/useExtractionJob";
+import { useAnalyzeDocument, usePreviewExtraction, useSavePreviewedRules } from "@/hooks/useExtractionJob";
 import { RulesPreview, PreviewRule } from "./RulesPreview";
 import { extractTextFromPDF, isValidPDF, ExtractionProgress } from "@/lib/pdfExtractor";
+import type { DetectedSection, ExtractedRule, SourceText } from "@/types/rules";
 import { 
   Upload, 
   FileText, 
@@ -68,7 +69,8 @@ export function RulesImporter({
   
   // Preview state
   const [previewRules, setPreviewRules] = useState<PreviewRule[]>([]);
-  const [sourceTexts, setSourceTexts] = useState<Array<{ section: string; text: string }>>([]);
+  const [sourceTexts, setSourceTexts] = useState<SourceText[]>([]);
+  const [failedSections, setFailedSections] = useState<string[]>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const analyzeDocument = useAnalyzeDocument();
@@ -179,6 +181,7 @@ export function RulesImporter({
     }
 
     setStep("extracting");
+    setFailedSections([]);
     
     try {
       const result = await previewExtraction.mutateAsync({
@@ -192,18 +195,22 @@ export function RulesImporter({
       console.log("Extraction result:", { 
         rulesCount: result?.rules?.length, 
         sourceTextsCount: result?.sourceTexts?.length,
-        sourceTexts: result?.sourceTexts 
+        failedSections: result?.failedSections
       });
 
       // Always go to preview step - user can manually add rules even if AI extracted 0
       const extractedRules = result?.rules || [];
       const extractedSourceTexts = result?.sourceTexts || [];
+      const failed = result?.failedSections || [];
       
       setPreviewRules(extractedRules as PreviewRule[]);
       setSourceTexts(extractedSourceTexts);
+      setFailedSections(failed);
       setStep("preview");
       
-      if (extractedRules.length > 0) {
+      if (failed.length > 0) {
+        toast.warning(`${failed.length} section(s) failed to extract. You can manually add rules from source text.`);
+      } else if (extractedRules.length > 0) {
         toast.success(`Extracted ${extractedRules.length} rules - review before saving`);
       } else if (extractedSourceTexts.length > 0) {
         toast.warning("No rules auto-extracted. Review source text to manually add rules.");
@@ -212,6 +219,7 @@ export function RulesImporter({
       }
     } catch (error) {
       console.error("Preview extraction error:", error);
+      toast.error("Extraction failed. Please try again.");
       setStep("select-sections");
     }
   };
@@ -282,6 +290,7 @@ export function RulesImporter({
     setSelectedSectionIds(new Set());
     setPreviewRules([]);
     setSourceTexts([]);
+    setFailedSections([]);
     setStep("upload");
   };
 
@@ -343,6 +352,7 @@ export function RulesImporter({
         onSaveAll={handleSavePreviewedRules}
         onCancel={() => setStep("select-sections")}
         isSaving={savePreviewedRules.isPending}
+        failedSections={failedSections}
       />
     );
   }

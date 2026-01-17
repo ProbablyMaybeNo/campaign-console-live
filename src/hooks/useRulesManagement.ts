@@ -2,24 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
+import type { ExtractedRule, ExtractionResult } from "@/types/rules";
 
-export interface ExtractedRule {
-  category: string;
-  rule_key: string;
-  title: string;
-  content: Json;
-  metadata?: Record<string, unknown>;
-}
-
-export interface ExtractionResult {
-  success: boolean;
-  saved: number;
-  summary: {
-    totalRules: number;
-    categories: Record<string, number>;
-  };
-  error?: string;
-}
+// Re-export types for backward compatibility
+export type { ExtractedRule, ExtractionResult };
 
 /**
  * Extract rules from text content using AI
