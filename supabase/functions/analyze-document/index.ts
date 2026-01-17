@@ -229,18 +229,41 @@ function findSectionPosition(content: string, indicators: string[]): { start: nu
   const lower = content.toLowerCase();
   let minStart = content.length;
   let maxEnd = 0;
+  let foundAny = false;
 
   for (const indicator of indicators) {
     const idx = lower.indexOf(indicator.toLowerCase());
     if (idx !== -1) {
-      minStart = Math.min(minStart, Math.max(0, idx - 1000));
-      maxEnd = Math.max(maxEnd, Math.min(content.length, idx + 30000));
+      foundAny = true;
+      // Capture more context: 2000 chars before, 50000 chars after (to get complete tables)
+      minStart = Math.min(minStart, Math.max(0, idx - 2000));
+      maxEnd = Math.max(maxEnd, Math.min(content.length, idx + 50000));
     }
   }
 
-  if (minStart >= maxEnd) {
+  // If no indicators found, return full document
+  if (!foundAny || minStart >= maxEnd) {
     return { start: 0, end: content.length };
   }
 
-  return { start: minStart, end: maxEnd };
+  // Try to extend to next major section boundary (look for common headers)
+  const sectionBoundaries = [
+    "\n\n## ", "\n\n### ", "\n\nCHAPTER", "\n\nSECTION",
+    "\nTABLE", "\nRULES", "\nEQUIPMENT", "\nSKILLS", "\nSCENARIO"
+  ];
+  
+  const afterSection = content.slice(maxEnd);
+  let nextBoundary = afterSection.length;
+  
+  for (const boundary of sectionBoundaries) {
+    const idx = afterSection.toLowerCase().indexOf(boundary.toLowerCase());
+    if (idx !== -1 && idx < nextBoundary && idx < 30000) {
+      nextBoundary = idx;
+    }
+  }
+  
+  // Extend to the next boundary but cap at 80k total
+  const extendedEnd = Math.min(content.length, maxEnd + nextBoundary, minStart + 80000);
+
+  return { start: minStart, end: extendedEnd };
 }
