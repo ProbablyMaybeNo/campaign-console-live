@@ -68,6 +68,7 @@ export function RulesImporter({
   
   // Preview state
   const [previewRules, setPreviewRules] = useState<PreviewRule[]>([]);
+  const [sourceTexts, setSourceTexts] = useState<Array<{ section: string; text: string }>>([]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const analyzeDocument = useAnalyzeDocument();
@@ -190,11 +191,20 @@ export function RulesImporter({
 
       if (result && result.rules.length > 0) {
         setPreviewRules(result.rules as PreviewRule[]);
+        setSourceTexts(result.sourceTexts || []);
         setStep("preview");
         toast.success(`Extracted ${result.rules.length} rules - review before saving`);
       } else {
-        toast.warning("No rules were extracted. Try selecting different sections.");
-        setStep("select-sections");
+        // Even with 0 rules, show preview with source text so user can manually add
+        if (result && result.sourceTexts && result.sourceTexts.length > 0) {
+          setPreviewRules([]);
+          setSourceTexts(result.sourceTexts);
+          setStep("preview");
+          toast.warning("No rules auto-extracted. Review source text to manually add rules.");
+        } else {
+          toast.warning("No rules were extracted. Try selecting different sections.");
+          setStep("select-sections");
+        }
       }
     } catch (error) {
       console.error("Preview extraction error:", error);
@@ -267,6 +277,7 @@ export function RulesImporter({
     setDetectedSections([]);
     setSelectedSectionIds(new Set());
     setPreviewRules([]);
+    setSourceTexts([]);
     setStep("upload");
   };
 
@@ -321,8 +332,10 @@ export function RulesImporter({
     return (
       <RulesPreview
         rules={previewRules}
+        sourceTexts={sourceTexts}
         onUpdateRule={handleUpdatePreviewRule}
         onDeleteRule={handleDeletePreviewRule}
+        onAddRule={(rule) => setPreviewRules(prev => [...prev, rule])}
         onSaveAll={handleSavePreviewedRules}
         onCancel={() => setStep("select-sections")}
         isSaving={savePreviewedRules.isPending}
