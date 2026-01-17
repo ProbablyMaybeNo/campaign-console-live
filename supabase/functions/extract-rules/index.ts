@@ -415,16 +415,58 @@ ${sourceText}`;
 
 // Extract content for a focused section
 function extractFocusedContent(content: string, section: { startPosition: number; endPosition: number; name: string }): string {
-  const start = Math.max(0, section.startPosition);
-  const end = Math.min(content.length, section.endPosition);
+  const lower = content.toLowerCase();
+  const sectionNameLower = section.name.toLowerCase();
   
-  // Add some context before and after
-  const contextBefore = Math.max(0, start - 2000);
-  const contextAfter = Math.min(content.length, end + 2000);
+  // First, try to find the section by its name directly in the content
+  let searchStart = lower.indexOf(sectionNameLower);
   
-  const extracted = content.slice(contextBefore, contextAfter);
+  // If exact name not found, try searching for key words from the section name
+  if (searchStart === -1) {
+    const words = sectionNameLower.split(/\s+/).filter(w => w.length > 3);
+    for (const word of words) {
+      const idx = lower.indexOf(word);
+      if (idx !== -1) {
+        searchStart = idx;
+        break;
+      }
+    }
+  }
   
-  console.log(`Focused extraction for "${section.name}": ${extracted.length} characters (positions ${contextBefore}-${contextAfter})`);
+  // Use the found position if available, otherwise fall back to provided positions
+  let start: number;
+  let end: number;
+  
+  if (searchStart !== -1) {
+    // Found the section by name - extract a large chunk around it
+    start = Math.max(0, searchStart - 1000);
+    end = Math.min(content.length, searchStart + 60000);
+    console.log(`Found section "${section.name}" by name at position ${searchStart}`);
+  } else {
+    // Fall back to provided positions
+    start = Math.max(0, section.startPosition);
+    end = Math.min(content.length, section.endPosition);
+    
+    // If the positions seem invalid (e.g., 0 to content.length), try intelligent excerpting
+    if (start === 0 && end === content.length) {
+      console.log(`Section "${section.name}" has full-document positions, using intelligent search`);
+      return buildSourceTextForExtraction(content);
+    }
+    
+    // Add context buffer
+    start = Math.max(0, start - 2000);
+    end = Math.min(content.length, end + 5000);
+  }
+  
+  const extracted = content.slice(start, end);
+  
+  console.log(`Focused extraction for "${section.name}": ${extracted.length} characters (positions ${start}-${end})`);
+  
+  // Safety check: if we got very little content, fall back to full intelligent extraction
+  if (extracted.length < 500) {
+    console.log(`Extracted content too short (${extracted.length}), falling back to intelligent excerpting`);
+    return buildSourceTextForExtraction(content);
+  }
   
   return extracted;
 }
