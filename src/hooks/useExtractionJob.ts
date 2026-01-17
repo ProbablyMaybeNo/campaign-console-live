@@ -14,6 +14,8 @@ import type {
 // Re-export types for backward compatibility
 export type { DetectedSection, ExtractionJob, ExtractedRule };
 
+// Export ExtractionProgress type for use in components
+
 /**
  * Hook to analyze document structure before extraction
  */
@@ -35,23 +37,36 @@ export function useAnalyzeDocument() {
   });
 }
 
+export interface ExtractionProgress {
+  currentSection: string;
+  currentIndex: number;
+  totalSections: number;
+  completedSections: string[];
+  failedSections: string[];
+  rulesExtracted: number;
+}
+
 /**
- * Hook to extract rules in preview mode (without saving)
+ * Hook to extract rules in preview mode with progress tracking
  */
 export function usePreviewExtraction() {
-  return useMutation({
+  const [progress, setProgress] = useState<ExtractionProgress | null>(null);
+
+  const mutation = useMutation({
     mutationFn: async ({ 
       content, 
       campaignId,
       sections,
       sourceType,
-      sourceName 
+      sourceName,
+      onProgress
     }: { 
       content: string;
       campaignId: string;
       sections: DetectedSection[];
       sourceType: "pdf" | "text";
       sourceName?: string;
+      onProgress?: (progress: ExtractionProgress) => void;
     }): Promise<{ 
       rules: ExtractedRule[]; 
       summary: { totalRules: number; categories: Record<string, number> }; 
@@ -62,10 +77,28 @@ export function usePreviewExtraction() {
       const allCategories: Record<string, number> = {};
       const sourceTexts: SourceText[] = [];
       const failedSections: string[] = [];
+      const completedSections: string[] = [];
+
+      const updateProgress = (currentSection: string, currentIndex: number) => {
+        const progressUpdate: ExtractionProgress = {
+          currentSection,
+          currentIndex,
+          totalSections: sections.length,
+          completedSections: [...completedSections],
+          failedSections: [...failedSections],
+          rulesExtracted: allRules.length
+        };
+        setProgress(progressUpdate);
+        onProgress?.(progressUpdate);
+      };
 
       // Process sections in batches of 2 for preview
       for (let i = 0; i < sections.length; i += 2) {
         const batch = sections.slice(i, i + 2);
+        
+        // Update progress to show current batch
+        updateProgress(batch.map(s => s.name).join(", "), i);
+
         const results = await Promise.allSettled(
           batch.map(async (section) => {
             const { data, error } = await supabase.functions.invoke("extract-rules", {
@@ -97,6 +130,7 @@ export function usePreviewExtraction() {
 
         results.forEach((result, idx) => {
           if (result.status === "fulfilled" && result.value) {
+            completedSections.push(batch[idx].name);
             allRules.push(...result.value.rules);
             result.value.rules.forEach(rule => {
               allCategories[rule.category] = (allCategories[rule.category] || 0) + 1;
@@ -113,7 +147,16 @@ export function usePreviewExtraction() {
             console.error(`Failed to extract section "${batch[idx].name}":`, result.reason);
           }
         });
+
+        // Update progress after batch completes
+        updateProgress(
+          i + 2 >= sections.length ? "Finalizing..." : sections[i + 2]?.name || "",
+          Math.min(i + 2, sections.length)
+        );
       }
+
+      // Clear progress on completion
+      setProgress(null);
 
       return {
         rules: allRules,
@@ -123,9 +166,16 @@ export function usePreviewExtraction() {
       };
     },
     onError: (error: Error) => {
+      setProgress(null);
       toast.error(`Preview extraction failed: ${error.message}`);
     },
   });
+
+  return {
+    ...mutation,
+    progress,
+    resetProgress: () => setProgress(null)
+  };
 }
 
 
