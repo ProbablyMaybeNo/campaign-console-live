@@ -29,6 +29,22 @@ export interface ExtractionJob {
   errorMessage?: string;
 }
 
+export interface ExtractedRule {
+  category: string;
+  rule_key: string;
+  title: string;
+  content: RuleContent;
+  metadata?: Record<string, unknown>;
+  validation_status?: string;
+}
+
+type RuleContent = 
+  | { type: "text"; text: string }
+  | { type: "list"; items: string[] }
+  | { type: "roll_table"; dice: string; entries: Array<{ roll: string; result: string }> }
+  | { type: "stats_table"; columns: string[]; rows: Array<Record<string, string>> }
+  | { type: "equipment"; items: Array<{ name: string; cost?: string; stats?: string; effect?: string }> };
+
 /**
  * Hook to analyze document structure before extraction
  */
@@ -46,6 +62,126 @@ export function useAnalyzeDocument() {
     },
     onError: (error: Error) => {
       toast.error(`Document analysis failed: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Hook to extract rules in preview mode (without saving)
+ */
+export function usePreviewExtraction() {
+  return useMutation({
+    mutationFn: async ({ 
+      content, 
+      campaignId,
+      sections,
+      sourceType,
+      sourceName 
+    }: { 
+      content: string;
+      campaignId: string;
+      sections: DetectedSection[];
+      sourceType: "pdf" | "text";
+      sourceName?: string;
+    }): Promise<{ rules: ExtractedRule[]; summary: { totalRules: number; categories: Record<string, number> } }> => {
+      const allRules: ExtractedRule[] = [];
+      const allCategories: Record<string, number> = {};
+
+      // Process sections in batches of 2 for preview
+      for (let i = 0; i < sections.length; i += 2) {
+        const batch = sections.slice(i, i + 2);
+        const results = await Promise.allSettled(
+          batch.map(async (section) => {
+            const { data, error } = await supabase.functions.invoke("extract-rules", {
+              body: {
+                content,
+                sourceType,
+                sourceName,
+                campaignId,
+                focusedSection: { 
+                  name: section.name, 
+                  type: section.type, 
+                  startPosition: section.startPosition, 
+                  endPosition: section.endPosition 
+                },
+                previewMode: true,
+              },
+            });
+
+            if (error) throw error;
+            if (!data.success) throw new Error(data.error || "Extraction failed");
+            
+            return data.rules as ExtractedRule[];
+          })
+        );
+
+        results.forEach((result) => {
+          if (result.status === "fulfilled" && result.value) {
+            allRules.push(...result.value);
+            result.value.forEach(rule => {
+              allCategories[rule.category] = (allCategories[rule.category] || 0) + 1;
+            });
+          }
+        });
+      }
+
+      return {
+        rules: allRules,
+        summary: { totalRules: allRules.length, categories: allCategories }
+      };
+    },
+    onError: (error: Error) => {
+      toast.error(`Preview extraction failed: ${error.message}`);
+    },
+  });
+}
+
+/**
+ * Hook to save previewed rules to the database
+ */
+export function useSavePreviewedRules(campaignId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      rules,
+      sourceType,
+      sourceName 
+    }: { 
+      rules: ExtractedRule[];
+      sourceType: "pdf" | "text";
+      sourceName?: string;
+    }) => {
+      const dbRules = rules.map((rule) => ({
+        campaign_id: campaignId,
+        category: rule.category,
+        rule_key: rule.rule_key,
+        title: rule.title,
+        content: rule.content as Json,
+        metadata: {
+          source_type: sourceType,
+          source_name: sourceName || "Unknown",
+          saved_at: new Date().toISOString(),
+          ...rule.metadata
+        } as Json,
+        validation_status: rule.validation_status || "complete",
+      }));
+
+      const { data, error } = await supabase
+        .from("wargame_rules")
+        .insert(dbRules)
+        .select("id, category, title");
+
+      if (error) throw error;
+
+      return { saved: data?.length || 0 };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", campaignId] });
+      toast.success(`Saved ${result.saved} rules to campaign`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to save rules: ${error.message}`);
     },
   });
 }

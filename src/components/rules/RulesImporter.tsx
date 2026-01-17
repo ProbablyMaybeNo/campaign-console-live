@@ -4,7 +4,8 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useExtractRules } from "@/hooks/useRulesManagement";
-import { useAnalyzeDocument, useExtractionJob, DetectedSection } from "@/hooks/useExtractionJob";
+import { useAnalyzeDocument, usePreviewExtraction, useSavePreviewedRules, DetectedSection, ExtractedRule } from "@/hooks/useExtractionJob";
+import { RulesPreview, PreviewRule } from "./RulesPreview";
 import { extractTextFromPDF, isValidPDF, ExtractionProgress } from "@/lib/pdfExtractor";
 import { 
   Upload, 
@@ -18,7 +19,8 @@ import {
   BookOpen,
   Sword,
   Star,
-  Loader2
+  Loader2,
+  Eye
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -29,7 +31,7 @@ interface RulesImporterProps {
   showCancelButton?: boolean;
 }
 
-type ImportStep = "upload" | "select-sections" | "extracting" | "complete";
+type ImportStep = "upload" | "select-sections" | "extracting" | "preview" | "complete";
 
 const sectionTypeIcons: Record<string, React.ReactNode> = {
   table: <Table className="w-4 h-4" />,
@@ -64,10 +66,14 @@ export function RulesImporter({
   const [detectedSections, setDetectedSections] = useState<DetectedSection[]>([]);
   const [selectedSectionIds, setSelectedSectionIds] = useState<Set<string>>(new Set());
   
+  // Preview state
+  const [previewRules, setPreviewRules] = useState<PreviewRule[]>([]);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const analyzeDocument = useAnalyzeDocument();
   const extractRules = useExtractRules();
-  const { job, runParallelExtraction, reset: resetJob } = useExtractionJob(campaignId);
+  const previewExtraction = usePreviewExtraction();
+  const savePreviewedRules = useSavePreviewedRules(campaignId);
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!isValidPDF(file)) {
@@ -161,7 +167,7 @@ export function RulesImporter({
     }
   };
 
-  // Step 2: Extract selected sections in parallel
+  // Step 2: Extract selected sections with preview
   const handleExtractSelected = async () => {
     const content = activeTab === "pdf" ? extractedText : pastedText;
     const selectedSections = detectedSections.filter(s => selectedSectionIds.has(s.id));
@@ -174,21 +180,56 @@ export function RulesImporter({
     setStep("extracting");
     
     try {
-      const result = await runParallelExtraction(
+      const result = await previewExtraction.mutateAsync({
         content,
-        selectedSections,
-        activeTab,
-        activeTab === "pdf" ? pdfFile?.name : "Pasted text"
-      );
+        campaignId,
+        sections: selectedSections,
+        sourceType: activeTab,
+        sourceName: activeTab === "pdf" ? pdfFile?.name : "Pasted text"
+      });
 
-      if (result) {
-        setExtractionResult({ totalRules: result.totalSaved, categories: result.categories });
-        setStep("complete");
-        toast.success(`Saved ${result.totalSaved} rules from ${selectedSections.length} sections`);
+      if (result && result.rules.length > 0) {
+        setPreviewRules(result.rules as PreviewRule[]);
+        setStep("preview");
+        toast.success(`Extracted ${result.rules.length} rules - review before saving`);
+      } else {
+        toast.warning("No rules were extracted. Try selecting different sections.");
+        setStep("select-sections");
       }
     } catch (error) {
-      console.error("Parallel extraction error:", error);
+      console.error("Preview extraction error:", error);
       setStep("select-sections");
+    }
+  };
+
+  // Update a rule in preview
+  const handleUpdatePreviewRule = (index: number, updatedRule: PreviewRule) => {
+    setPreviewRules(prev => prev.map((rule, i) => i === index ? updatedRule : rule));
+  };
+
+  // Delete a rule from preview
+  const handleDeletePreviewRule = (index: number) => {
+    setPreviewRules(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Save all previewed rules
+  const handleSavePreviewedRules = async () => {
+    try {
+      const result = await savePreviewedRules.mutateAsync({
+        rules: previewRules as ExtractedRule[],
+        sourceType: activeTab,
+        sourceName: activeTab === "pdf" ? pdfFile?.name : "Pasted text"
+      });
+
+      const categories = previewRules.reduce((acc, rule) => {
+        acc[rule.category] = (acc[rule.category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      setExtractionResult({ totalRules: result.saved, categories });
+      setStep("complete");
+    } catch (error) {
+      console.error("Save error:", error);
     }
   };
 
@@ -225,8 +266,8 @@ export function RulesImporter({
     setExtractionResult(null);
     setDetectedSections([]);
     setSelectedSectionIds(new Set());
+    setPreviewRules([]);
     setStep("upload");
-    resetJob();
   };
 
   // Step: Complete
@@ -275,11 +316,23 @@ export function RulesImporter({
     );
   }
 
-  // Step: Extracting with real progress
+  // Step: Preview extracted rules
+  if (step === "preview") {
+    return (
+      <RulesPreview
+        rules={previewRules}
+        onUpdateRule={handleUpdatePreviewRule}
+        onDeleteRule={handleDeletePreviewRule}
+        onSaveAll={handleSavePreviewedRules}
+        onCancel={() => setStep("select-sections")}
+        isSaving={savePreviewedRules.isPending}
+      />
+    );
+  }
+
+  // Step: Extracting with progress
   if (step === "extracting") {
-    const completedCount = job?.completedSections || 0;
-    const totalCount = job?.totalSections || detectedSections.filter(s => selectedSectionIds.has(s.id)).length || 1;
-    const progressPercent = Math.round((completedCount / totalCount) * 100);
+    const selectedCount = detectedSections.filter(s => selectedSectionIds.has(s.id)).length || 1;
 
     return (
       <div className="space-y-4 py-8">
@@ -287,34 +340,21 @@ export function RulesImporter({
           <Loader2 className="w-8 h-8 text-primary mx-auto mb-4 animate-spin" />
           <p className="text-sm font-medium mb-2">Extracting Rules...</p>
           <p className="text-xs text-muted-foreground">
-            Processing section {completedCount + 1} of {totalCount}
+            Processing {selectedCount} section{selectedCount !== 1 ? "s" : ""}
           </p>
         </div>
 
         <div className="space-y-2">
           <div className="h-2 bg-muted rounded overflow-hidden">
             <div 
-              className="h-full bg-primary transition-all duration-500 ease-out"
-              style={{ width: `${progressPercent}%` }}
+              className="h-full bg-primary animate-pulse"
+              style={{ width: "60%" }}
             />
           </div>
           <p className="text-[10px] text-muted-foreground text-center">
-            {progressPercent}% complete
+            AI is analyzing document sections...
           </p>
         </div>
-
-        {job?.detectedSections && (
-          <div className="border border-border rounded max-h-40 overflow-y-auto">
-            {job.detectedSections.map(section => (
-              <div key={section.id} className="flex items-center justify-between p-2 border-b border-border last:border-b-0 text-xs">
-                <span className="font-mono">{section.name}</span>
-                <span className={`${section.status === "complete" ? "text-green-400" : section.status === "extracting" ? "text-yellow-400" : "text-muted-foreground"}`}>
-                  {section.status === "complete" ? `✓ ${section.extractedCount}` : section.status === "extracting" ? "..." : "pending"}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     );
   }
