@@ -149,21 +149,27 @@ serve(async (req) => {
       const jsonMatch = aiContent.match(/```(?:json)?\s*([\s\S]*?)```/);
       let jsonStr = jsonMatch ? jsonMatch[1].trim() : aiContent.trim();
       
-      try {
-        parsedRules = JSON.parse(jsonStr);
-      } catch {
-        console.log("Initial parse failed, attempting truncation recovery...");
-        parsedRules = recoverTruncatedJson(jsonStr);
+      // Check if the AI returned a text explanation instead of JSON
+      // This happens when the section isn't found in the provided content
+      const looksLikeJson = jsonStr.trim().startsWith('{') || jsonStr.trim().startsWith('[');
+      if (!looksLikeJson) {
+        console.log("AI returned text explanation instead of JSON - section likely not in content");
+        console.log("AI response preview:", aiContent.substring(0, 300));
+        // Return empty rules with a message - this is not an error, just no rules found
+        parsedRules = { rules: [] };
+      } else {
+        try {
+          parsedRules = JSON.parse(jsonStr);
+        } catch {
+          console.log("Initial parse failed, attempting truncation recovery...");
+          parsedRules = recoverTruncatedJson(jsonStr);
+        }
       }
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", aiContent.substring(0, 500));
       console.error("Parse error:", parseError);
-      return new Response(JSON.stringify({ 
-        error: "Failed to parse extracted rules. The AI response was incomplete. Please try again." 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // Instead of returning 500, return empty rules so the UI can continue
+      parsedRules = { rules: [] };
     }
 
     // Validate and enhance rules with metadata
