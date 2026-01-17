@@ -78,57 +78,47 @@ serve(async (req) => {
 Your task is to identify and categorize ALL rules, tables, and game content into structured data.
 
 PRIORITY SECTIONS TO FIND:
-1. CAMPAIGN RULES - Any section titled "Campaign", "Campaign Rules", "Campaign Phase", "Post-Battle", "Post-Game", "Post-Game Sequence", "After Action", "Between Games"
-2. ALL TABLES - Every single table in the document, no exceptions
+1. CAMPAIGN RULES - Sections about what happens before/after battles, between games, territory, income, experience, advancement
+2. ALL TABLES - Every single table in the document with ALL their rows, no exceptions
 
-CRITICAL: FIND ALL TABLES!
+CRITICAL: EXTRACT COMPLETE TABLES!
 Scan the ENTIRE document for these table patterns:
-- EXPLORATION TABLES: Common/Rare/Legendary exploration results, loot tables, treasure tables, salvage tables
-- SKILL TABLES: Combat skills, shooting skills, academic skills, strength skills, speed skills, agility skills, etc.
-- INJURY TABLES: Injury results, casualty tables, wound tables, critical hit tables
-- EVENT TABLES: Random events, campaign events, battle events, weather tables
-- ADVANCEMENT TABLES: Level up rewards, experience tables, progression tables
-- EQUIPMENT TABLES: Weapons, armor, gear, relics, artifacts with costs/stats
-- WARBAND TABLES: Hiring costs, warband composition, mercenary tables
-- SCENARIO TABLES: Deployment, objectives, victory conditions
-- ANY numbered list with dice results (D6, 2D6, D66, D3, etc.)
+- EXPLORATION/LOOT TABLES: Results for searching, scavenging, treasure, salvage, rewards (often tiered by rarity)
+- SKILL TABLES: Character skills, abilities, talents organized by category (combat, shooting, stealth, etc.)
+- INJURY TABLES: Wounds, casualties, critical hits, death results
+- EVENT TABLES: Random events, encounters, weather, terrain effects
+- ADVANCEMENT TABLES: Level up, experience spending, progression, promotions
+- EQUIPMENT TABLES: Weapons, armor, gear, items with costs and/or stats
+- WARBAND/ROSTER TABLES: Hiring costs, unit options, mercenaries, allies
+- SCENARIO TABLES: Missions, objectives, deployment, victory conditions
+- ANY numbered list with dice results (D6, 2D6, D66, D3, D10, D100, etc.)
 
-TABLE DETECTION - LOOK FOR:
-- Numbers 1-6, 1-2, 3-4, 5-6 followed by text results
-- Headers containing: "Roll", "Result", "Effect", "D6", "2D6", "D66", "Table", "Chart"
-- Section titles with: "Table", "Chart", "Results", "Exploration", "Skills", "Rewards"
-- Rarity labels: Common, Uncommon, Rare, Legendary, Epic
-- Column layouts with multiple entries per row
-- Bullet points or numbered lists that describe game effects
+TABLE DETECTION PATTERNS:
+- Numbers like 1, 2, 3, 4, 5, 6 or 1-2, 3-4, 5-6 followed by text results
+- Headers containing: Roll, Result, Effect, D6, 2D6, D66, Table, Chart
+- Section titles with: Table, Chart, Results, Roll, or category names
+- Tier labels: Common, Uncommon, Rare, Legendary, Epic, Minor, Major
+- Structured lists that map numbers/ranges to outcomes
 
 CATEGORIES TO USE:
-- "Campaign Rules" - Post-battle sequences, campaign phases, territory, income
-- "Exploration Tables" - Loot, treasure, exploration results by rarity tier
-- "Skill Tables" - Skills organized by type (Combat, Shooting, Academic, Strength, Speed, etc.)
-- "Roll Tables" - Any other D6/2D6/D66 result tables
-- "Injury Tables" - Injury, casualty, wound, critical hit tables
-- "Equipment" - Weapons, armor, items with costs and stats
-- "Keywords" - Special abilities with names and effects
-- "Core Rules" - Basic game mechanics, turn structure, movement, combat
-- "Unit Profiles" - Character/unit stat blocks with stats
+- "Campaign Rules" - Pre/post-battle phases, territory, income, downtime activities
+- "Exploration Tables" - Loot, treasure, salvage, scavenging results (use for ANY reward tables)
+- "Skill Tables" - Character skills/abilities by category
+- "Roll Tables" - Any dice result tables not covered above
+- "Injury Tables" - Wounds, casualties, critical hits
+- "Equipment" - Weapons, armor, items with costs/stats
+- "Keywords" - Named special abilities with effects
+- "Core Rules" - Basic mechanics, turn structure, combat resolution
+- "Unit Profiles" - Character/unit stat blocks
 - "Abilities" - Special rules for units or factions
-- "Scenarios" - Mission objectives and setup rules
-- "Advancement" - Experience and progression rules
-- "Warband Rules" - Warband creation, hiring, composition
-- "Custom" - Other game-specific rules
+- "Scenarios" - Mission types and objectives
+- "Advancement" - Experience and progression systems
+- "Warband Rules" - Army creation, composition, hiring
+- "Custom" - Other game-specific content
 
-OUTPUT FORMAT - Respond with valid JSON:
+OUTPUT FORMAT - Valid JSON only:
 {
   "rules": [
-    {
-      "category": "Campaign Rules",
-      "rule_key": "post_battle_sequence",
-      "title": "Post-Battle Sequence",
-      "content": {
-        "type": "list",
-        "items": ["1. Determine Victory", "2. Roll for Injuries", "3. Collect Income", "4. Roll for Exploration", "5. Buy Equipment"]
-      }
-    },
     {
       "category": "Exploration Tables",
       "rule_key": "common_exploration",
@@ -154,7 +144,10 @@ OUTPUT FORMAT - Respond with valid JSON:
         "entries": [
           {"roll": "1", "result": "Weapon Master - +1 to hit in melee"},
           {"roll": "2", "result": "Parry - May re-roll one failed defence"},
-          {"roll": "3", "result": "Riposte - On successful parry, make free attack"}
+          {"roll": "3", "result": "Riposte - On successful parry, make free attack"},
+          {"roll": "4", "result": "Cleave - Hit additional adjacent enemy"},
+          {"roll": "5", "result": "Duelist - +1 to hit when fighting single enemy"},
+          {"roll": "6", "result": "Berserker - +1 Attack when charging"}
         ]
       }
     },
@@ -173,65 +166,97 @@ OUTPUT FORMAT - Respond with valid JSON:
 }
 
 CONTENT TYPE RULES:
-- "roll_table": For ANY numbered/dice result table. MUST include dice type and ALL entries.
-- "equipment": For items with costs/stats.
+- "roll_table": For ANY numbered/dice result table. MUST have dice type AND all entries.
+- "equipment": For items with costs and/or stats.
 - "stats_table": For unit profiles with columns and rows.
 - "list": For ordered steps or bullet points.
 - "text": For narrative rules or descriptions.
 
-CRITICAL INSTRUCTIONS:
-1. SCAN THE ENTIRE DOCUMENT - Read from start to finish, don't miss anything
-2. EXTRACT EVERY SINGLE TABLE - Each distinct table = separate rule entry
-3. For skill tables: Create SEPARATE entries for EACH skill category
-4. For exploration tables: Create SEPARATE entries for EACH rarity tier (Common, Rare, Legendary)
-5. For campaign rules: Extract the FULL sequence and all sub-rules
-6. Preserve ALL numbers, modifiers, costs, and game terms EXACTLY as written
-7. If a table has 6 entries, include all 6. If it has 36, include all 36.
-8. Generate unique rule_key values (lowercase_with_underscores)`;
+ABSOLUTE REQUIREMENTS:
+1. EVERY table entry must be included - if a D6 table has 6 rows, include all 6
+2. EACH distinct table becomes a SEPARATE rule entry
+3. For skill tables: Create SEPARATE entries for EACH skill category (Combat Skills, Shooting Skills, etc.)
+4. For exploration/loot tables: Create SEPARATE entries for EACH tier (Common, Rare, Legendary, etc.)
+5. Preserve ALL numbers, modifiers, costs, and game terms EXACTLY as written
+6. If a table has 36 entries (D66), include all 36
+7. Generate unique rule_key values (lowercase_with_underscores)
+8. COMPLETE each table before moving to the next - never leave a table partially extracted`;
 
     function buildSourceTextForExtraction(raw: string): string {
       const total = raw.length;
       const lower = raw.toLowerCase();
 
-      // NOTE: PDF text extraction can vary (hyphens/line breaks), so we include multiple phrasing variants.
-      // Goal: ensure "Post-Game Sequence" sections (often mid-book) and their tables are included.
+      // Generic keywords that apply to most wargame rulebooks.
+      // Covers campaign phases, tables, skills, equipment, etc. without game-specific terms.
       const keywords = [
-        "post game sequence",
-        "post-game sequence",
+        // Campaign/post-game phases (generic patterns)
         "post game",
         "post-game",
-        "postgame",
-        "post battle sequence",
-        "post-battle sequence",
         "post battle",
         "post-battle",
-        "after action",
-        "after-action",
         "after the battle",
         "after battle",
         "between games",
         "between battles",
         "campaign phase",
-        "quartermaster",
-        "trauma step",
-        "promotions",
-        "promotion",
-        "experience",
+        "campaign rules",
+        "campaign turn",
+        "downtime",
+        "recovery phase",
+        "upkeep phase",
+        // Exploration/loot (generic)
         "exploration",
+        "explore",
         "loot",
         "treasure",
         "salvage",
         "scavenge",
-        "skill tables",
+        "reward",
+        "income",
+        "territory",
+        // Skills (generic patterns)
         "skill table",
-        "combat skills",
-        "shooting skills",
-        "academic skills",
-        "strength skills",
-        "speed skills",
-        "agility skills",
+        "skills table",
+        "combat skill",
+        "shooting skill",
+        "melee skill",
+        "ranged skill",
+        "special skill",
+        "learn skill",
+        "gain skill",
+        // Injury/casualty (generic)
+        "injury table",
+        "injuries table",
+        "casualty",
+        "wound table",
+        "critical hit",
+        "out of action",
+        "recovery",
+        // Advancement (generic)
         "advancement",
-        "injury",
+        "experience",
+        "level up",
+        "promotion",
+        "improve",
+        "upgrade",
+        // Equipment (generic)
+        "equipment list",
+        "weapon list",
+        "weapons table",
+        "armour list",
+        "armor list",
+        "item list",
+        "price list",
+        "trading post",
+        "market",
+        // Table indicators (very generic)
+        "d6 table",
+        "2d6 table",
+        "d66 table",
+        "roll table",
+        "result table",
+        "random table",
+        "chart",
       ];
 
       type Interval = { start: number; end: number; reason: string };
@@ -326,7 +351,7 @@ ${sourceText}`;
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
-        max_tokens: 32000,
+        max_tokens: 65000,  // Increased to allow complete table extraction
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
