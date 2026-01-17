@@ -10,7 +10,15 @@ interface ExtractRequest {
   content: string;
   sourceType: "pdf" | "text";
   sourceName?: string;
-  campaignId: string;  // Required for save-first mode
+  campaignId: string;
+  // New: focused extraction parameters
+  focusedSection?: {
+    name: string;
+    type: string;
+    startPosition: number;
+    endPosition: number;
+  };
+  extractionJobId?: string;
 }
 
 interface ExtractedRule {
@@ -39,7 +47,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { content, sourceType, sourceName, campaignId } = await req.json() as ExtractRequest;
+    const { content, sourceType, sourceName, campaignId, focusedSection, extractionJobId } = await req.json() as ExtractRequest;
 
     if (!campaignId) {
       return new Response(JSON.stringify({ 
@@ -70,12 +78,200 @@ serve(async (req) => {
       },
     });
 
+    const isFocusedExtraction = !!focusedSection;
     console.log(`Extracting rules from ${sourceType} source: ${sourceName || "unnamed"}`);
     console.log(`Content length: ${content.length} characters`);
     console.log(`Campaign ID: ${campaignId}`);
+    console.log(`Focused extraction: ${isFocusedExtraction ? focusedSection.name : "No (full document)"}`);
 
-    const systemPrompt = `You are an expert at extracting and structuring tabletop wargaming rules from raw text.
-Your task is to identify and categorize ALL rules, tables, and game content into structured data.
+    // Build the system prompt - adjust based on whether this is focused extraction
+    const systemPrompt = buildSystemPrompt(focusedSection);
+
+    // Build source text - either focused section or intelligent excerpts
+    const sourceText = isFocusedExtraction
+      ? extractFocusedContent(content, focusedSection)
+      : buildSourceTextForExtraction(content);
+
+    console.log(`Extraction source length: ${sourceText.length} characters`);
+
+    const userPrompt = buildUserPrompt(sourceText, focusedSection);
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-pro",
+        max_tokens: 65000,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits depleted. Please add credits to continue." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      throw new Error(`AI gateway error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiContent = data.choices?.[0]?.message?.content;
+
+    if (!aiContent) {
+      throw new Error("No response from AI");
+    }
+
+    console.log("AI raw response length:", aiContent.length);
+
+    // Parse the JSON response - handle truncation gracefully
+    let parsedRules: { rules: ExtractedRule[] };
+    try {
+      const jsonMatch = aiContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+      let jsonStr = jsonMatch ? jsonMatch[1].trim() : aiContent.trim();
+      
+      try {
+        parsedRules = JSON.parse(jsonStr);
+      } catch {
+        console.log("Initial parse failed, attempting truncation recovery...");
+        parsedRules = recoverTruncatedJson(jsonStr);
+      }
+    } catch (parseError) {
+      console.error("Failed to parse AI response as JSON:", aiContent.substring(0, 500));
+      console.error("Parse error:", parseError);
+      return new Response(JSON.stringify({ 
+        error: "Failed to parse extracted rules. The AI response was incomplete. Please try again." 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate and enhance rules with metadata
+    const rules = (parsedRules.rules || []).map((rule, index) => {
+      const validationStatus = validateRule(rule);
+      return {
+        ...rule,
+        rule_key: rule.rule_key || `rule_${index}`,
+        metadata: {
+          source_type: sourceType,
+          source_name: sourceName || "Unknown",
+          extracted_at: new Date().toISOString(),
+          focused_section: focusedSection?.name,
+          ...rule.metadata
+        },
+        validation_status: validationStatus,
+      };
+    });
+
+    // Group by category for summary
+    const categorySummary = rules.reduce((acc, rule) => {
+      acc[rule.category] = (acc[rule.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    console.log("Extracted rules:", rules.length);
+    console.log("Categories:", categorySummary);
+
+    // SAVE-FIRST: Insert rules directly into database
+    const dbRules = rules.map((rule) => ({
+      campaign_id: campaignId,
+      category: rule.category,
+      rule_key: rule.rule_key,
+      title: rule.title,
+      content: rule.content,
+      metadata: rule.metadata,
+      extraction_job_id: extractionJobId || null,
+      source_section: focusedSection?.name || null,
+      validation_status: rule.validation_status,
+    }));
+
+    const { data: insertedRules, error: insertError } = await supabase
+      .from("wargame_rules")
+      .insert(dbRules)
+      .select("id, category, title, validation_status");
+
+    if (insertError) {
+      console.error("Failed to save rules:", insertError);
+      return new Response(JSON.stringify({ 
+        error: `Failed to save rules to database: ${insertError.message}` 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log("Saved rules to database:", insertedRules?.length || 0);
+
+    // If this is part of an extraction job, update the timestamp
+    if (extractionJobId) {
+      await supabase
+        .from("extraction_jobs")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", extractionJobId);
+    }
+
+    // Count validation issues
+    const incompleteCount = rules.filter(r => r.validation_status !== "complete").length;
+
+    // Return summary
+    return new Response(JSON.stringify({ 
+      success: true,
+      saved: insertedRules?.length || 0,
+      section: focusedSection?.name || "full_document",
+      summary: {
+        totalRules: rules.length,
+        categories: categorySummary,
+        incompleteRules: incompleteCount,
+      }
+    }, null, 0), {
+      headers: { 
+        ...corsHeaders, 
+        "Content-Type": "application/json",
+      },
+    });
+
+  } catch (error) {
+    console.error("Extract rules error:", error);
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error" 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+
+// Build system prompt - can be customized for focused extraction
+function buildSystemPrompt(focusedSection?: { name: string; type: string }): string {
+  const basePrompt = `You are an expert at extracting and structuring tabletop wargaming rules from raw text.
+Your task is to identify and categorize ALL rules, tables, and game content into structured data.`;
+
+  const focusedInstructions = focusedSection ? `
+
+FOCUS: You are extracting specifically from the "${focusedSection.name}" section.
+Give this section your FULL attention - extract EVERY detail, EVERY table entry, EVERY item.
+Do not skip anything. Complete extraction is critical.` : "";
+
+  return `${basePrompt}
+${focusedInstructions}
 
 PRIORITY SECTIONS TO FIND:
 1. CAMPAIGN RULES - Sections about what happens before/after battles, between games, territory, income, experience, advancement
@@ -133,34 +329,6 @@ OUTPUT FORMAT - Valid JSON only:
           {"roll": "5-6", "result": "Hidden Cache - Roll on Rare table"}
         ]
       }
-    },
-    {
-      "category": "Skill Tables",
-      "rule_key": "combat_skills",
-      "title": "Combat Skills",
-      "content": {
-        "type": "roll_table",
-        "dice": "D6",
-        "entries": [
-          {"roll": "1", "result": "Weapon Master - +1 to hit in melee"},
-          {"roll": "2", "result": "Parry - May re-roll one failed defence"},
-          {"roll": "3", "result": "Riposte - On successful parry, make free attack"},
-          {"roll": "4", "result": "Cleave - Hit additional adjacent enemy"},
-          {"roll": "5", "result": "Duelist - +1 to hit when fighting single enemy"},
-          {"roll": "6", "result": "Berserker - +1 Attack when charging"}
-        ]
-      }
-    },
-    {
-      "category": "Equipment",
-      "rule_key": "melee_weapons",
-      "title": "Melee Weapons",
-      "content": {
-        "type": "equipment",
-        "items": [
-          {"name": "Sword", "cost": "10 ducats", "stats": "Melee, +1 Attack", "effect": "Parry"}
-        ]
-      }
     }
   ]
 }
@@ -181,151 +349,25 @@ ABSOLUTE REQUIREMENTS:
 6. If a table has 36 entries (D66), include all 36
 7. Generate unique rule_key values (lowercase_with_underscores)
 8. COMPLETE each table before moving to the next - never leave a table partially extracted`;
+}
 
-    function buildSourceTextForExtraction(raw: string): string {
-      const total = raw.length;
-      const lower = raw.toLowerCase();
+// Build user prompt
+function buildUserPrompt(sourceText: string, focusedSection?: { name: string; type: string }): string {
+  if (focusedSection) {
+    return `Extract ALL rules and tables from this "${focusedSection.name}" section.
 
-      // Generic keywords that apply to most wargame rulebooks.
-      // Covers campaign phases, tables, skills, equipment, etc. without game-specific terms.
-      const keywords = [
-        // Campaign/post-game phases (generic patterns)
-        "post game",
-        "post-game",
-        "post battle",
-        "post-battle",
-        "after the battle",
-        "after battle",
-        "between games",
-        "between battles",
-        "campaign phase",
-        "campaign rules",
-        "campaign turn",
-        "downtime",
-        "recovery phase",
-        "upkeep phase",
-        // Exploration/loot (generic)
-        "exploration",
-        "explore",
-        "loot",
-        "treasure",
-        "salvage",
-        "scavenge",
-        "reward",
-        "income",
-        "territory",
-        // Skills (generic patterns)
-        "skill table",
-        "skills table",
-        "combat skill",
-        "shooting skill",
-        "melee skill",
-        "ranged skill",
-        "special skill",
-        "learn skill",
-        "gain skill",
-        // Injury/casualty (generic)
-        "injury table",
-        "injuries table",
-        "casualty",
-        "wound table",
-        "critical hit",
-        "out of action",
-        "recovery",
-        // Advancement (generic)
-        "advancement",
-        "experience",
-        "level up",
-        "promotion",
-        "improve",
-        "upgrade",
-        // Equipment (generic)
-        "equipment list",
-        "weapon list",
-        "weapons table",
-        "armour list",
-        "armor list",
-        "item list",
-        "price list",
-        "trading post",
-        "market",
-        // Table indicators (very generic)
-        "d6 table",
-        "2d6 table",
-        "d66 table",
-        "roll table",
-        "result table",
-        "random table",
-        "chart",
-      ];
+IMPORTANT: This is a FOCUSED extraction. Extract EVERY detail from this section.
+- If it contains tables, include EVERY row
+- If it contains equipment, include EVERY item
+- If it contains skills, include EVERY skill
 
-      type Interval = { start: number; end: number; reason: string };
-      const intervals: Interval[] = [];
+Do not skip anything. Complete extraction is critical.
 
-      const addInterval = (start: number, end: number, reason: string) => {
-        const s = Math.max(0, Math.min(total, start));
-        const e = Math.max(0, Math.min(total, end));
-        if (e - s < 200) return;
-        intervals.push({ start: Math.min(s, e), end: Math.max(s, e), reason });
-      };
+SOURCE TEXT:
+${sourceText}`;
+  }
 
-      // Balanced baseline coverage across the book so we don't "spend" the entire budget on the first pages.
-      // Many rulebooks place campaign/post-game tables in the middle.
-      const sliceSize = 60_000;
-      addInterval(0, Math.min(sliceSize, total), "start");
-
-      const midStart = Math.max(0, Math.floor(total / 2) - Math.floor(sliceSize / 2));
-      addInterval(midStart, Math.min(midStart + sliceSize, total), "middle");
-
-      addInterval(Math.max(0, total - sliceSize), total, "end");
-
-      // Keyword hits: include a window around the first match for each keyword.
-      for (const kw of keywords) {
-        const idx = lower.indexOf(kw);
-        if (idx === -1) continue;
-        console.log(`Keyword hit: "${kw}" at ${idx}`);
-        addInterval(idx - 12_000, idx + 48_000, `kw:${kw}`);
-      }
-
-      // Merge overlaps
-      intervals.sort((a, b) => a.start - b.start);
-      const merged: Interval[] = [];
-      for (const it of intervals) {
-        const last = merged[merged.length - 1];
-        if (!last) {
-          merged.push({ ...it });
-          continue;
-        }
-        if (it.start <= last.end + 2_000) {
-          last.end = Math.max(last.end, it.end);
-          last.reason = `${last.reason}|${it.reason}`;
-        } else {
-          merged.push({ ...it });
-        }
-      }
-
-      const maxTotalChars = 180_000;
-      let used = 0;
-      const parts: string[] = [];
-
-      for (const m of merged) {
-        if (used >= maxTotalChars) break;
-        let slice = raw.slice(m.start, m.end);
-        if (used + slice.length > maxTotalChars) {
-          slice = slice.slice(0, maxTotalChars - used);
-        }
-        parts.push(`\n\n--- EXCERPT (${m.start}-${m.end}) [${m.reason}] ---\n\n`);
-        parts.push(slice);
-        used += slice.length;
-      }
-
-      return parts.join("");
-    }
-
-    const sourceText = buildSourceTextForExtraction(content);
-    console.log(`Extraction source length: ${sourceText.length} characters`);
-
-    const userPrompt = `Extract ALL rules and tables from this wargaming rulebook.
+  return `Extract ALL rules and tables from this wargaming rulebook.
 
 IMPORTANT - THOROUGHLY SCAN FOR:
 1. CAMPAIGN RULES SECTION - Post-battle, between games, territory, income
@@ -342,185 +384,168 @@ Include EVERY entry in each table - if a D6 table has 6 results, include all 6.
 
 SOURCE TEXT:
 ${sourceText}`;
+}
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        max_tokens: 65000,  // Increased to allow complete table extraction
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-      }),
-    });
+// Extract content for a focused section
+function extractFocusedContent(content: string, section: { startPosition: number; endPosition: number; name: string }): string {
+  const start = Math.max(0, section.startPosition);
+  const end = Math.min(content.length, section.endPosition);
+  
+  // Add some context before and after
+  const contextBefore = Math.max(0, start - 2000);
+  const contextAfter = Math.min(content.length, end + 2000);
+  
+  const extracted = content.slice(contextBefore, contextAfter);
+  
+  console.log(`Focused extraction for "${section.name}": ${extracted.length} characters (positions ${contextBefore}-${contextAfter})`);
+  
+  return extracted;
+}
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits depleted. Please add credits to continue." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
+// Original intelligent excerpting for full document extraction
+function buildSourceTextForExtraction(raw: string): string {
+  const total = raw.length;
+  const lower = raw.toLowerCase();
 
-    const data = await response.json();
-    const aiContent = data.choices?.[0]?.message?.content;
+  const keywords = [
+    "post game", "post-game", "post battle", "post-battle",
+    "after the battle", "after battle", "between games", "between battles",
+    "campaign phase", "campaign rules", "campaign turn",
+    "downtime", "recovery phase", "upkeep phase",
+    "exploration", "explore", "loot", "treasure", "salvage", "scavenge",
+    "reward", "income", "territory",
+    "skill table", "skills table", "combat skill", "shooting skill",
+    "melee skill", "ranged skill", "special skill", "learn skill", "gain skill",
+    "injury table", "injuries table", "casualty", "wound table",
+    "critical hit", "out of action", "recovery",
+    "advancement", "experience", "level up", "promotion", "improve", "upgrade",
+    "equipment list", "weapon list", "weapons table",
+    "armour list", "armor list", "item list", "price list",
+    "trading post", "market",
+    "d6 table", "2d6 table", "d66 table", "roll table", "result table",
+    "random table", "chart",
+  ];
 
-    if (!aiContent) {
-      throw new Error("No response from AI");
-    }
+  type Interval = { start: number; end: number; reason: string };
+  const intervals: Interval[] = [];
 
-    console.log("AI raw response length:", aiContent.length);
+  const addInterval = (start: number, end: number, reason: string) => {
+    const s = Math.max(0, Math.min(total, start));
+    const e = Math.max(0, Math.min(total, end));
+    if (e - s < 200) return;
+    intervals.push({ start: Math.min(s, e), end: Math.max(s, e), reason });
+  };
 
-    // Parse the JSON response - handle truncation gracefully
-    let parsedRules: { rules: ExtractedRule[] };
-    try {
-      // Try to extract JSON from code blocks or raw response
-      const jsonMatch = aiContent.match(/```(?:json)?\s*([\s\S]*?)```/);
-      let jsonStr = jsonMatch ? jsonMatch[1].trim() : aiContent.trim();
-      
-      // If JSON is truncated, try to recover by closing arrays/objects
-      try {
-        parsedRules = JSON.parse(jsonStr);
-      } catch {
-        console.log("Initial parse failed, attempting truncation recovery...");
-        
-        // Find last complete rule object by looking for closing braces
-        const lastCompleteRule = jsonStr.lastIndexOf('}');
-        if (lastCompleteRule > 0) {
-          // Try to find a clean cut point after a complete rule
-          let cutPoint = lastCompleteRule;
-          
-          // Look backwards for the pattern "},\n" or "}\n" which indicates end of a rule
-          const patterns = ['},', '}\n    ]', '}\n  ]'];
-          for (const pattern of patterns) {
-            const idx = jsonStr.lastIndexOf(pattern);
-            if (idx > cutPoint - 500 && idx > 0) {
-              cutPoint = idx + 1;
-              break;
-            }
-          }
-          
-          jsonStr = jsonStr.substring(0, cutPoint);
-          
-          // Count open braces/brackets and close them
-          const openBraces = (jsonStr.match(/{/g) || []).length;
-          const closeBraces = (jsonStr.match(/}/g) || []).length;
-          const openBrackets = (jsonStr.match(/\[/g) || []).length;
-          const closeBrackets = (jsonStr.match(/\]/g) || []).length;
-          
-          // Remove trailing comma if present
-          jsonStr = jsonStr.replace(/,\s*$/, '');
-          
-          // Close remaining open structures
-          jsonStr += '}}'.repeat(Math.max(0, openBraces - closeBraces - 1));
-          jsonStr += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
-          jsonStr += '}';
-          
-          console.log("Recovered JSON length:", jsonStr.length);
-          parsedRules = JSON.parse(jsonStr);
-          console.log("Truncation recovery successful, extracted rules:", parsedRules.rules?.length || 0);
-        } else {
-          throw new Error("Could not find any complete rules in response");
-        }
-      }
-    } catch (parseError) {
-      console.error("Failed to parse AI response as JSON:", aiContent.substring(0, 500));
-      console.error("Parse error:", parseError);
-      return new Response(JSON.stringify({ 
-        error: "Failed to parse extracted rules. The AI response was incomplete. Please try again." 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+  const sliceSize = 60_000;
+  addInterval(0, Math.min(sliceSize, total), "start");
 
-    // Validate and enhance rules with metadata
-    const rules = (parsedRules.rules || []).map((rule, index) => ({
-      ...rule,
-      rule_key: rule.rule_key || `rule_${index}`,
-      metadata: {
-        source_type: sourceType,
-        source_name: sourceName || "Unknown",
-        extracted_at: new Date().toISOString(),
-        ...rule.metadata
-      }
-    }));
+  const midStart = Math.max(0, Math.floor(total / 2) - Math.floor(sliceSize / 2));
+  addInterval(midStart, Math.min(midStart + sliceSize, total), "middle");
 
-    // Group by category for summary
-    const categorySummary = rules.reduce((acc, rule) => {
-      acc[rule.category] = (acc[rule.category] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+  addInterval(Math.max(0, total - sliceSize), total, "end");
 
-    console.log("Extracted rules:", rules.length);
-    console.log("Categories:", categorySummary);
-
-    // SAVE-FIRST: Insert rules directly into database
-    const dbRules = rules.map((rule) => ({
-      campaign_id: campaignId,
-      category: rule.category,
-      rule_key: rule.rule_key,
-      title: rule.title,
-      content: rule.content,
-      metadata: rule.metadata,
-    }));
-
-    const { data: insertedRules, error: insertError } = await supabase
-      .from("wargame_rules")
-      .insert(dbRules)
-      .select("id, category, title");
-
-    if (insertError) {
-      console.error("Failed to save rules:", insertError);
-      return new Response(JSON.stringify({ 
-        error: `Failed to save rules to database: ${insertError.message}` 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    console.log("Saved rules to database:", insertedRules?.length || 0);
-
-    // Return only summary - client will fetch full rules from database
-    return new Response(JSON.stringify({ 
-      success: true,
-      saved: insertedRules?.length || 0,
-      summary: {
-        totalRules: rules.length,
-        categories: categorySummary
-      }
-    }, null, 0), {
-      headers: { 
-        ...corsHeaders, 
-        "Content-Type": "application/json",
-      },
-    });
-
-  } catch (error) {
-    console.error("Extract rules error:", error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
-    }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  for (const kw of keywords) {
+    const idx = lower.indexOf(kw);
+    if (idx === -1) continue;
+    console.log(`Keyword hit: "${kw}" at ${idx}`);
+    addInterval(idx - 12_000, idx + 48_000, `kw:${kw}`);
   }
-});
+
+  intervals.sort((a, b) => a.start - b.start);
+  const merged: Interval[] = [];
+  for (const it of intervals) {
+    const last = merged[merged.length - 1];
+    if (!last) {
+      merged.push({ ...it });
+      continue;
+    }
+    if (it.start <= last.end + 2_000) {
+      last.end = Math.max(last.end, it.end);
+      last.reason = `${last.reason}|${it.reason}`;
+    } else {
+      merged.push({ ...it });
+    }
+  }
+
+  const maxTotalChars = 180_000;
+  let used = 0;
+  const parts: string[] = [];
+
+  for (const m of merged) {
+    if (used >= maxTotalChars) break;
+    let slice = raw.slice(m.start, m.end);
+    if (used + slice.length > maxTotalChars) {
+      slice = slice.slice(0, maxTotalChars - used);
+    }
+    parts.push(`\n\n--- EXCERPT (${m.start}-${m.end}) [${m.reason}] ---\n\n`);
+    parts.push(slice);
+    used += slice.length;
+  }
+
+  return parts.join("");
+}
+
+// Recover truncated JSON
+function recoverTruncatedJson(jsonStr: string): { rules: ExtractedRule[] } {
+  const lastCompleteRule = jsonStr.lastIndexOf('}');
+  if (lastCompleteRule > 0) {
+    let cutPoint = lastCompleteRule;
+    
+    const patterns = ['},', '}\n    ]', '}\n  ]'];
+    for (const pattern of patterns) {
+      const idx = jsonStr.lastIndexOf(pattern);
+      if (idx > cutPoint - 500 && idx > 0) {
+        cutPoint = idx + 1;
+        break;
+      }
+    }
+    
+    jsonStr = jsonStr.substring(0, cutPoint);
+    
+    const openBraces = (jsonStr.match(/{/g) || []).length;
+    const closeBraces = (jsonStr.match(/}/g) || []).length;
+    const openBrackets = (jsonStr.match(/\[/g) || []).length;
+    const closeBrackets = (jsonStr.match(/\]/g) || []).length;
+    
+    jsonStr = jsonStr.replace(/,\s*$/, '');
+    
+    jsonStr += '}}'.repeat(Math.max(0, openBraces - closeBraces - 1));
+    jsonStr += ']'.repeat(Math.max(0, openBrackets - closeBrackets));
+    jsonStr += '}';
+    
+    console.log("Recovered JSON length:", jsonStr.length);
+    const result = JSON.parse(jsonStr);
+    console.log("Truncation recovery successful, extracted rules:", result.rules?.length || 0);
+    return result;
+  } else {
+    throw new Error("Could not find any complete rules in response");
+  }
+}
+
+// Validate a rule for completeness
+function validateRule(rule: ExtractedRule): string {
+  const content = rule.content;
+  
+  if (content.type === "roll_table") {
+    const entries = content.entries || [];
+    const dice = (content.dice || "").toUpperCase();
+    
+    // Check expected entry counts
+    if (dice.includes("D6") && !dice.includes("2D6") && !dice.includes("D66")) {
+      if (entries.length < 6) return "incomplete";
+    }
+    if (dice.includes("2D6")) {
+      if (entries.length < 11) return "incomplete";
+    }
+    if (dice.includes("D66")) {
+      if (entries.length < 36) return "incomplete";
+    }
+  }
+  
+  if (content.type === "equipment") {
+    const items = content.items || [];
+    if (items.length === 0) return "incomplete";
+  }
+  
+  return "complete";
+}

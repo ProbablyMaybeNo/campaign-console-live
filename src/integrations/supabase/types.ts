@@ -246,6 +246,53 @@ export type Database = {
           },
         ]
       }
+      extraction_jobs: {
+        Row: {
+          campaign_id: string
+          completed_sections: number | null
+          created_at: string
+          detected_sections: Json | null
+          error_message: string | null
+          id: string
+          source_name: string | null
+          status: string
+          total_sections: number | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          completed_sections?: number | null
+          created_at?: string
+          detected_sections?: Json | null
+          error_message?: string | null
+          id?: string
+          source_name?: string | null
+          status?: string
+          total_sections?: number | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          completed_sections?: number | null
+          created_at?: string
+          detected_sections?: Json | null
+          error_message?: string | null
+          id?: string
+          source_name?: string | null
+          status?: string
+          total_sections?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_jobs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_systems: {
         Row: {
           created_at: string
@@ -676,33 +723,42 @@ export type Database = {
           category: string
           content: Json
           created_at: string
+          extraction_job_id: string | null
           id: string
           metadata: Json | null
           rule_key: string
+          source_section: string | null
           title: string
           updated_at: string
+          validation_status: string | null
         }
         Insert: {
           campaign_id: string
           category: string
           content?: Json
           created_at?: string
+          extraction_job_id?: string | null
           id?: string
           metadata?: Json | null
           rule_key: string
+          source_section?: string | null
           title: string
           updated_at?: string
+          validation_status?: string | null
         }
         Update: {
           campaign_id?: string
           category?: string
           content?: Json
           created_at?: string
+          extraction_job_id?: string | null
           id?: string
           metadata?: Json | null
           rule_key?: string
+          source_section?: string | null
           title?: string
           updated_at?: string
+          validation_status?: string | null
         }
         Relationships: [
           {
@@ -710,6 +766,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wargame_rules_extraction_job_id_fkey"
+            columns: ["extraction_job_id"]
+            isOneToOne: false
+            referencedRelation: "extraction_jobs"
             referencedColumns: ["id"]
           },
         ]
