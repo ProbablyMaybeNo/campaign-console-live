@@ -19,6 +19,8 @@ interface ExtractRequest {
     endPosition: number;
   };
   extractionJobId?: string;
+  // Preview mode: return rules without saving
+  previewMode?: boolean;
 }
 
 interface ExtractedRule {
@@ -47,7 +49,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { content, sourceType, sourceName, campaignId, focusedSection, extractionJobId } = await req.json() as ExtractRequest;
+    const { content, sourceType, sourceName, campaignId, focusedSection, extractionJobId, previewMode } = await req.json() as ExtractRequest;
 
     if (!campaignId) {
       return new Response(JSON.stringify({ 
@@ -83,7 +85,7 @@ serve(async (req) => {
     console.log(`Content length: ${content.length} characters`);
     console.log(`Campaign ID: ${campaignId}`);
     console.log(`Focused extraction: ${isFocusedExtraction ? focusedSection.name : "No (full document)"}`);
-
+    console.log(`Preview mode: ${previewMode ? "Yes" : "No"}`);
     // Build the system prompt - adjust based on whether this is focused extraction
     const systemPrompt = buildSystemPrompt(focusedSection);
 
@@ -189,6 +191,31 @@ serve(async (req) => {
 
     console.log("Extracted rules:", rules.length);
     console.log("Categories:", categorySummary);
+
+    // If preview mode, return rules without saving
+    if (previewMode) {
+      console.log("Preview mode: returning rules without saving");
+      return new Response(JSON.stringify({ 
+        success: true,
+        previewMode: true,
+        rules: rules.map(r => ({
+          category: r.category,
+          rule_key: r.rule_key,
+          title: r.title,
+          content: r.content,
+          metadata: r.metadata,
+          validation_status: r.validation_status,
+        })),
+        section: focusedSection?.name || "full_document",
+        summary: {
+          totalRules: rules.length,
+          categories: categorySummary,
+          incompleteRules: rules.filter(r => r.validation_status !== "complete").length,
+        }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // SAVE-FIRST: Insert rules directly into database
     const dbRules = rules.map((rule) => ({
