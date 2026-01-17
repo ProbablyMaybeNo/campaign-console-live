@@ -189,22 +189,26 @@ export function RulesImporter({
         sourceName: activeTab === "pdf" ? pdfFile?.name : "Pasted text"
       });
 
-      if (result && result.rules.length > 0) {
-        setPreviewRules(result.rules as PreviewRule[]);
-        setSourceTexts(result.sourceTexts || []);
-        setStep("preview");
-        toast.success(`Extracted ${result.rules.length} rules - review before saving`);
+      console.log("Extraction result:", { 
+        rulesCount: result?.rules?.length, 
+        sourceTextsCount: result?.sourceTexts?.length,
+        sourceTexts: result?.sourceTexts 
+      });
+
+      // Always go to preview step - user can manually add rules even if AI extracted 0
+      const extractedRules = result?.rules || [];
+      const extractedSourceTexts = result?.sourceTexts || [];
+      
+      setPreviewRules(extractedRules as PreviewRule[]);
+      setSourceTexts(extractedSourceTexts);
+      setStep("preview");
+      
+      if (extractedRules.length > 0) {
+        toast.success(`Extracted ${extractedRules.length} rules - review before saving`);
+      } else if (extractedSourceTexts.length > 0) {
+        toast.warning("No rules auto-extracted. Review source text to manually add rules.");
       } else {
-        // Even with 0 rules, show preview with source text so user can manually add
-        if (result && result.sourceTexts && result.sourceTexts.length > 0) {
-          setPreviewRules([]);
-          setSourceTexts(result.sourceTexts);
-          setStep("preview");
-          toast.warning("No rules auto-extracted. Review source text to manually add rules.");
-        } else {
-          toast.warning("No rules were extracted. Try selecting different sections.");
-          setStep("select-sections");
-        }
+        toast.info("No rules extracted. You can manually add rules from the preview screen.");
       }
     } catch (error) {
       console.error("Preview extraction error:", error);
