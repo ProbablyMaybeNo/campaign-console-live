@@ -291,66 +291,93 @@ function RulePreviewItem({
 }
 
 function RuleContentDisplay({ content }: { content: RuleContent }) {
+  // Guard against undefined or malformed content
+  if (!content || typeof content !== 'object') {
+    return <p className="text-muted-foreground">No content available</p>;
+  }
+
   switch (content.type) {
     case "text":
-      return <p>{content.text}</p>;
+      return <p>{content.text || "(empty)"}</p>;
     
-    case "list":
+    case "list": {
+      const items = content.items || [];
+      if (items.length === 0) return <p className="text-muted-foreground">Empty list</p>;
       return (
         <ul className="list-disc list-inside space-y-0.5">
-          {content.items.map((item, i) => (
+          {items.map((item, i) => (
             <li key={i}>{item}</li>
           ))}
         </ul>
       );
+    }
     
-    case "roll_table":
+    case "roll_table": {
+      const entries = content.entries || [];
       return (
         <div>
-          <p className="font-medium mb-1">{content.dice} Table ({content.entries.length} entries)</p>
-          <table className="w-full text-left">
-            <tbody>
-              {content.entries.slice(0, 6).map((entry, i) => (
-                <tr key={i} className="border-b border-border/30 last:border-b-0">
-                  <td className="py-0.5 pr-2 font-mono w-12">{entry.roll}</td>
-                  <td className="py-0.5">{entry.result}</td>
-                </tr>
-              ))}
-              {content.entries.length > 6 && (
-                <tr>
-                  <td colSpan={2} className="py-0.5 text-muted-foreground/60">
-                    ... and {content.entries.length - 6} more entries
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      );
-    
-    case "equipment":
-      return (
-        <div>
-          <p className="font-medium mb-1">{content.items.length} items</p>
-          {content.items.slice(0, 4).map((item, i) => (
-            <div key={i} className="flex justify-between py-0.5">
-              <span>{item.name}</span>
-              {item.cost && <span className="text-muted-foreground">{item.cost}</span>}
-            </div>
-          ))}
-          {content.items.length > 4 && (
-            <p className="text-muted-foreground/60">... and {content.items.length - 4} more items</p>
+          <p className="font-medium mb-1">{content.dice || "?"} Table ({entries.length} entries)</p>
+          {entries.length === 0 ? (
+            <p className="text-muted-foreground">No entries found</p>
+          ) : (
+            <table className="w-full text-left">
+              <tbody>
+                {entries.slice(0, 6).map((entry, i) => (
+                  <tr key={i} className="border-b border-border/30 last:border-b-0">
+                    <td className="py-0.5 pr-2 font-mono w-12">{entry?.roll || "?"}</td>
+                    <td className="py-0.5">{entry?.result || "(no result)"}</td>
+                  </tr>
+                ))}
+                {entries.length > 6 && (
+                  <tr>
+                    <td colSpan={2} className="py-0.5 text-muted-foreground/60">
+                      ... and {entries.length - 6} more entries
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           )}
         </div>
       );
+    }
     
-    case "stats_table":
+    case "equipment": {
+      const items = content.items || [];
       return (
         <div>
-          <p className="font-medium mb-1">{content.rows.length} rows</p>
-          <p className="text-muted-foreground/60">Columns: {content.columns.join(", ")}</p>
+          <p className="font-medium mb-1">{items.length} items</p>
+          {items.length === 0 ? (
+            <p className="text-muted-foreground">No items found</p>
+          ) : (
+            <>
+              {items.slice(0, 4).map((item, i) => (
+                <div key={i} className="flex justify-between py-0.5">
+                  <span>{item?.name || "(unnamed)"}</span>
+                  {item?.cost && <span className="text-muted-foreground">{item.cost}</span>}
+                </div>
+              ))}
+              {items.length > 4 && (
+                <p className="text-muted-foreground/60">... and {items.length - 4} more items</p>
+              )}
+            </>
+          )}
         </div>
       );
+    }
+    
+    case "stats_table": {
+      const rows = content.rows || [];
+      const columns = content.columns || [];
+      return (
+        <div>
+          <p className="font-medium mb-1">{rows.length} rows</p>
+          <p className="text-muted-foreground/60">
+            Columns: {columns.length > 0 ? columns.join(", ") : "(none)"}
+          </p>
+        </div>
+      );
+    }
     
     default:
       return <p className="text-muted-foreground">Unknown content type</p>;
