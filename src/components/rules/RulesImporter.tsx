@@ -2,7 +2,9 @@ import { useState, useRef, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
-import { useExtractRules, ExtractedRule } from "@/hooks/useRulesManagement";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useExtractRules } from "@/hooks/useRulesManagement";
+import { useAnalyzeDocument, useExtractionJob, DetectedSection } from "@/hooks/useExtractionJob";
 import { extractTextFromPDF, isValidPDF, ExtractionProgress } from "@/lib/pdfExtractor";
 import { 
   Upload, 
@@ -11,8 +13,12 @@ import {
   CheckCircle, 
   AlertCircle,
   X,
-  ChevronDown,
-  ChevronUp
+  Scan,
+  Table,
+  BookOpen,
+  Sword,
+  Star,
+  Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +28,22 @@ interface RulesImporterProps {
   onCancel?: () => void;
   showCancelButton?: boolean;
 }
+
+type ImportStep = "upload" | "select-sections" | "extracting" | "complete";
+
+const sectionTypeIcons: Record<string, React.ReactNode> = {
+  table: <Table className="w-4 h-4" />,
+  rules: <BookOpen className="w-4 h-4" />,
+  equipment: <Sword className="w-4 h-4" />,
+  skills: <Star className="w-4 h-4" />,
+  other: <FileText className="w-4 h-4" />,
+};
+
+const priorityColors: Record<string, string> = {
+  high: "text-red-400 border-red-400/30",
+  medium: "text-yellow-400 border-yellow-400/30",
+  low: "text-muted-foreground border-border",
+};
 
 export function RulesImporter({ 
   campaignId,
@@ -35,13 +57,17 @@ export function RulesImporter({
   const [pastedText, setPastedText] = useState("");
   const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const [step, setStep] = useState<ImportStep>("upload");
   const [extractionResult, setExtractionResult] = useState<{ totalRules: number; categories: Record<string, number> } | null>(null);
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [aiProgress, setAiProgress] = useState<{ stage: string; percent: number } | null>(null);
+  
+  // Section selection state
+  const [detectedSections, setDetectedSections] = useState<DetectedSection[]>([]);
+  const [selectedSectionIds, setSelectedSectionIds] = useState<Set<string>>(new Set());
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const analyzeDocument = useAnalyzeDocument();
   const extractRules = useExtractRules();
+  const { job, runParallelExtraction, reset: resetJob } = useExtractionJob(campaignId);
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!isValidPDF(file)) {
@@ -60,7 +86,6 @@ export function RulesImporter({
       });
       
       setExtractedText(result.text);
-      setShowPreview(true);
       toast.success(`Extracted ${result.pageCount} pages from ${result.fileName}`);
     } catch (error) {
       console.error("PDF extraction error:", error);
@@ -82,36 +107,43 @@ export function RulesImporter({
     e.preventDefault();
   }, []);
 
-  const handleProcessWithAI = async () => {
+  // Step 1: Analyze document structure
+  const handleAnalyzeDocument = async () => {
     const content = activeTab === "pdf" ? extractedText : pastedText;
     
     if (!content || content.trim().length < 50) {
-      toast.error("Please provide more text content to extract rules from.");
+      toast.error("Please provide more text content to analyze.");
       return;
     }
 
-    // Lightweight progress indicator (real work happens server-side and can take a few minutes)
-    const stages = [
-      { stage: "Preparing document excerpts", percent: 10 },
-      { stage: "Sending to AI for analysis", percent: 25 },
-      { stage: "Extracting rules & tables (this can take 1–3 minutes)", percent: 70 },
-    ];
-
-    let stageIndex = 0;
-    const progressInterval = setInterval(() => {
-      if (stageIndex < stages.length) {
-        setAiProgress(stages[stageIndex]);
-        stageIndex++;
-
-        // Hold on the last stage (avoid misleading 'saving to database' while still processing)
-        if (stageIndex >= stages.length) {
-          clearInterval(progressInterval);
-        }
+    try {
+      const sections = await analyzeDocument.mutateAsync({ content });
+      
+      if (sections.length === 0) {
+        toast.warning("No sections detected. Using full document extraction.");
+        // Fall back to single-pass extraction
+        handleLegacyExtraction();
+        return;
       }
-    }, 4000);
 
-    setAiProgress({ stage: "Initializing AI extraction", percent: 5 });
+      setDetectedSections(sections);
+      // Pre-select high priority sections
+      const highPriority = sections.filter(s => s.priority === "high").map(s => s.id);
+      setSelectedSectionIds(new Set(highPriority.length > 0 ? highPriority : sections.map(s => s.id)));
+      setStep("select-sections");
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast.error("Failed to analyze document. Trying direct extraction...");
+      handleLegacyExtraction();
+    }
+  };
 
+  // Fallback to original single-pass extraction
+  const handleLegacyExtraction = async () => {
+    const content = activeTab === "pdf" ? extractedText : pastedText;
+    
+    setStep("extracting");
+    
     try {
       const result = await extractRules.mutateAsync({
         content,
@@ -120,23 +152,64 @@ export function RulesImporter({
         campaignId,
       });
 
-      clearInterval(progressInterval);
-      setAiProgress({ stage: "Complete!", percent: 100 });
-
-      // Store summary for confirmation UI
       setExtractionResult(result.summary);
-      
-      // Expand all categories by default
-      const categories = new Set(Object.keys(result.summary.categories));
-      setExpandedCategories(categories);
-      
-      setTimeout(() => setAiProgress(null), 500);
+      setStep("complete");
       toast.success(`Saved ${result.saved} rules to campaign`);
     } catch (error) {
-      clearInterval(progressInterval);
-      setAiProgress(null);
-      console.error("AI extraction error:", error);
+      console.error("Extraction error:", error);
+      setStep("upload");
     }
+  };
+
+  // Step 2: Extract selected sections in parallel
+  const handleExtractSelected = async () => {
+    const content = activeTab === "pdf" ? extractedText : pastedText;
+    const selectedSections = detectedSections.filter(s => selectedSectionIds.has(s.id));
+    
+    if (selectedSections.length === 0) {
+      toast.error("Please select at least one section to extract.");
+      return;
+    }
+
+    setStep("extracting");
+    
+    try {
+      const result = await runParallelExtraction(
+        content,
+        selectedSections,
+        activeTab,
+        activeTab === "pdf" ? pdfFile?.name : "Pasted text"
+      );
+
+      if (result) {
+        setExtractionResult({ totalRules: result.totalSaved, categories: result.categories });
+        setStep("complete");
+        toast.success(`Saved ${result.totalSaved} rules from ${selectedSections.length} sections`);
+      }
+    } catch (error) {
+      console.error("Parallel extraction error:", error);
+      setStep("select-sections");
+    }
+  };
+
+  const toggleSection = (sectionId: string) => {
+    setSelectedSectionIds(prev => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  };
+
+  const selectAllSections = () => {
+    setSelectedSectionIds(new Set(detectedSections.map(s => s.id)));
+  };
+
+  const deselectAllSections = () => {
+    setSelectedSectionIds(new Set());
   };
 
   const handleConfirmRules = () => {
@@ -150,21 +223,14 @@ export function RulesImporter({
     setExtractedText("");
     setPastedText("");
     setExtractionResult(null);
-    setShowPreview(false);
+    setDetectedSections([]);
+    setSelectedSectionIds(new Set());
+    setStep("upload");
+    resetJob();
   };
 
-  const toggleCategory = (category: string) => {
-    const next = new Set(expandedCategories);
-    if (next.has(category)) {
-      next.delete(category);
-    } else {
-      next.add(category);
-    }
-    setExpandedCategories(next);
-  };
-
-  // Show extraction result for confirmation (rules already saved to DB)
-  if (extractionResult) {
+  // Step: Complete
+  if (step === "complete" && extractionResult) {
     const { totalRules, categories } = extractionResult;
     const categoryCount = Object.keys(categories).length;
     
@@ -209,6 +275,118 @@ export function RulesImporter({
     );
   }
 
+  // Step: Extracting with real progress
+  if (step === "extracting") {
+    const completedCount = job?.completedSections || 0;
+    const totalCount = job?.totalSections || detectedSections.filter(s => selectedSectionIds.has(s.id)).length || 1;
+    const progressPercent = Math.round((completedCount / totalCount) * 100);
+
+    return (
+      <div className="space-y-4 py-8">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 text-primary mx-auto mb-4 animate-spin" />
+          <p className="text-sm font-medium mb-2">Extracting Rules...</p>
+          <p className="text-xs text-muted-foreground">
+            Processing section {completedCount + 1} of {totalCount}
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <div className="h-2 bg-muted rounded overflow-hidden">
+            <div 
+              className="h-full bg-primary transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-muted-foreground text-center">
+            {progressPercent}% complete
+          </p>
+        </div>
+
+        {job?.detectedSections && (
+          <div className="border border-border rounded max-h-40 overflow-y-auto">
+            {job.detectedSections.map(section => (
+              <div key={section.id} className="flex items-center justify-between p-2 border-b border-border last:border-b-0 text-xs">
+                <span className="font-mono">{section.name}</span>
+                <span className={`${section.status === "complete" ? "text-green-400" : section.status === "extracting" ? "text-yellow-400" : "text-muted-foreground"}`}>
+                  {section.status === "complete" ? `✓ ${section.extractedCount}` : section.status === "extracting" ? "..." : "pending"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Step: Section Selection
+  if (step === "select-sections") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Select Sections to Extract</p>
+            <p className="text-xs text-muted-foreground">
+              {detectedSections.length} sections detected • {selectedSectionIds.size} selected
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <TerminalButton variant="ghost" size="sm" onClick={selectAllSections}>
+              All
+            </TerminalButton>
+            <TerminalButton variant="ghost" size="sm" onClick={deselectAllSections}>
+              None
+            </TerminalButton>
+          </div>
+        </div>
+
+        <div className="border border-border rounded max-h-64 overflow-y-auto">
+          {detectedSections.map(section => (
+            <div 
+              key={section.id} 
+              className={`flex items-center gap-3 p-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-muted/30 ${selectedSectionIds.has(section.id) ? "bg-primary/5" : ""}`}
+              onClick={() => toggleSection(section.id)}
+            >
+              <Checkbox 
+                checked={selectedSectionIds.has(section.id)} 
+                onCheckedChange={() => toggleSection(section.id)}
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {sectionTypeIcons[section.type] || sectionTypeIcons.other}
+                  <span className="text-sm font-mono truncate">{section.name}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${priorityColors[section.priority]}`}>
+                    {section.priority}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {section.indicators.slice(0, 2).join(", ")}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-3">
+          <TerminalButton variant="outline" onClick={() => setStep("upload")} className="flex-1">
+            Back
+          </TerminalButton>
+          <TerminalButton 
+            onClick={handleExtractSelected} 
+            disabled={selectedSectionIds.size === 0}
+            className="flex-1"
+          >
+            <Bot className="w-4 h-4 mr-2" />
+            Extract {selectedSectionIds.size} Section{selectedSectionIds.size !== 1 ? "s" : ""}
+          </TerminalButton>
+        </div>
+      </div>
+    );
+  }
+
+  // Step: Upload
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pdf" | "text")}>
@@ -282,22 +460,14 @@ export function RulesImporter({
                 </TerminalButton>
               </div>
 
-              {showPreview && (
-                <div className="space-y-2">
-                  <label className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Extracted Text Preview (editable)
-                  </label>
-                  <textarea
-                    value={extractedText}
-                    onChange={(e) => setExtractedText(e.target.value)}
-                    className="w-full bg-input border border-border rounded p-3 text-xs font-mono h-48 resize-none focus:outline-none focus:border-primary/50"
-                    placeholder="Extracted text will appear here..."
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    {extractedText.length.toLocaleString()} characters extracted
-                  </p>
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Extracted Text Preview ({extractedText.length.toLocaleString()} chars)
+                </label>
+                <div className="w-full bg-input border border-border rounded p-3 text-xs font-mono h-32 overflow-y-auto text-muted-foreground">
+                  {extractedText.slice(0, 500)}...
                 </div>
-              )}
+              </div>
             </div>
           )}
         </TabsContent>
@@ -328,46 +498,32 @@ export function RulesImporter({
           </TerminalButton>
         )}
         <TerminalButton
-          onClick={handleProcessWithAI}
+          onClick={handleAnalyzeDocument}
           disabled={
-            extractRules.isPending ||
+            analyzeDocument.isPending ||
             (activeTab === "pdf" && !extractedText) ||
             (activeTab === "text" && !pastedText.trim())
           }
           className="flex-1"
         >
-        {extractRules.isPending || aiProgress ? (
-            <div className="flex flex-col items-center w-full">
-              <div className="flex items-center gap-2 mb-2">
-                <TerminalLoader text={aiProgress?.stage || "Processing with AI"} size="sm" />
-              </div>
-              {aiProgress && (
-                <div className="w-full">
-                  <div className="h-2 bg-muted rounded overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all duration-500 ease-out"
-                      style={{ width: `${aiProgress.percent}%` }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground text-center mt-1">
-                    {aiProgress.percent}% — {aiProgress.stage}
-                  </p>
-                </div>
-              )}
+          {analyzeDocument.isPending ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Scanning Document...</span>
             </div>
           ) : (
             <>
-              <Bot className="w-4 h-4 mr-2" />
-              Process with AI
+              <Scan className="w-4 h-4 mr-2" />
+              Scan & Select Sections
             </>
           )}
         </TerminalButton>
       </div>
 
-      {extractRules.isError && (
+      {analyzeDocument.isError && (
         <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-3 rounded border border-destructive/30">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>Failed to extract rules. Please try again or adjust your content.</span>
+          <span>Failed to analyze document. Please try again.</span>
         </div>
       )}
     </div>

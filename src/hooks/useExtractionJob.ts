@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
@@ -27,6 +27,27 @@ export interface ExtractionJob {
   detectedSections: DetectedSection[];
   sourceName?: string;
   errorMessage?: string;
+}
+
+/**
+ * Hook to analyze document structure before extraction
+ */
+export function useAnalyzeDocument() {
+  return useMutation({
+    mutationFn: async ({ content }: { content: string }): Promise<DetectedSection[]> => {
+      const { data, error } = await supabase.functions.invoke("analyze-document", {
+        body: { content },
+      });
+
+      if (error) throw error;
+      if (!data.success) throw new Error(data.error || "Failed to analyze document");
+
+      return data.sections || [];
+    },
+    onError: (error: Error) => {
+      toast.error(`Document analysis failed: ${error.message}`);
+    },
+  });
 }
 
 export function useExtractionJob(campaignId: string) {
