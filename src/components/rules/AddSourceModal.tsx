@@ -5,6 +5,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { 
   FileText, 
   Github, 
@@ -21,6 +22,7 @@ import {
   useCreateGitHubSource,
   useIndexSource
 } from "@/hooks/useRulesSources";
+import { usePdfIndexer, useGitHubIndexer } from "@/hooks/useRulesIndexer";
 
 interface AddSourceModalProps {
   open: boolean;
@@ -50,6 +52,10 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
   const createPasteSource = useCreatePasteSource();
   const createGitHubSource = useCreateGitHubSource();
   const indexSource = useIndexSource();
+  
+  // Client-side indexers
+  const pdfIndexer = usePdfIndexer();
+  const githubIndexer = useGitHubIndexer();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,11 +89,19 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
         storagePath: filePath,
       });
 
-      // Optionally trigger indexing
-      toast.success("PDF uploaded! Click 'Index Now' to process it.", {
+      // Show option to index now
+      toast.success("PDF uploaded!", {
+        description: "Ready to extract and index.",
         action: {
           label: "Index Now",
-          onClick: () => indexSource.mutate({ sourceId: source.id, campaignId }),
+          onClick: async () => {
+            const result = await pdfIndexer.indexPdf(source.id, campaignId, filePath);
+            if (result.success) {
+              toast.success(`Indexed ${result.stats?.pages} pages, ${result.stats?.chunks} chunks`);
+            } else {
+              toast.error(`Indexing failed: ${result.error}`);
+            }
+          },
         },
       });
 
@@ -110,7 +124,8 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
         text: pasteText,
       });
 
-      toast.success("Text added! Click 'Index Now' to process it.", {
+      toast.success("Text added!", {
+        description: "Ready to index.",
         action: {
           label: "Index Now",
           onClick: () => indexSource.mutate({ sourceId: source.id, campaignId }),
@@ -134,10 +149,23 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
         jsonPath: githubPath.trim() || "rules.json",
       });
 
-      toast.success("GitHub source added! Click 'Index Now' to import rules.", {
+      toast.success("GitHub source added!", {
+        description: "Ready to fetch and index.",
         action: {
           label: "Index Now",
-          onClick: () => indexSource.mutate({ sourceId: source.id, campaignId }),
+          onClick: async () => {
+            const result = await githubIndexer.indexGitHub(
+              source.id, 
+              campaignId, 
+              githubUrl.trim(), 
+              githubPath.trim() || "rules.json"
+            );
+            if (result.success) {
+              toast.success(`Indexed ${result.stats?.sections} sections, ${result.stats?.chunks} chunks`);
+            } else {
+              toast.error(`Indexing failed: ${result.error}`);
+            }
+          },
         },
       });
 
@@ -155,10 +183,14 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
     setGithubUrl("");
     setGithubPath("rules.json");
     setGithubTitle("");
+    pdfIndexer.reset();
+    githubIndexer.reset();
     onOpenChange(false);
   };
 
   const isSubmitting = uploadingPdf || createPdfSource.isPending || createPasteSource.isPending || createGitHubSource.isPending;
+  const isIndexing = pdfIndexer.progress !== null || githubIndexer.progress !== null;
+  const currentProgress = pdfIndexer.progress || githubIndexer.progress;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -168,6 +200,17 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
             Add Rules Source
           </DialogTitle>
         </DialogHeader>
+
+        {/* Progress indicator when indexing */}
+        {isIndexing && currentProgress && (
+          <div className="mb-4 p-3 border border-primary/30 rounded bg-primary/5">
+            <div className="flex items-center gap-2 mb-2">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+              <span className="text-sm font-mono text-primary">{currentProgress.message}</span>
+            </div>
+            <Progress value={currentProgress.progress} className="h-2" />
+          </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid grid-cols-3 mb-4">
