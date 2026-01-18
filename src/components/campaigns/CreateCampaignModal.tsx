@@ -407,7 +407,13 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               }
             >
               {isCreating ? (
-                <TerminalLoader text={isSyncing ? "Syncing Rules" : "Creating"} size="sm" />
+                <TerminalLoader text={isSyncing ? "Uploading" : "Creating"} size="sm" />
+              ) : wargameOption === "pdf" && pdfFile ? (
+                "Create & Upload PDF"
+              ) : wargameOption === "paste" && pasteText ? (
+                "Create & Import Text"
+              ) : wargameOption === "github" && repoValidated ? (
+                "Create & Sync Rules"
               ) : (
                 "Create Campaign"
               )}
