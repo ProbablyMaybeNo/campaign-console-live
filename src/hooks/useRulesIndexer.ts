@@ -1,7 +1,7 @@
 import { useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { extractPdfText, extractPdfTextEnhanced, removeHeadersFooters } from "@/lib/pdfExtractor";
+import { extractPdfTextEnhanced, getExtractionStats, removeHeadersFooters, shouldFlagScannedPdf } from "@/lib/pdfExtractor";
 import type { IndexingProgress } from "@/types/rules";
 
 interface IndexingResult {
@@ -23,6 +23,7 @@ interface IndexingResult {
 export function usePdfIndexer() {
   const [progress, setProgress] = useState<IndexingProgress | null>(null);
   const queryClient = useQueryClient();
+  const debugEnabled = typeof window !== "undefined" && window.localStorage.getItem("rules_index_debug") === "true";
 
   const indexPdf = useCallback(async (
     sourceId: string,
@@ -31,8 +32,14 @@ export function usePdfIndexer() {
     useAdvanced = false
   ): Promise<IndexingResult> => {
     try {
+      const timeMsByStage: Record<string, number> = {};
+      const markStage = (stage: string, start: number) => {
+        timeMsByStage[stage] = Math.round(performance.now() - start);
+      };
+
       setProgress({ stage: "extracting", progress: 0, message: "Downloading PDF..." });
 
+      const downloadStart = performance.now();
       // Download PDF from storage
       const { data: fileData, error: downloadError } = await supabase.storage
         .from("campaign-documents")
@@ -41,11 +48,13 @@ export function usePdfIndexer() {
       if (downloadError || !fileData) {
         throw new Error(`Failed to download PDF: ${downloadError?.message}`);
       }
+      markStage("downloadPdf", downloadStart);
 
       const file = new File([fileData], "document.pdf", { type: "application/pdf" });
 
       setProgress({ stage: "extracting", progress: 10, message: "Extracting text..." });
 
+      const extractStart = performance.now();
       // Use enhanced extraction for better table detection
       const result = await extractPdfTextEnhanced(file, (page, total, stage) => {
         const pct = 10 + Math.round((page / total) * 40);
@@ -55,12 +64,38 @@ export function usePdfIndexer() {
           message: `Extracting page ${page}/${total}...`,
         });
       });
-
+      markStage("extractText", extractStart);
       // Clean up headers/footers
+      const cleanStart = performance.now();
       setProgress({ stage: "cleaning", progress: 55, message: "Cleaning text..." });
       const cleanedPages = removeHeadersFooters(result.pages);
+      markStage("cleanHeadersFooters", cleanStart);
+
+      const cleanedStats = getExtractionStats(cleanedPages);
+      if (shouldFlagScannedPdf(cleanedPages)) {
+        const message = "Scanned PDF detected. Use OCR / alternate method.";
+        setProgress({ stage: "failed", progress: 0, message });
+        await supabase.from("rules_sources").update({
+          index_status: "failed",
+          index_error: { stage: "scanned_pdf", message },
+          index_stats: {
+            pagesExtracted: cleanedPages.length,
+            emptyPages: cleanedStats.emptyPages,
+            avgCharsPerPage: cleanedStats.avgCharsPerPage,
+            sections: 0,
+            chunks: 0,
+            tablesHigh: 0,
+            tablesLow: 0,
+            datasets: 0,
+            timeMsByStage,
+          },
+        }).eq("id", sourceId);
+
+        return { success: false, error: message };
+      }
 
       // Save pages to database
+      const saveStart = performance.now();
       setProgress({ stage: "saving", progress: 60, message: "Saving pages..." });
       
       const pagesToInsert = cleanedPages.map(p => ({
@@ -71,16 +106,34 @@ export function usePdfIndexer() {
       }));
 
       await supabase.from("rules_pages").delete().eq("source_id", sourceId);
-      const { error: insertError } = await supabase.from("rules_pages").insert(pagesToInsert);
-      if (insertError) throw insertError;
+      for (let i = 0; i < pagesToInsert.length; i += 200) {
+        const batch = pagesToInsert.slice(i, i + 200);
+        const { error: insertError } = await supabase.from("rules_pages").insert(batch);
+        if (insertError) throw insertError;
+      }
+      markStage("savePages", saveStart);
 
       // Trigger server-side indexing with pre-detected tables
       setProgress({ stage: "indexing", progress: 70, message: "Building index..." });
 
+      const indexStart = performance.now();
       const { data: indexResult, error: indexError } = await supabase.functions.invoke(
         "index-rules-source",
-        { body: { sourceId, preDetectedTables: result.detectedTables } }
+        {
+          body: {
+            sourceId,
+            preDetectedTables: result.detectedTables,
+            preDetectedSections: result.detectedSections,
+            clientStats: {
+              pagesExtracted: cleanedPages.length,
+              emptyPages: cleanedStats.emptyPages,
+              avgCharsPerPage: cleanedStats.avgCharsPerPage,
+            },
+            clientTimings: timeMsByStage,
+          },
+        }
       );
+      markStage("indexSource", indexStart);
 
       if (indexError) throw indexError;
       if (indexResult.error) throw new Error(indexResult.error);
@@ -88,19 +141,33 @@ export function usePdfIndexer() {
       setProgress({ stage: "complete", progress: 100, message: "Complete!" });
       queryClient.invalidateQueries({ queryKey: ["rules_sources", campaignId] });
 
+      if (debugEnabled) {
+        console.debug("Rules indexing stats", {
+          pagesExtracted: cleanedPages.length,
+          emptyPages: cleanedStats.emptyPages,
+          avgCharsPerPage: cleanedStats.avgCharsPerPage,
+          timeMsByStage,
+          detectedTables: result.detectedTables.length,
+          detectedSections: result.detectedSections.length,
+          pageErrors: result.pageErrors.length,
+        });
+      }
+
       return { success: true, stats: indexResult.stats };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       setProgress({ stage: "failed", progress: 0, message });
-      
-      await supabase.from("rules_sources").update({
-        index_status: "failed",
-        index_error: { stage: "extraction", message },
-      }).eq("id", sourceId);
+
+      if (progress?.stage !== "indexing") {
+        await supabase.from("rules_sources").update({
+          index_status: "failed",
+          index_error: { stage: "extraction", message },
+        }).eq("id", sourceId);
+      }
 
       return { success: false, error: message };
     }
-  }, [queryClient]);
+  }, [debugEnabled, progress, queryClient]);
 
   const reset = useCallback(() => setProgress(null), []);
 
