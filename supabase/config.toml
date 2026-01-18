@@ -8,6 +8,3 @@ verify_jwt = false
 
 [functions.extract-rules]
 verify_jwt = false
-
-[functions.analyze-document]
-verify_jwt = false

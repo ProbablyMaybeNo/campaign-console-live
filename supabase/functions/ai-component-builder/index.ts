@@ -32,8 +32,7 @@ interface ComponentData {
       properties?: Record<string, string>;
     }>;
   };
-  dataSource?: string;
-  linkedRuleId?: string;
+  dataSource?: string; // 'live:players', 'live:warbands', etc.
 }
 
 serve(async (req) => {
@@ -54,9 +53,8 @@ serve(async (req) => {
     const { prompt, conversationHistory = [], sourceContent, sourceUrl, campaignId } = await req.json() as BuilderRequest;
 
     // Fetch campaign data if campaignId is provided
-    let rulesContext = "";
-    let liveDataContext = "";
-    let availableCategories: string[] = [];
+    let campaignContext = "";
+    let liveDataAvailable: Record<string, unknown[]> = {};
 
     if (campaignId) {
       console.log("Fetching campaign data for:", campaignId);
@@ -78,6 +76,13 @@ serve(async (req) => {
         .select("id, name, faction, sub_faction, points_total, owner_id, narrative")
         .eq("campaign_id", campaignId);
 
+      // Fetch narrative events
+      const { data: narrativeEvents } = await supabase
+        .from("narrative_events")
+        .select("id, title, content, event_type, event_date, author_id, visibility")
+        .eq("campaign_id", campaignId)
+        .order("event_date", { ascending: false });
+
       // Fetch schedule entries
       const { data: scheduleEntries } = await supabase
         .from("schedule_entries")
@@ -85,189 +90,187 @@ serve(async (req) => {
         .eq("campaign_id", campaignId)
         .order("round_number", { ascending: true });
 
-      // Fetch ALL wargame rules with full content
-      const { data: rules, error: rulesError } = await supabase
+      // Fetch wargame rules with full content
+      const { data: rules } = await supabase
         .from("wargame_rules")
         .select("id, title, category, rule_key, content, metadata")
         .eq("campaign_id", campaignId)
         .order("category", { ascending: true });
 
-      if (rulesError) {
-        console.error("Error fetching rules:", rulesError);
-      }
+      // Store live data for reference
+      liveDataAvailable = {
+        players: players || [],
+        warbands: warbands || [],
+        narrativeEvents: narrativeEvents || [],
+        scheduleEntries: scheduleEntries || [],
+        rules: rules || [],
+      };
 
-      console.log(`Fetched ${rules?.length || 0} rules for campaign`);
-
-      // Build structured rules context - this is the PRIMARY data source
-      if (rules && rules.length > 0) {
-        // Group rules by category
-        const rulesByCategory: Record<string, typeof rules> = {};
-        rules.forEach((rule) => {
-          if (!rulesByCategory[rule.category]) {
-            rulesByCategory[rule.category] = [];
-          }
-          rulesByCategory[rule.category].push(rule);
+      // Group rules by category for better AI comprehension
+      const rulesByCategory: Record<string, Array<{id: string; title: string; rule_key: string; content: unknown}>> = {};
+      (rules || []).forEach((rule: any) => {
+        if (!rulesByCategory[rule.category]) {
+          rulesByCategory[rule.category] = [];
+        }
+        rulesByCategory[rule.category].push({
+          id: rule.id,
+          title: rule.title,
+          rule_key: rule.rule_key,
+          content: rule.content
         });
+      });
 
-        availableCategories = Object.keys(rulesByCategory);
+      // Build detailed rules context
+      let rulesContext = "";
+      if (Object.keys(rulesByCategory).length > 0) {
+        rulesContext = `
 
-        rulesContext = `\n\n=== CAMPAIGN RULES LIBRARY (${rules.length} rules) ===\nYou MUST use this exact data when creating components. DO NOT invent content.\n`;
-        
+CAMPAIGN RULES LIBRARY:
+The following rules have been imported into this campaign. You can use these to populate tables and cards with accurate game content.
+
+`;
         for (const [category, categoryRules] of Object.entries(rulesByCategory)) {
-          rulesContext += `\n--- Category: "${category}" (${categoryRules.length} rules) ---\n`;
-          
-          categoryRules.forEach((rule) => {
-            rulesContext += `\nRULE ID: ${rule.id}\n`;
-            rulesContext += `TITLE: "${rule.title}"\n`;
-            rulesContext += `KEY: ${rule.rule_key}\n`;
-            
-            // Format content based on type
-            const content = rule.content as Record<string, unknown>;
-            if (content) {
-              if (content.type === "roll_table" && content.entries) {
-                rulesContext += `TYPE: roll_table\n`;
-                rulesContext += `DICE: ${content.dice || "D6"}\n`;
-                rulesContext += `ENTRIES:\n`;
-                (content.entries as Array<{roll: string; result: string}>).forEach((entry) => {
-                  rulesContext += `  - Roll "${entry.roll}": "${entry.result}"\n`;
-                });
-              } else if (content.type === "list" && content.items) {
-                rulesContext += `TYPE: list\n`;
-                rulesContext += `ITEMS:\n`;
-                (content.items as string[]).forEach((item, i) => {
-                  rulesContext += `  ${i + 1}. "${item}"\n`;
-                });
-              } else if (content.type === "text" && content.text) {
-                rulesContext += `TYPE: text\n`;
-                rulesContext += `TEXT: "${content.text}"\n`;
-              } else if (content.type === "equipment" && content.items) {
-                rulesContext += `TYPE: equipment\n`;
-                rulesContext += `ITEMS:\n`;
-                (content.items as Array<{name: string; cost?: string; effect?: string}>).forEach((item) => {
-                  rulesContext += `  - "${item.name}"${item.cost ? ` (Cost: ${item.cost})` : ""}${item.effect ? `: ${item.effect}` : ""}\n`;
-                });
-              } else if (content.type === "stats_table" && content.headers && content.rows) {
-                rulesContext += `TYPE: stats_table\n`;
-                rulesContext += `HEADERS: ${JSON.stringify(content.headers)}\n`;
-                rulesContext += `ROWS: ${JSON.stringify(content.rows)}\n`;
-              } else {
-                rulesContext += `CONTENT: ${JSON.stringify(content)}\n`;
+          rulesContext += `\n### ${category} (${categoryRules.length} rules)\n`;
+          categoryRules.forEach((rule: any) => {
+            rulesContext += `\n**${rule.title}** (key: ${rule.rule_key}):\n`;
+            if (typeof rule.content === 'object') {
+              if (rule.content.text) {
+                rulesContext += `${rule.content.text}\n`;
               }
+              if (rule.content.table) {
+                rulesContext += `Table: ${JSON.stringify(rule.content.table)}\n`;
+              }
+              if (rule.content.list) {
+                rulesContext += `List: ${rule.content.list.join(', ')}\n`;
+              }
+            } else {
+              rulesContext += `${JSON.stringify(rule.content)}\n`;
             }
           });
         }
-        
-        rulesContext += `\n=== END RULES LIBRARY ===\n`;
-        rulesContext += `\nAVAILABLE CATEGORIES: ${availableCategories.join(", ")}\n`;
-      } else {
-        rulesContext = "\n\n[NO RULES IMPORTED YET - Tell user to import rules first]\n";
       }
 
-      // Build live data context
-      liveDataContext = `\n\n=== LIVE CAMPAIGN DATA ===\n`;
-      
-      if (players && players.length > 0) {
-        liveDataContext += `\nPLAYERS (${players.length}):\n`;
-        players.forEach((p) => {
-          const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
-          liveDataContext += `  - ${profile?.display_name || "Unknown"} (${p.role})\n`;
-        });
-      }
-      
-      if (warbands && warbands.length > 0) {
-        liveDataContext += `\nWARBANDS (${warbands.length}):\n`;
-        warbands.forEach((w) => {
-          liveDataContext += `  - "${w.name}" (${w.faction}, ${w.points_total || 0}pts)\n`;
-        });
-      }
-      
-      if (scheduleEntries && scheduleEntries.length > 0) {
-        liveDataContext += `\nSCHEDULE (${scheduleEntries.length} rounds):\n`;
-        scheduleEntries.forEach((s) => {
-          liveDataContext += `  - Round ${s.round_number}: "${s.title}" (${s.status})\n`;
-        });
-      }
-      
-      liveDataContext += `=== END LIVE DATA ===\n`;
+      // Create context string for AI
+      campaignContext = `
+
+LIVE CAMPAIGN DATA AVAILABLE:
+You have access to real-time data from this campaign's database. When the user asks for components using campaign data, extract from the following:
+
+PLAYERS (${players?.length || 0}):
+${JSON.stringify(players?.map(p => {
+  const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+  return {
+    user_id: p.user_id,
+    display_name: profile?.display_name || "Unknown",
+    role: p.role,
+    joined_at: p.joined_at
+  };
+}) || [], null, 2)}
+
+WARBANDS (${warbands?.length || 0}):
+${JSON.stringify(warbands || [], null, 2)}
+
+NARRATIVE EVENTS (${narrativeEvents?.length || 0}):
+${JSON.stringify(narrativeEvents?.slice(0, 20) || [], null, 2)}
+
+SCHEDULE ENTRIES (${scheduleEntries?.length || 0}):
+${JSON.stringify(scheduleEntries || [], null, 2)}
+
+${rulesContext}
+
+When creating components from live data or rules:
+- For player lists: include display_name, faction (from their warband), warband link, narrative link
+- For warband lists: include name, faction, points_total, owner name
+- For schedule tables: include round_number, title, scheduled_date, status
+- For rules tables: use the exact content from the rules library above - match titles and values precisely
+- When user asks for a specific rule table (e.g., "Injury table", "Exploration rewards"), find the matching rule and format it correctly
+- Mark data as coming from the database so the component can update dynamically
+- If a rule has a 'table' content type, format it as a proper table component with columns and rows
+`;
     }
 
-    // Build content context from uploads
+    // Build content context
     let contentContext = "";
+    
     if (sourceContent) {
-      contentContext = `\n\nUPLOADED SOURCE CONTENT:\n${sourceContent.substring(0, 50000)}`;
+      contentContext = `\n\nSOURCE CONTENT TO EXTRACT FROM:\n${sourceContent.substring(0, 50000)}`;
     }
+    
     if (sourceUrl) {
-      contentContext += `\n\nSOURCE URL: ${sourceUrl}`;
+      contentContext += `\n\nThe user has provided this source URL: ${sourceUrl}`;
     }
 
-    const systemPrompt = `You are an AI that creates dashboard components for a wargaming campaign app.
+    const systemPrompt = `You are an AI assistant helping users create dashboard components for a wargaming campaign management app. You can create TABLE and CARD components by:
+1. Extracting data from source content (PDFs, text files, or URLs)
+2. Using LIVE DATA from the campaign database (players, warbands, narrative events, schedule)
+3. Using IMPORTED RULES from the campaign's rules library
 
-CRITICAL: You MUST ONLY use data from the CAMPAIGN RULES LIBRARY or LIVE CAMPAIGN DATA provided in this conversation. NEVER invent, fabricate, or make up content. Use EXACT text from the rules.
+IMPORTANT: You are having a conversation with the user. You can:
+1. Answer questions about the content they've uploaded, campaign data, OR imported rules
+2. List tables, sections, rules categories, or data you find in any source
+3. Create one or multiple components when they ask
+4. Reference specific rules by name to populate components with accurate game content
 
-OUTPUT FORMAT - Always respond with valid JSON:
+When the user asks you to CREATE components, you MUST respond with a JSON object in this EXACT format:
 {
-  "message": "Your explanation",
+  "message": "Your conversational response explaining what you found/created",
   "components": [
     {
       "type": "table",
       "data": {
-        "title": "Exact Title From Rules",
+        "title": "Component Title",
         "columns": ["Column1", "Column2"],
-        "rows": [{"Column1": "exact value", "Column2": "exact value"}]
+        "rows": [{"Column1": "value", "Column2": "value"}]
       },
-      "dataSource": "rules:CategoryName",
-      "linkedRuleId": "the-exact-rule-uuid"
+      "dataSource": "live:players",
+      "linkedRuleId": "optional-rule-uuid-if-from-rules"
     }
   ]
 }
 
-HOW TO CREATE COMPONENTS FROM RULES:
+DATA SOURCE OPTIONS:
+- "static" - Data is embedded in the component (from PDFs, URLs, or manual entry)
+- "live:players" - Component shows campaign player data
+- "live:warbands" - Component shows warband data
+- "live:narrative" - Component shows narrative events
+- "live:schedule" - Component shows schedule entries
+- "rules:category_name" - Component is populated from a specific rules category
 
-1. For ROLL_TABLE rules:
-   - Create a table with columns: ["Roll", "Result"]
-   - Each row uses the exact "roll" and "result" values from ENTRIES
-   - Example: {"Roll": "2-6", "Result": "Failure"}
-
-2. For LIST rules:
-   - Create a table with columns: ["#", "Description"] or just ["Action"]
-   - Each row contains one exact item from the ITEMS array
-
-3. For TEXT rules:
-   - Create a card component with the exact TEXT content
-
-4. For EQUIPMENT rules:
-   - Create a table with columns: ["Name", "Cost", "Effect"]
-   - Use exact values from each item
-
-5. For STATS_TABLE rules:
-   - Use the exact HEADERS as columns
-   - Use the exact ROWS data
-
-REQUIREMENTS:
-- ALWAYS include "linkedRuleId" with the rule's UUID when creating from rules
-- NEVER generate placeholder text like "Example result" or "Sample data"
-- If a rule exists but has empty content, say so
-- If user asks for something not in the data, list what IS available
-
-When just answering questions (not creating):
+When the user is just asking questions or exploring (NOT creating):
 {
-  "message": "Available categories: X, Y, Z. Rules include: ...",
+  "message": "Your conversational response",
   "components": []
-}`;
+}
 
-    // Put the data context in the user message so it's clearly visible
-    const userMessageWithContext = `${prompt}
+RULES-AWARE COMPONENT CREATION:
+- When the user asks for a component based on game rules (e.g., "Create an Injury table"), find the matching rule in the CAMPAIGN RULES LIBRARY
+- Use the EXACT content from the rule - do not make up data
+- If the rule has table data, format it with proper columns and rows
+- If the rule has list data, format it as cards or a single-column table
+- Include the rule's ID as linkedRuleId so the component stays connected to the source rule
+- If no matching rule exists, tell the user and ask if they want to import it first
 
-${rulesContext}${liveDataContext}${contentContext}`;
+Guidelines:
+- Be conversational and helpful
+- When asked about available rules, summarize the categories and notable rules
+- When creating components from rules, use verbatim content from the rules library
+- When creating player lists: match player user_ids to their warbands to show faction info
+- When creating links: use format "[View](/campaign/{campaignId}/warband/{id})" for warbands
+- You can create MULTIPLE components at once
+- Each component should be self-contained with all its data
+- For wargames: injury tables, advancement charts, weapon stats, ability lists
+- If requested data doesn't exist, explain what IS available from rules/campaign data
 
-    // Build messages array
+ALWAYS RESPOND WITH VALID JSON. The response must be parseable JSON with "message" and "components" fields.`;
+
+    // Build messages array with conversation history
     const messages = [
       { role: "system", content: systemPrompt },
       ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
-      { role: "user", content: userMessageWithContext }
+      { role: "user", content: `${prompt}${campaignContext}${contentContext}` }
     ];
 
-    console.log("Sending to AI - Rules context length:", rulesContext.length, "Categories:", availableCategories);
+    console.log("Sending to AI with campaign context:", !!campaignId, "history length:", conversationHistory.length);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -278,7 +281,7 @@ ${rulesContext}${liveDataContext}${contentContext}`;
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages,
-        temperature: 0.2, // Lower temperature for more deterministic output
+        temperature: 0.4,
       }),
     });
 
@@ -309,18 +312,16 @@ ${rulesContext}${liveDataContext}${contentContext}`;
       throw new Error("No response from AI");
     }
 
-    console.log("AI raw response (first 1000 chars):", content.substring(0, 1000));
+    console.log("AI raw response:", content.substring(0, 500));
 
-    // Parse the JSON from the response
+    // Try to parse the JSON from the response
     let parsedData: { message: string; components: ComponentData[] };
     try {
-      // Try to extract JSON from markdown code blocks first
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
       const jsonStr = jsonMatch ? jsonMatch[1].trim() : content.trim();
       parsedData = JSON.parse(jsonStr);
     } catch (parseError) {
       console.error("Failed to parse AI response as JSON:", content);
-      // Return the raw content as a message
       parsedData = {
         message: content,
         components: []
@@ -337,7 +338,7 @@ ${rulesContext}${liveDataContext}${contentContext}`;
         : []
     };
 
-    console.log("Returning", normalizedResponse.components.length, "components");
+    console.log("Returning components:", normalizedResponse.components.length);
 
     return new Response(JSON.stringify(normalizedResponse), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

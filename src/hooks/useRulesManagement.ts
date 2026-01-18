@@ -2,10 +2,24 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
-import type { ExtractedRule, ExtractionResult } from "@/types/rules";
 
-// Re-export types for backward compatibility
-export type { ExtractedRule, ExtractionResult };
+export interface ExtractedRule {
+  category: string;
+  rule_key: string;
+  title: string;
+  content: Json;
+  metadata?: Record<string, unknown>;
+}
+
+export interface ExtractionResult {
+  success: boolean;
+  saved: number;
+  summary: {
+    totalRules: number;
+    categories: Record<string, number>;
+  };
+  error?: string;
+}
 
 /**
  * Extract rules from text content using AI
@@ -45,7 +59,7 @@ export function useExtractRules() {
 }
 
 /**
- * Save extracted rules to the database (upsert to handle duplicates)
+ * Save extracted rules to the database
  */
 export function useSaveRules() {
   const queryClient = useQueryClient();
@@ -57,7 +71,7 @@ export function useSaveRules() {
     }: {
       campaignId: string;
       rules: ExtractedRule[];
-    }): Promise<{ inserted: number; updated: number }> => {
+    }): Promise<{ inserted: number }> => {
       // Transform rules to match database schema
       const dbRules = rules.map((rule) => ({
         campaign_id: campaignId,
@@ -66,24 +80,15 @@ export function useSaveRules() {
         title: rule.title,
         content: rule.content as Json,
         metadata: (rule.metadata || {}) as Json,
-        updated_at: new Date().toISOString(),
       }));
 
-      // Use upsert to handle duplicates - updates existing rules with same campaign_id+category+rule_key
       const { data, error } = await supabase
         .from("wargame_rules")
-        .upsert(dbRules, {
-          onConflict: "campaign_id,category,rule_key",
-          ignoreDuplicates: false, // Update on conflict
-        })
+        .insert(dbRules)
         .select();
 
-      if (error) {
-        console.error("Save error:", error);
-        throw error;
-      }
-      
-      return { inserted: data?.length || 0, updated: 0 };
+      if (error) throw error;
+      return { inserted: data?.length || 0 };
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });

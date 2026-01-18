@@ -2,12 +2,8 @@ import { useState, useRef, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useExtractRules } from "@/hooks/useRulesManagement";
-import { useAnalyzeDocument, usePreviewExtraction, useSavePreviewedRules } from "@/hooks/useExtractionJob";
-import { RulesPreview, PreviewRule } from "./RulesPreview";
+import { useExtractRules, ExtractedRule } from "@/hooks/useRulesManagement";
 import { extractTextFromPDF, isValidPDF, ExtractionProgress } from "@/lib/pdfExtractor";
-import type { DetectedSection, ExtractedRule, SourceText } from "@/types/rules";
 import { 
   Upload, 
   FileText, 
@@ -15,12 +11,8 @@ import {
   CheckCircle, 
   AlertCircle,
   X,
-  Scan,
-  Table,
-  BookOpen,
-  Sword,
-  Star,
-  Loader2
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,22 +22,6 @@ interface RulesImporterProps {
   onCancel?: () => void;
   showCancelButton?: boolean;
 }
-
-type ImportStep = "upload" | "select-sections" | "extracting" | "preview" | "complete";
-
-const sectionTypeIcons: Record<string, React.ReactNode> = {
-  table: <Table className="w-4 h-4" />,
-  rules: <BookOpen className="w-4 h-4" />,
-  equipment: <Sword className="w-4 h-4" />,
-  skills: <Star className="w-4 h-4" />,
-  other: <FileText className="w-4 h-4" />,
-};
-
-const priorityColors: Record<string, string> = {
-  high: "text-red-400 border-red-400/30",
-  medium: "text-yellow-400 border-yellow-400/30",
-  low: "text-muted-foreground border-border",
-};
 
 export function RulesImporter({ 
   campaignId,
@@ -59,23 +35,13 @@ export function RulesImporter({
   const [pastedText, setPastedText] = useState("");
   const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
-  const [step, setStep] = useState<ImportStep>("upload");
+  const [showPreview, setShowPreview] = useState(false);
   const [extractionResult, setExtractionResult] = useState<{ totalRules: number; categories: Record<string, number> } | null>(null);
-  
-  // Section selection state
-  const [detectedSections, setDetectedSections] = useState<DetectedSection[]>([]);
-  const [selectedSectionIds, setSelectedSectionIds] = useState<Set<string>>(new Set());
-  
-  // Preview state
-  const [previewRules, setPreviewRules] = useState<PreviewRule[]>([]);
-  const [sourceTexts, setSourceTexts] = useState<SourceText[]>([]);
-  const [failedSections, setFailedSections] = useState<string[]>([]);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [aiProgress, setAiProgress] = useState<{ stage: string; percent: number } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const analyzeDocument = useAnalyzeDocument();
   const extractRules = useExtractRules();
-  const previewExtraction = usePreviewExtraction();
-  const savePreviewedRules = useSavePreviewedRules(campaignId);
 
   const handleFileSelect = useCallback(async (file: File) => {
     if (!isValidPDF(file)) {
@@ -94,6 +60,7 @@ export function RulesImporter({
       });
       
       setExtractedText(result.text);
+      setShowPreview(true);
       toast.success(`Extracted ${result.pageCount} pages from ${result.fileName}`);
     } catch (error) {
       console.error("PDF extraction error:", error);
@@ -115,43 +82,34 @@ export function RulesImporter({
     e.preventDefault();
   }, []);
 
-  // Step 1: Analyze document structure
-  const handleAnalyzeDocument = async () => {
+  const handleProcessWithAI = async () => {
     const content = activeTab === "pdf" ? extractedText : pastedText;
     
     if (!content || content.trim().length < 50) {
-      toast.error("Please provide more text content to analyze.");
+      toast.error("Please provide more text content to extract rules from.");
       return;
     }
 
-    try {
-      const sections = await analyzeDocument.mutateAsync({ content });
-      
-      if (sections.length === 0) {
-        toast.warning("No sections detected. Using full document extraction.");
-        // Fall back to single-pass extraction
-        handleLegacyExtraction();
-        return;
+    // Simulate progress stages for AI processing
+    const stages = [
+      { stage: "Preparing document excerpts", percent: 10 },
+      { stage: "Sending to AI for analysis", percent: 25 },
+      { stage: "Scanning for campaign rules", percent: 40 },
+      { stage: "Extracting exploration tables", percent: 55 },
+      { stage: "Extracting skill tables", percent: 70 },
+      { stage: "Saving to database", percent: 90 },
+    ];
+
+    let stageIndex = 0;
+    const progressInterval = setInterval(() => {
+      if (stageIndex < stages.length) {
+        setAiProgress(stages[stageIndex]);
+        stageIndex++;
       }
+    }, 3000);
 
-      setDetectedSections(sections);
-      // Pre-select high priority sections
-      const highPriority = sections.filter(s => s.priority === "high").map(s => s.id);
-      setSelectedSectionIds(new Set(highPriority.length > 0 ? highPriority : sections.map(s => s.id)));
-      setStep("select-sections");
-    } catch (error) {
-      console.error("Analysis error:", error);
-      toast.error("Failed to analyze document. Trying direct extraction...");
-      handleLegacyExtraction();
-    }
-  };
+    setAiProgress({ stage: "Initializing AI extraction", percent: 5 });
 
-  // Fallback to original single-pass extraction
-  const handleLegacyExtraction = async () => {
-    const content = activeTab === "pdf" ? extractedText : pastedText;
-    
-    setStep("extracting");
-    
     try {
       const result = await extractRules.mutateAsync({
         content,
@@ -160,118 +118,23 @@ export function RulesImporter({
         campaignId,
       });
 
+      clearInterval(progressInterval);
+      setAiProgress({ stage: "Complete!", percent: 100 });
+
+      // Store summary for confirmation UI
       setExtractionResult(result.summary);
-      setStep("complete");
+      
+      // Expand all categories by default
+      const categories = new Set(Object.keys(result.summary.categories));
+      setExpandedCategories(categories);
+      
+      setTimeout(() => setAiProgress(null), 500);
       toast.success(`Saved ${result.saved} rules to campaign`);
     } catch (error) {
-      console.error("Extraction error:", error);
-      setStep("upload");
+      clearInterval(progressInterval);
+      setAiProgress(null);
+      console.error("AI extraction error:", error);
     }
-  };
-
-  // Step 2: Extract selected sections with preview
-  const handleExtractSelected = async () => {
-    const content = activeTab === "pdf" ? extractedText : pastedText;
-    const selectedSections = detectedSections.filter(s => selectedSectionIds.has(s.id));
-    
-    if (selectedSections.length === 0) {
-      toast.error("Please select at least one section to extract.");
-      return;
-    }
-
-    setStep("extracting");
-    setFailedSections([]);
-    
-    try {
-      const result = await previewExtraction.mutateAsync({
-        content,
-        campaignId,
-        sections: selectedSections,
-        sourceType: activeTab,
-        sourceName: activeTab === "pdf" ? pdfFile?.name : "Pasted text"
-      });
-
-      console.log("Extraction result:", { 
-        rulesCount: result?.rules?.length, 
-        sourceTextsCount: result?.sourceTexts?.length,
-        failedSections: result?.failedSections
-      });
-
-      // Always go to preview step - user can manually add rules even if AI extracted 0
-      const extractedRules = result?.rules || [];
-      const extractedSourceTexts = result?.sourceTexts || [];
-      const failed = result?.failedSections || [];
-      
-      setPreviewRules(extractedRules as PreviewRule[]);
-      setSourceTexts(extractedSourceTexts);
-      setFailedSections(failed);
-      setStep("preview");
-      
-      if (failed.length > 0) {
-        toast.warning(`${failed.length} section(s) failed to extract. You can manually add rules from source text.`);
-      } else if (extractedRules.length > 0) {
-        toast.success(`Extracted ${extractedRules.length} rules - review before saving`);
-      } else if (extractedSourceTexts.length > 0) {
-        toast.warning("No rules auto-extracted. Review source text to manually add rules.");
-      } else {
-        toast.info("No rules extracted. You can manually add rules from the preview screen.");
-      }
-    } catch (error) {
-      console.error("Preview extraction error:", error);
-      toast.error("Extraction failed. Please try again.");
-      setStep("select-sections");
-    }
-  };
-
-  // Update a rule in preview
-  const handleUpdatePreviewRule = (index: number, updatedRule: PreviewRule) => {
-    setPreviewRules(prev => prev.map((rule, i) => i === index ? updatedRule : rule));
-  };
-
-  // Delete a rule from preview
-  const handleDeletePreviewRule = (index: number) => {
-    setPreviewRules(prev => prev.filter((_, i) => i !== index));
-  };
-
-  // Save all previewed rules
-  const handleSavePreviewedRules = async () => {
-    try {
-      const result = await savePreviewedRules.mutateAsync({
-        rules: previewRules as ExtractedRule[],
-        sourceType: activeTab,
-        sourceName: activeTab === "pdf" ? pdfFile?.name : "Pasted text"
-      });
-
-      const categories = previewRules.reduce((acc, rule) => {
-        acc[rule.category] = (acc[rule.category] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      setExtractionResult({ totalRules: result.saved, categories });
-      setStep("complete");
-    } catch (error) {
-      console.error("Save error:", error);
-    }
-  };
-
-  const toggleSection = (sectionId: string) => {
-    setSelectedSectionIds(prev => {
-      const next = new Set(prev);
-      if (next.has(sectionId)) {
-        next.delete(sectionId);
-      } else {
-        next.add(sectionId);
-      }
-      return next;
-    });
-  };
-
-  const selectAllSections = () => {
-    setSelectedSectionIds(new Set(detectedSections.map(s => s.id)));
-  };
-
-  const deselectAllSections = () => {
-    setSelectedSectionIds(new Set());
   };
 
   const handleConfirmRules = () => {
@@ -285,16 +148,21 @@ export function RulesImporter({
     setExtractedText("");
     setPastedText("");
     setExtractionResult(null);
-    setDetectedSections([]);
-    setSelectedSectionIds(new Set());
-    setPreviewRules([]);
-    setSourceTexts([]);
-    setFailedSections([]);
-    setStep("upload");
+    setShowPreview(false);
   };
 
-  // Step: Complete
-  if (step === "complete" && extractionResult) {
+  const toggleCategory = (category: string) => {
+    const next = new Set(expandedCategories);
+    if (next.has(category)) {
+      next.delete(category);
+    } else {
+      next.add(category);
+    }
+    setExpandedCategories(next);
+  };
+
+  // Show extraction result for confirmation (rules already saved to DB)
+  if (extractionResult) {
     const { totalRules, categories } = extractionResult;
     const categoryCount = Object.keys(categories).length;
     
@@ -339,185 +207,6 @@ export function RulesImporter({
     );
   }
 
-  // Step: Preview extracted rules
-  if (step === "preview") {
-    return (
-      <RulesPreview
-        rules={previewRules}
-        sourceTexts={sourceTexts}
-        onUpdateRule={handleUpdatePreviewRule}
-        onDeleteRule={handleDeletePreviewRule}
-        onAddRule={(rule) => setPreviewRules(prev => [...prev, rule])}
-        onSaveAll={handleSavePreviewedRules}
-        onCancel={() => setStep("select-sections")}
-        isSaving={savePreviewedRules.isPending}
-        failedSections={failedSections}
-      />
-    );
-  }
-
-  // Step: Extracting with progress
-  if (step === "extracting") {
-    const selectedCount = detectedSections.filter(s => selectedSectionIds.has(s.id)).length || 1;
-    const selectedSections = detectedSections.filter(s => selectedSectionIds.has(s.id));
-    // Estimate: ~30 seconds per section, minimum 1 minute
-    const estimatedMinutes = Math.max(1, Math.ceil((selectedCount * 30) / 60));
-    
-    // Get real progress from the hook
-    const progress = previewExtraction.progress;
-    const progressPercentage = progress 
-      ? Math.round((progress.currentIndex / progress.totalSections) * 100)
-      : 0;
-
-    return (
-      <div className="space-y-4 py-6">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-primary mx-auto mb-4 animate-spin" />
-          <p className="text-sm font-medium mb-2">Extracting Rules...</p>
-          {progress ? (
-            <p className="text-xs text-muted-foreground">
-              {progress.currentIndex} of {progress.totalSections} sections complete
-              {progress.rulesExtracted > 0 && (
-                <span className="text-primary ml-1">• {progress.rulesExtracted} rules found</span>
-              )}
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Preparing {selectedCount} section{selectedCount !== 1 ? "s" : ""}...
-            </p>
-          )}
-        </div>
-
-        {/* Progress bar */}
-        <div className="space-y-2">
-          <div className="h-2 bg-muted rounded overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-500 ease-out"
-              style={{ width: `${Math.max(5, progressPercentage)}%` }}
-            />
-          </div>
-          <p className="text-[10px] text-muted-foreground text-center">
-            {progressPercentage}% complete
-          </p>
-        </div>
-
-        {/* Current section being processed */}
-        {progress?.currentSection && (
-          <div className="bg-primary/5 border border-primary/20 rounded p-3">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Currently Processing</p>
-            <p className="text-xs font-mono text-primary truncate">{progress.currentSection}</p>
-          </div>
-        )}
-
-        {/* Section list with status */}
-        <div className="border border-border rounded max-h-32 overflow-y-auto">
-          {selectedSections.map((section, idx) => {
-            const isCompleted = progress?.completedSections.includes(section.name);
-            const isFailed = progress?.failedSections.includes(section.name);
-            const isCurrent = progress?.currentSection.includes(section.name);
-            
-            return (
-              <div 
-                key={section.id}
-                className={`flex items-center gap-2 px-3 py-2 border-b border-border last:border-b-0 text-xs ${
-                  isCurrent ? "bg-primary/10" : ""
-                }`}
-              >
-                {isCompleted ? (
-                  <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                ) : isFailed ? (
-                  <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0" />
-                ) : isCurrent ? (
-                  <Loader2 className="w-3.5 h-3.5 text-primary animate-spin flex-shrink-0" />
-                ) : (
-                  <div className="w-3.5 h-3.5 rounded-full border border-muted-foreground/30 flex-shrink-0" />
-                )}
-                <span className={`truncate ${isCompleted ? "text-muted-foreground" : isCurrent ? "text-primary font-medium" : ""}`}>
-                  {section.name}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="bg-muted/30 border border-border rounded p-3 text-center">
-          <p className="text-xs text-muted-foreground">
-            ⏱️ Estimated time: <span className="text-primary font-medium">{estimatedMinutes}-{estimatedMinutes + 1} minute{estimatedMinutes > 1 ? "s" : ""}</span>
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Step: Section Selection
-  if (step === "select-sections") {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium">Select Sections to Extract</p>
-            <p className="text-xs text-muted-foreground">
-              {detectedSections.length} sections detected • {selectedSectionIds.size} selected
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <TerminalButton variant="ghost" size="sm" onClick={selectAllSections}>
-              All
-            </TerminalButton>
-            <TerminalButton variant="ghost" size="sm" onClick={deselectAllSections}>
-              None
-            </TerminalButton>
-          </div>
-        </div>
-
-        <div className="border border-border rounded max-h-64 overflow-y-auto">
-          {detectedSections.map(section => (
-            <div 
-              key={section.id} 
-              className={`flex items-center gap-3 p-3 border-b border-border last:border-b-0 cursor-pointer hover:bg-muted/30 ${selectedSectionIds.has(section.id) ? "bg-primary/5" : ""}`}
-              onClick={() => toggleSection(section.id)}
-            >
-              <Checkbox 
-                checked={selectedSectionIds.has(section.id)} 
-                onCheckedChange={() => toggleSection(section.id)}
-                onClick={(e) => e.stopPropagation()}
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  {sectionTypeIcons[section.type] || sectionTypeIcons.other}
-                  <span className="text-sm font-mono truncate">{section.name}</span>
-                </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${priorityColors[section.priority]}`}>
-                    {section.priority}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {section.indicators.slice(0, 2).join(", ")}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex gap-3">
-          <TerminalButton variant="outline" onClick={() => setStep("upload")} className="flex-1">
-            Back
-          </TerminalButton>
-          <TerminalButton 
-            onClick={handleExtractSelected} 
-            disabled={selectedSectionIds.size === 0}
-            className="flex-1"
-          >
-            <Bot className="w-4 h-4 mr-2" />
-            Extract {selectedSectionIds.size} Section{selectedSectionIds.size !== 1 ? "s" : ""}
-          </TerminalButton>
-        </div>
-      </div>
-    );
-  }
-
-  // Step: Upload
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "pdf" | "text")}>
@@ -591,14 +280,22 @@ export function RulesImporter({
                 </TerminalButton>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Extracted Text Preview ({extractedText.length.toLocaleString()} chars)
-                </label>
-                <div className="w-full bg-input border border-border rounded p-3 text-xs font-mono h-32 overflow-y-auto text-muted-foreground">
-                  {extractedText.slice(0, 500)}...
+              {showPreview && (
+                <div className="space-y-2">
+                  <label className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Extracted Text Preview (editable)
+                  </label>
+                  <textarea
+                    value={extractedText}
+                    onChange={(e) => setExtractedText(e.target.value)}
+                    className="w-full bg-input border border-border rounded p-3 text-xs font-mono h-48 resize-none focus:outline-none focus:border-primary/50"
+                    placeholder="Extracted text will appear here..."
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    {extractedText.length.toLocaleString()} characters extracted
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </TabsContent>
@@ -629,32 +326,46 @@ export function RulesImporter({
           </TerminalButton>
         )}
         <TerminalButton
-          onClick={handleAnalyzeDocument}
+          onClick={handleProcessWithAI}
           disabled={
-            analyzeDocument.isPending ||
+            extractRules.isPending ||
             (activeTab === "pdf" && !extractedText) ||
             (activeTab === "text" && !pastedText.trim())
           }
           className="flex-1"
         >
-          {analyzeDocument.isPending ? (
-            <div className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Scanning Document...</span>
+        {extractRules.isPending || aiProgress ? (
+            <div className="flex flex-col items-center w-full">
+              <div className="flex items-center gap-2 mb-2">
+                <TerminalLoader text={aiProgress?.stage || "Processing with AI"} size="sm" />
+              </div>
+              {aiProgress && (
+                <div className="w-full">
+                  <div className="h-2 bg-muted rounded overflow-hidden">
+                    <div 
+                      className="h-full bg-primary transition-all duration-500 ease-out"
+                      style={{ width: `${aiProgress.percent}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1">
+                    {aiProgress.percent}% — {aiProgress.stage}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <>
-              <Scan className="w-4 h-4 mr-2" />
-              Scan & Select Sections
+              <Bot className="w-4 h-4 mr-2" />
+              Process with AI
             </>
           )}
         </TerminalButton>
       </div>
 
-      {analyzeDocument.isError && (
+      {extractRules.isError && (
         <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-3 rounded border border-destructive/30">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          <span>Failed to analyze document. Please try again.</span>
+          <span>Failed to extract rules. Please try again or adjust your content.</span>
         </div>
       )}
     </div>
