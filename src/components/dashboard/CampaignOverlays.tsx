@@ -6,10 +6,10 @@ import { NarrativeWidget } from "./widgets/NarrativeWidget";
 import { ScheduleWidget } from "./widgets/ScheduleWidget";
 import { RulesLibrary } from "@/components/rules/RulesLibrary";
 import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
+import { MapManager } from "@/components/map/MapManager";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Link } from "react-router-dom";
-
 interface OverlayConfig {
   title: string;
   subtitle: string;
@@ -242,11 +242,7 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
           icon={config.icon}
           size={config.size}
         >
-          <OverlayEmpty
-            icon={<Map className="w-8 h-8" />}
-            title="Interactive Map Coming Soon"
-            description="Upload and annotate your campaign territory map."
-          />
+          <MapManager campaignId={campaignId} isGM={isGM} />
         </OverlayPanel>
       );
 
