@@ -1,8 +1,7 @@
 import { useState, useCallback } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { extractPdfText, removeHeadersFooters } from "@/lib/pdfExtractor";
+import { extractPdfText, extractPdfTextEnhanced, removeHeadersFooters } from "@/lib/pdfExtractor";
 import type { IndexingProgress } from "@/types/rules";
 
 interface IndexingResult {
@@ -28,7 +27,8 @@ export function usePdfIndexer() {
   const indexPdf = useCallback(async (
     sourceId: string,
     campaignId: string,
-    storagePath: string
+    storagePath: string,
+    useAdvanced = false
   ): Promise<IndexingResult> => {
     try {
       setProgress({ stage: "extracting", progress: 0, message: "Downloading PDF..." });
@@ -42,13 +42,12 @@ export function usePdfIndexer() {
         throw new Error(`Failed to download PDF: ${downloadError?.message}`);
       }
 
-      // Create a File object from the blob
       const file = new File([fileData], "document.pdf", { type: "application/pdf" });
 
       setProgress({ stage: "extracting", progress: 10, message: "Extracting text..." });
 
-      // Extract text from PDF
-      const result = await extractPdfText(file, (page, total) => {
+      // Use enhanced extraction for better table detection
+      const result = await extractPdfTextEnhanced(file, (page, total, stage) => {
         const pct = 10 + Math.round((page / total) * 40);
         setProgress({
           stage: "extracting",
@@ -71,21 +70,67 @@ export function usePdfIndexer() {
         char_count: p.charCount,
       }));
 
-      // Delete existing pages first
-      await supabase
-        .from("rules_pages")
-        .delete()
-        .eq("source_id", sourceId);
-
-      // Insert new pages
-      const { error: insertError } = await supabase
-        .from("rules_pages")
-        .insert(pagesToInsert);
-
+      await supabase.from("rules_pages").delete().eq("source_id", sourceId);
+      const { error: insertError } = await supabase.from("rules_pages").insert(pagesToInsert);
       if (insertError) throw insertError;
 
-      // Trigger server-side indexing
+      // Trigger server-side indexing with pre-detected tables
       setProgress({ stage: "indexing", progress: 70, message: "Building index..." });
+
+      const { data: indexResult, error: indexError } = await supabase.functions.invoke(
+        "index-rules-source",
+        { body: { sourceId, preDetectedTables: result.detectedTables } }
+      );
+
+      if (indexError) throw indexError;
+      if (indexResult.error) throw new Error(indexResult.error);
+
+      setProgress({ stage: "complete", progress: 100, message: "Complete!" });
+      queryClient.invalidateQueries({ queryKey: ["rules_sources", campaignId] });
+
+      return { success: true, stats: indexResult.stats };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      setProgress({ stage: "failed", progress: 0, message });
+      
+      await supabase.from("rules_sources").update({
+        index_status: "failed",
+        index_error: { stage: "extraction", message },
+      }).eq("id", sourceId);
+
+      return { success: false, error: message };
+    }
+  }, [queryClient]);
+
+  const reset = useCallback(() => setProgress(null), []);
+
+  return { indexPdf, progress, reset };
+}
+
+/**
+ * Hook for LlamaParse-based PDF extraction (advanced)
+ */
+export function useLlamaParseIndexer() {
+  const [progress, setProgress] = useState<IndexingProgress | null>(null);
+  const queryClient = useQueryClient();
+
+  const indexWithLlamaParse = useCallback(async (
+    sourceId: string,
+    campaignId: string,
+    storagePath: string
+  ): Promise<IndexingResult> => {
+    try {
+      setProgress({ stage: "extracting", progress: 10, message: "Sending to LlamaParse..." });
+
+      const { data: parseResult, error: parseError } = await supabase.functions.invoke(
+        "parse-pdf-llamaparse",
+        { body: { storagePath, sourceId } }
+      );
+
+      if (parseError) throw parseError;
+      if (parseResult.error) throw new Error(parseResult.error);
+
+      setProgress({ stage: "indexing", progress: 60, message: "Building index..." });
 
       const { data: indexResult, error: indexError } = await supabase.functions.invoke(
         "index-rules-source",
@@ -96,41 +141,25 @@ export function usePdfIndexer() {
       if (indexResult.error) throw new Error(indexResult.error);
 
       setProgress({ stage: "complete", progress: 100, message: "Complete!" });
-
-      // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ["rules_sources", campaignId] });
 
-      return {
-        success: true,
-        stats: indexResult.stats,
-      };
-
+      return { success: true, stats: indexResult.stats };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       setProgress({ stage: "failed", progress: 0, message });
       
-      // Update source status to failed
-      await supabase
-        .from("rules_sources")
-        .update({
-          index_status: "failed",
-          index_error: { stage: "extraction", message },
-        })
-        .eq("id", sourceId);
+      await supabase.from("rules_sources").update({
+        index_status: "failed",
+        index_error: { stage: "llamaparse", message },
+      }).eq("id", sourceId);
 
       return { success: false, error: message };
     }
   }, [queryClient]);
 
-  const reset = useCallback(() => {
-    setProgress(null);
-  }, []);
+  const reset = useCallback(() => setProgress(null), []);
 
-  return {
-    indexPdf,
-    progress,
-    reset,
-  };
+  return { indexWithLlamaParse, progress, reset };
 }
 
 /**
