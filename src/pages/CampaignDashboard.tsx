@@ -13,6 +13,7 @@ import { PlayersWidget } from "@/components/dashboard/widgets/PlayersWidget";
 import { MessagesWidget } from "@/components/dashboard/widgets/MessagesWidget";
 import { NarrativeWidget } from "@/components/dashboard/widgets/NarrativeWidget";
 import { ScheduleWidget } from "@/components/dashboard/widgets/ScheduleWidget";
+import { RulesLibrary } from "@/components/rules/RulesLibrary";
 import { 
   ArrowLeft, 
   Settings, 
@@ -42,6 +43,7 @@ export default function CampaignDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAIBuilder, setShowAIBuilder] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showRulesLibrary, setShowRulesLibrary] = useState(false);
   const [activeView, setActiveView] = useState<DashboardView>("dashboard");
 
   const isLoading = campaignLoading || componentsLoading;
@@ -152,15 +154,13 @@ export default function CampaignDashboard() {
               Rules Reference
             </h2>
             <div className="bg-card border border-primary/30 rounded p-4">
-              {campaign.rules_repo_url ? (
-                <p className="text-muted-foreground text-sm">
-                  Rules loaded from: {campaign.rules_repo_url}
-                </p>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  No rules repository configured. Add one in campaign settings.
-                </p>
-              )}
+              <p className="text-muted-foreground text-sm mb-4">
+                Manage your campaign's rules library. Upload PDFs, paste text, or import from GitHub.
+              </p>
+              <TerminalButton onClick={() => setShowRulesLibrary(true)}>
+                <Database className="w-4 h-4 mr-2" />
+                Open Rules Library
+              </TerminalButton>
             </div>
           </div>
         );
@@ -341,6 +341,14 @@ export default function CampaignDashboard() {
           campaignId={campaignId}
         />
       )}
+
+      {/* Rules Library */}
+      <RulesLibrary
+        open={showRulesLibrary}
+        onOpenChange={setShowRulesLibrary}
+        campaignId={campaignId!}
+        isGM={isGM}
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -5,183 +6,200 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface RepoFile {
+interface FetchRequest {
+  repoUrl: string;
+  jsonPath: string;
+  action?: string;
+  campaignId?: string;
+}
+
+interface GitHubRulesJSON {
+  name?: string;
+  version?: string;
+  groups?: GitHubRulesGroup[];
+  tables?: GitHubRulesTableDef[];
+  datasets?: GitHubRulesDatasetDef[];
+}
+
+interface GitHubRulesGroup {
   name: string;
-  path: string;
-  type: string;
-  download_url: string | null;
+  description?: string;
+  sections?: GitHubRulesSection[];
 }
 
-interface RuleCategory {
-  category: string;
-  rules: Array<{
-    rule_key: string;
-    title: string;
-    content: Record<string, unknown>;
-    metadata?: Record<string, unknown>;
-  }>;
+interface GitHubRulesSection {
+  title: string;
+  text?: string;
+  subsections?: GitHubRulesSection[];
+  tables?: GitHubRulesTableDef[];
+  datasets?: GitHubRulesDatasetDef[];
 }
 
-// Parse GitHub repo URL to extract owner and repo name
-function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
-  try {
-    // Handle various GitHub URL formats
-    const patterns = [
-      /github\.com\/([^\/]+)\/([^\/\.]+)/,  // https://github.com/owner/repo
-      /github\.com:([^\/]+)\/([^\/\.]+)/,    // git@github.com:owner/repo
-    ];
-    
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) {
-        return { owner: match[1], repo: match[2].replace(/\.git$/, '') };
-      }
+interface GitHubRulesTableDef {
+  name: string;
+  diceType?: string;
+  columns?: string[];
+  rows?: Array<string[] | Record<string, unknown>>;
+}
+
+interface GitHubRulesDatasetDef {
+  name: string;
+  type?: string;
+  fields?: string[];
+  rows?: Record<string, unknown>[];
+}
+
+function parseGitHubUrl(repoUrl: string): { owner: string; repo: string; branch: string } | null {
+  const patterns = [
+    /github\.com\/([^/]+)\/([^/]+?)(?:\.git)?(?:\/tree\/([^/]+))?$/,
+    /github\.com\/([^/]+)\/([^/]+)$/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = repoUrl.match(pattern);
+    if (match) {
+      return {
+        owner: match[1],
+        repo: match[2].replace(/\.git$/, ""),
+        branch: match[3] || "main",
+      };
     }
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 }
 
-// Fetch directory contents from GitHub API
-async function fetchGitHubContents(owner: string, repo: string, path = ''): Promise<RepoFile[]> {
-  const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-  console.log(`Fetching GitHub contents: ${url}`);
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const body = await req.json() as FetchRequest;
+    const { repoUrl, jsonPath, action, campaignId } = body;
+
+    // Handle legacy "discover" and "sync" actions
+    if (action === "discover" || action === "sync") {
+      return handleLegacyAction(req, body);
+    }
+
+    if (!repoUrl) {
+      throw new Error("Repository URL is required");
+    }
+
+    const parsed = parseGitHubUrl(repoUrl);
+    if (!parsed) {
+      throw new Error("Invalid GitHub repository URL format");
+    }
+
+    const { owner, repo, branch } = parsed;
+    const path = jsonPath?.replace(/^\//, "") || "rules.json";
+
+    console.log(`Fetching ${owner}/${repo}/${path} (branch: ${branch})`);
+
+    let rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+    let response = await fetch(rawUrl);
+
+    if (!response.ok && branch === "main") {
+      rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/master/${path}`;
+      response = await fetch(rawUrl);
+    }
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(`File not found: ${path} in ${owner}/${repo}`);
+      }
+      throw new Error(`GitHub fetch failed: ${response.status} ${response.statusText}`);
+    }
+
+    const text = await response.text();
+
+    let json: GitHubRulesJSON;
+    try {
+      json = JSON.parse(text);
+    } catch {
+      throw new Error("File is not valid JSON");
+    }
+
+    if (!json || typeof json !== "object") {
+      throw new Error("JSON must be an object");
+    }
+
+    let sha: string | undefined;
+    try {
+      const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${branch}`;
+      const commitRes = await fetch(apiUrl, {
+        headers: { "Accept": "application/vnd.github.v3+json" },
+      });
+      if (commitRes.ok) {
+        const commitData = await commitRes.json();
+        sha = commitData.sha?.substring(0, 7);
+      }
+    } catch (e) {
+      console.log("Could not fetch commit SHA:", e);
+    }
+
+    console.log(`Successfully fetched JSON with ${json.groups?.length || 0} groups`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: json,
+      meta: {
+        owner,
+        repo,
+        branch,
+        path,
+        sha,
+        fetchedAt: new Date().toISOString(),
+      },
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (error) {
+    console.error("Fetch rules repo error:", error);
+    return new Response(JSON.stringify({ 
+      error: error instanceof Error ? error.message : "Unknown error",
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+
+// Handle legacy discover/sync actions for backward compatibility
+async function handleLegacyAction(req: Request, body: FetchRequest): Promise<Response> {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   
-  const response = await fetch(url, {
-    headers: {
-      'Accept': 'application/vnd.github.v3+json',
-      'User-Agent': 'Wargame-Campaign-Tracker',
-    },
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response(
+      JSON.stringify({ error: 'Missing authorization header' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    global: { headers: { Authorization: authHeader } },
   });
-  
-  if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
-  }
-  
-  return await response.json();
-}
 
-// Fetch file content from GitHub
-async function fetchFileContent(downloadUrl: string): Promise<string> {
-  const response = await fetch(downloadUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch file: ${response.status}`);
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
-  return await response.text();
-}
 
-// Parse JSON or YAML-like content
-function parseContent(content: string, filename: string): Record<string, unknown> | null {
-  try {
-    // Try JSON first
-    if (filename.endsWith('.json')) {
-      return JSON.parse(content);
-    }
-    // For other formats, try to parse as JSON anyway
-    return JSON.parse(content);
-  } catch {
-    // Return as text content if not parseable
-    return { raw_content: content };
-  }
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      message: "Legacy action - use new indexing flow",
+      categories: [] 
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
-
-// Discover and categorize rules from repo structure
-async function discoverRules(owner: string, repo: string): Promise<RuleCategory[]> {
-  const categories: RuleCategory[] = [];
-  
-  try {
-    // Fetch root contents
-    const rootContents = await fetchGitHubContents(owner, repo);
-    console.log(`Found ${rootContents.length} items in root`);
-    
-    // Look for common data directories
-    const dataFolders = ['data', 'rules', 'catalogues', 'catalogs', 'assets', 'src/data'];
-    
-    for (const item of rootContents) {
-      if (item.type === 'dir') {
-        const folderName = item.name.toLowerCase();
-        
-        // Check if this looks like a data folder
-        if (dataFolders.some(df => folderName.includes(df.split('/')[0])) || 
-            folderName.includes('rule') || 
-            folderName.includes('catalog') ||
-            folderName.includes('data')) {
-          
-          console.log(`Exploring data folder: ${item.path}`);
-          const folderContents = await fetchGitHubContents(owner, repo, item.path);
-          
-          const categoryRules: Array<{
-            rule_key: string;
-            title: string;
-            content: Record<string, unknown>;
-            metadata?: Record<string, unknown>;
-          }> = [];
-          
-          for (const file of folderContents) {
-            if (file.type === 'file' && file.download_url) {
-              const ext = file.name.split('.').pop()?.toLowerCase();
-              
-              // Process JSON, XML, or text files
-              if (['json', 'xml', 'txt', 'md', 'yaml', 'yml'].includes(ext || '')) {
-                try {
-                  const content = await fetchFileContent(file.download_url);
-                  const parsed = parseContent(content, file.name);
-                  
-                  if (parsed) {
-                    categoryRules.push({
-                      rule_key: file.name.replace(/\.[^.]+$/, ''),
-                      title: file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
-                      content: parsed,
-                      metadata: {
-                        filename: file.name,
-                        path: file.path,
-                        file_type: ext,
-                      },
-                    });
-                  }
-                } catch (err) {
-                  console.error(`Error processing file ${file.name}:`, err);
-                }
-              }
-            }
-          }
-          
-          if (categoryRules.length > 0) {
-            categories.push({
-              category: item.name,
-              rules: categoryRules,
-            });
-          }
-        }
-      }
-      
-      // Also check for JSON/data files in root
-      if (item.type === 'file' && item.download_url) {
-        const ext = item.name.split('.').pop()?.toLowerCase();
-        if (['json'].includes(ext || '') && 
-            (item.name.toLowerCase().includes('rule') || 
-             item.name.toLowerCase().includes('data') ||
-             item.name.toLowerCase().includes('config'))) {
-          try {
-            const content = await fetchFileContent(item.download_url);
-            const parsed = parseContent(content, item.name);
-            
-            if (parsed) {
-              categories.push({
-                category: 'root',
-                rules: [{
-                  rule_key: item.name.replace(/\.[^.]+$/, ''),
-                  title: item.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),
-                  content: parsed,
-                  metadata: {
-                    filename: item.name,
-                    path: item.path,
-                    file_type: ext,
-                  },
-                }],
-              });
-            }
           } catch (err) {
             console.error(`Error processing root file ${item.name}:`, err);
           }
