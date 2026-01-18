@@ -46,6 +46,11 @@ const errorSuggestions: Record<string, { title: string; description: string; act
     description: "The file is too large or complex to process in the allowed time. Try splitting it into smaller sections.",
     action: "Split into smaller files",
   },
+  llamaparse: {
+    title: "OCR Fallback Failed",
+    description: "The OCR fallback could not process this PDF. Verify the file is readable or try again later.",
+    action: "Try another PDF or use OCR",
+  },
 };
 
 export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: SourceDiagnosticsProps) {
