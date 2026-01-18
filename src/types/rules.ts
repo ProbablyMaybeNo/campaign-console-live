@@ -5,10 +5,13 @@ export type SourceType = 'pdf' | 'paste' | 'github_json';
 
 export type IndexStatus = 'not_indexed' | 'indexing' | 'indexed' | 'failed';
 
+export type ParseMethod = 'standard' | 'llamaparse';
+
 export interface RulesSource {
   id: string;
   campaign_id: string;
   type: SourceType;
+  type_source: ParseMethod | null;
   title: string;
   tags: string[] | null;
   storage_path: string | null;
