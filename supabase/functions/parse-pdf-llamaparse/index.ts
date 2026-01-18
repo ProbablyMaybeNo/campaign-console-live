@@ -1,5 +1,5 @@
-// deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,12 +13,19 @@ interface LlamaParseResult {
   error?: string;
 }
 
+type LlamaParseUploadResponse = { id: string };
+type LlamaParseJobStatus = { status: string; error?: string };
+type LlamaParseResultResponse = { markdown?: string; text?: string };
+type LlamaParseRequest = { storagePath?: string; sourceId?: string };
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const requestStart = performance.now();
+    const timeMsByStage: Record<string, number> = {};
     const LLAMAPARSE_API_KEY = Deno.env.get('LLAMAPARSE_API_KEY');
     if (!LLAMAPARSE_API_KEY) {
       return new Response(JSON.stringify({ 
@@ -31,9 +38,9 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase: any = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase: SupabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { storagePath, sourceId } = await req.json();
+    const { storagePath, sourceId } = (await req.json()) as LlamaParseRequest;
     
     if (!storagePath) {
       return new Response(JSON.stringify({ error: 'storagePath required' }), {
@@ -42,7 +49,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`Downloading PDF from storage: ${storagePath}`);
+    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'download_start', storagePath }));
+    const downloadStart = performance.now();
 
     // Download PDF from Supabase storage
     const { data: fileData, error: downloadError } = await supabase.storage
@@ -59,13 +67,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`PDF downloaded, size: ${fileData.size} bytes`);
+    timeMsByStage.downloadPdf = Math.round(performance.now() - downloadStart);
+    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'download_complete', size: fileData.size, timeMsByStage }));
 
     // Upload to LlamaParse
     const formData = new FormData();
     formData.append('file', fileData, 'document.pdf');
 
-    console.log('Uploading to LlamaParse...');
+    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'upload_start' }));
+    const uploadStart = performance.now();
 
     const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
       method: 'POST',
@@ -105,16 +115,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const uploadResult = await uploadResponse.json();
+    const uploadResult = (await uploadResponse.json()) as LlamaParseUploadResponse;
+    timeMsByStage.uploadPdf = Math.round(performance.now() - uploadStart);
     const jobId = uploadResult.id;
 
-    console.log(`LlamaParse job created: ${jobId}`);
+    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'job_created', jobId, timeMsByStage }));
 
     // Poll for job completion
     let attempts = 0;
     const maxAttempts = 60; // 5 minutes max
-    let jobResult: any = null;
+    let jobResult: LlamaParseJobStatus | null = null;
 
+    const pollStart = performance.now();
     while (attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
       attempts++;
@@ -130,8 +142,8 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      jobResult = await statusResponse.json();
-      console.log(`Job status (attempt ${attempts}): ${jobResult.status}`);
+      jobResult = (await statusResponse.json()) as LlamaParseJobStatus;
+      console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'job_status', attempt: attempts, status: jobResult.status }));
 
       if (jobResult.status === 'SUCCESS') {
         break;
@@ -154,8 +166,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    timeMsByStage.pollParse = Math.round(performance.now() - pollStart);
+
     // Get the result in markdown format
-    console.log('Fetching markdown result...');
+    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'fetch_markdown' }));
+    const resultStart = performance.now();
 
     const resultResponse = await fetch(
       `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/markdown`,
@@ -177,34 +192,52 @@ Deno.serve(async (req) => {
       });
     }
 
-    const resultData = await resultResponse.json();
+    const resultData = (await resultResponse.json()) as LlamaParseResultResponse;
     const markdown = resultData.markdown || resultData.text || '';
 
-    console.log(`Received markdown, length: ${markdown.length}`);
+    timeMsByStage.fetchResult = Math.round(performance.now() - resultStart);
+    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'markdown_received', length: markdown.length, timeMsByStage }));
 
     // Convert markdown to pages (split by page markers or by ~3000 chars)
-    const pages = convertMarkdownToPages(markdown);
+    const convertStart = performance.now();
+    const pages = convertMarkdownToPages(markdown).map((page) => {
+      const normalizedText = normalizeOcrText(page.text);
+      return {
+        ...page,
+        text: normalizedText,
+        charCount: normalizedText.length,
+      };
+    });
+    timeMsByStage.splitPages = Math.round(performance.now() - convertStart);
 
     // If sourceId provided, save pages to database
     if (sourceId) {
-      console.log(`Saving ${pages.length} pages to database...`);
+      console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'save_pages', count: pages.length }));
+      const saveStart = performance.now();
       
       // Delete existing pages
       await supabase.from('rules_pages').delete().eq('source_id', sourceId);
       
       // Insert new pages
-      const pagesToInsert = pages.map(p => ({
+      const pagesToInsert = pages.map((p) => ({
         source_id: sourceId,
         page_number: p.pageNumber,
         text: p.text,
         char_count: p.charCount,
       }));
 
-      const { error: insertError } = await supabase.from('rules_pages').insert(pagesToInsert);
-      if (insertError) {
-        console.error('Page insert error:', insertError);
+      for (let i = 0; i < pagesToInsert.length; i += 200) {
+        const batch = pagesToInsert.slice(i, i + 200);
+        const { error: insertError } = await supabase.from('rules_pages').insert(batch);
+        if (insertError) {
+          console.error('Page insert error:', insertError);
+        }
       }
+      timeMsByStage.savePages = Math.round(performance.now() - saveStart);
     }
+
+    timeMsByStage.total = Math.round(performance.now() - requestStart);
+    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'parse_complete', timeMsByStage }));
 
     const result: LlamaParseResult = {
       success: true,
@@ -298,4 +331,68 @@ function convertMarkdownToPages(markdown: string): { pageNumber: number; text: s
   }
   
   return pages;
+}
+
+function normalizeOcrText(text: string): string {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const cleaned: string[] = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    if (isTableLikeLine(line)) {
+      cleaned.push(line);
+      continue;
+    }
+    const normalized = line.replace(/[ \t]+/g, " ").trim();
+    cleaned.push(normalized);
+  }
+
+  const merged = mergeSoftLineBreaks(cleaned);
+  return merged.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function mergeSoftLineBreaks(lines: string[]): string[] {
+  const result: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] ?? "";
+    const nextLine = lines[i + 1] ?? "";
+    if (!line) {
+      result.push("");
+      continue;
+    }
+
+    const endsSentence = /[.!?":]$/.test(line);
+    const isList = /^([-*•]|\d+\.)\s+/.test(line);
+    const nextIsList = /^([-*•]|\d+\.)\s+/.test(nextLine);
+    const isHeading = isHeadingLine(line);
+    const nextIsHeading = isHeadingLine(nextLine);
+    const isTable = isTableLikeLine(line);
+    const nextIsTable = isTableLikeLine(nextLine);
+
+    if (!endsSentence && nextLine && !isList && !nextIsList && !isHeading && !nextIsHeading && !isTable && !nextIsTable && /^[a-z]/.test(nextLine)) {
+      result.push(`${line} ${nextLine}`.trim());
+      i += 1;
+      continue;
+    }
+
+    result.push(line);
+  }
+
+  return result;
+}
+
+function isTableLikeLine(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  return /\|/.test(trimmed) || /\S\s{2,}\S/.test(trimmed);
+}
+
+function isHeadingLine(line: string): boolean {
+  const trimmed = line.trim();
+  return (
+    /^#{1,3}\s+/.test(trimmed) ||
+    /^(?:CHAPTER|PART)\s+[\dIVXLC]+/i.test(trimmed) ||
+    /^\d+\.\d*(?:\.\d+)?\s+[A-Z]/.test(trimmed) ||
+    /^[A-Z][A-Z\s]{4,50}$/.test(trimmed)
+  );
 }

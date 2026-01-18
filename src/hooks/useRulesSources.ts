@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import type { RulesSource, SourceType, IndexStats, IndexError } from "@/types/rules";
+import type { RulesSource, SourceType, IndexStats, IndexError, ParseMethod } from "@/types/rules";
 
 // Fetch all rules sources for a campaign
 export function useRulesSources(campaignId: string | undefined) {
@@ -22,6 +22,7 @@ export function useRulesSources(campaignId: string | undefined) {
         id: row.id,
         campaign_id: row.campaign_id,
         type: (row.type || 'pdf') as SourceType,
+        type_source: (row.type_source || null) as ParseMethod | null,
         title: row.title,
         tags: row.tags,
         storage_path: row.storage_path,
@@ -49,18 +50,21 @@ export function useCreatePdfSource() {
       campaignId, 
       title, 
       storagePath,
-      tags = [] 
+      tags = [],
+      useAdvancedParsing = false
     }: { 
       campaignId: string; 
       title: string; 
       storagePath: string;
       tags?: string[];
+      useAdvancedParsing?: boolean;
     }) => {
       const { data, error } = await supabase
         .from("rules_sources")
         .insert({
           campaign_id: campaignId,
           type: "pdf",
+          type_source: useAdvancedParsing ? "llamaparse" : "standard",
           title,
           storage_path: storagePath,
           tags,
