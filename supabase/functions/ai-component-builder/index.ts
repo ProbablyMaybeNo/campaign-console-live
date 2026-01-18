@@ -90,12 +90,11 @@ serve(async (req) => {
         .eq("campaign_id", campaignId)
         .order("round_number", { ascending: true });
 
-      // Fetch wargame rules with full content
+      // Fetch wargame rules
       const { data: rules } = await supabase
         .from("wargame_rules")
-        .select("id, title, category, rule_key, content, metadata")
-        .eq("campaign_id", campaignId)
-        .order("category", { ascending: true });
+        .select("id, title, category, rule_key, content")
+        .eq("campaign_id", campaignId);
 
       // Store live data for reference
       liveDataAvailable = {
@@ -105,50 +104,6 @@ serve(async (req) => {
         scheduleEntries: scheduleEntries || [],
         rules: rules || [],
       };
-
-      // Group rules by category for better AI comprehension
-      const rulesByCategory: Record<string, Array<{id: string; title: string; rule_key: string; content: unknown}>> = {};
-      (rules || []).forEach((rule: any) => {
-        if (!rulesByCategory[rule.category]) {
-          rulesByCategory[rule.category] = [];
-        }
-        rulesByCategory[rule.category].push({
-          id: rule.id,
-          title: rule.title,
-          rule_key: rule.rule_key,
-          content: rule.content
-        });
-      });
-
-      // Build detailed rules context
-      let rulesContext = "";
-      if (Object.keys(rulesByCategory).length > 0) {
-        rulesContext = `
-
-CAMPAIGN RULES LIBRARY:
-The following rules have been imported into this campaign. You can use these to populate tables and cards with accurate game content.
-
-`;
-        for (const [category, categoryRules] of Object.entries(rulesByCategory)) {
-          rulesContext += `\n### ${category} (${categoryRules.length} rules)\n`;
-          categoryRules.forEach((rule: any) => {
-            rulesContext += `\n**${rule.title}** (key: ${rule.rule_key}):\n`;
-            if (typeof rule.content === 'object') {
-              if (rule.content.text) {
-                rulesContext += `${rule.content.text}\n`;
-              }
-              if (rule.content.table) {
-                rulesContext += `Table: ${JSON.stringify(rule.content.table)}\n`;
-              }
-              if (rule.content.list) {
-                rulesContext += `List: ${rule.content.list.join(', ')}\n`;
-              }
-            } else {
-              rulesContext += `${JSON.stringify(rule.content)}\n`;
-            }
-          });
-        }
-      }
 
       // Create context string for AI
       campaignContext = `
@@ -166,6 +121,9 @@ ${JSON.stringify(players?.map(p => {
     joined_at: p.joined_at
   };
 }) || [], null, 2)}
+  role: p.role,
+  joined_at: p.joined_at
+})) || [], null, 2)}
 
 WARBANDS (${warbands?.length || 0}):
 ${JSON.stringify(warbands || [], null, 2)}
@@ -176,16 +134,14 @@ ${JSON.stringify(narrativeEvents?.slice(0, 20) || [], null, 2)}
 SCHEDULE ENTRIES (${scheduleEntries?.length || 0}):
 ${JSON.stringify(scheduleEntries || [], null, 2)}
 
-${rulesContext}
+WARGAME RULES CATEGORIES:
+${[...new Set(rules?.map(r => r.category) || [])].join(", ") || "None synced"}
 
-When creating components from live data or rules:
+When creating components from live data:
 - For player lists: include display_name, faction (from their warband), warband link, narrative link
 - For warband lists: include name, faction, points_total, owner name
 - For schedule tables: include round_number, title, scheduled_date, status
-- For rules tables: use the exact content from the rules library above - match titles and values precisely
-- When user asks for a specific rule table (e.g., "Injury table", "Exploration rewards"), find the matching rule and format it correctly
 - Mark data as coming from the database so the component can update dynamically
-- If a rule has a 'table' content type, format it as a proper table component with columns and rows
 `;
     }
 
@@ -202,14 +158,12 @@ When creating components from live data or rules:
 
     const systemPrompt = `You are an AI assistant helping users create dashboard components for a wargaming campaign management app. You can create TABLE and CARD components by:
 1. Extracting data from source content (PDFs, text files, or URLs)
-2. Using LIVE DATA from the campaign database (players, warbands, narrative events, schedule)
-3. Using IMPORTED RULES from the campaign's rules library
+2. Using LIVE DATA from the campaign database (players, warbands, narrative events, schedule, rules)
 
 IMPORTANT: You are having a conversation with the user. You can:
-1. Answer questions about the content they've uploaded, campaign data, OR imported rules
-2. List tables, sections, rules categories, or data you find in any source
+1. Answer questions about the content they've uploaded OR the campaign data
+2. List tables, sections, or data you find in any source
 3. Create one or multiple components when they ask
-4. Reference specific rules by name to populate components with accurate game content
 
 When the user asks you to CREATE components, you MUST respond with a JSON object in this EXACT format:
 {
@@ -222,8 +176,7 @@ When the user asks you to CREATE components, you MUST respond with a JSON object
         "columns": ["Column1", "Column2"],
         "rows": [{"Column1": "value", "Column2": "value"}]
       },
-      "dataSource": "live:players",
-      "linkedRuleId": "optional-rule-uuid-if-from-rules"
+      "dataSource": "live:players"
     }
   ]
 }
@@ -234,7 +187,7 @@ DATA SOURCE OPTIONS:
 - "live:warbands" - Component shows warband data
 - "live:narrative" - Component shows narrative events
 - "live:schedule" - Component shows schedule entries
-- "rules:category_name" - Component is populated from a specific rules category
+- "live:rules" - Component shows wargame rules
 
 When the user is just asking questions or exploring (NOT creating):
 {
@@ -242,24 +195,14 @@ When the user is just asking questions or exploring (NOT creating):
   "components": []
 }
 
-RULES-AWARE COMPONENT CREATION:
-- When the user asks for a component based on game rules (e.g., "Create an Injury table"), find the matching rule in the CAMPAIGN RULES LIBRARY
-- Use the EXACT content from the rule - do not make up data
-- If the rule has table data, format it with proper columns and rows
-- If the rule has list data, format it as cards or a single-column table
-- Include the rule's ID as linkedRuleId so the component stays connected to the source rule
-- If no matching rule exists, tell the user and ask if they want to import it first
-
 Guidelines:
 - Be conversational and helpful
-- When asked about available rules, summarize the categories and notable rules
-- When creating components from rules, use verbatim content from the rules library
 - When creating player lists: match player user_ids to their warbands to show faction info
 - When creating links: use format "[View](/campaign/{campaignId}/warband/{id})" for warbands
 - You can create MULTIPLE components at once
 - Each component should be self-contained with all its data
 - For wargames: injury tables, advancement charts, weapon stats, ability lists
-- If requested data doesn't exist, explain what IS available from rules/campaign data
+- If data doesn't exist yet, explain what's available
 
 ALWAYS RESPOND WITH VALID JSON. The response must be parseable JSON with "message" and "components" fields.`;
 

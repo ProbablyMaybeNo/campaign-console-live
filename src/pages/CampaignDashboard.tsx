@@ -13,8 +13,6 @@ import { PlayersWidget } from "@/components/dashboard/widgets/PlayersWidget";
 import { MessagesWidget } from "@/components/dashboard/widgets/MessagesWidget";
 import { NarrativeWidget } from "@/components/dashboard/widgets/NarrativeWidget";
 import { ScheduleWidget } from "@/components/dashboard/widgets/ScheduleWidget";
-import { RulesLibrary } from "@/components/rules/RulesLibrary";
-import { GettingStartedCard } from "@/components/dashboard/GettingStartedCard";
 import { 
   ArrowLeft, 
   Settings, 
@@ -45,14 +43,6 @@ export default function CampaignDashboard() {
   const [showAIBuilder, setShowAIBuilder] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [activeView, setActiveView] = useState<DashboardView>("dashboard");
-  const [dismissedGettingStarted, setDismissedGettingStarted] = useState(() => {
-    return localStorage.getItem(`campaign-${campaignId}-dismissed-welcome`) === "true";
-  });
-
-  const handleDismissWelcome = () => {
-    localStorage.setItem(`campaign-${campaignId}-dismissed-welcome`, "true");
-    setDismissedGettingStarted(true);
-  };
 
   const isLoading = campaignLoading || componentsLoading;
 
@@ -75,21 +65,9 @@ export default function CampaignDashboard() {
     );
   }
 
-  const isNewCampaign = components.length === 0;
-
   const renderMainContent = () => {
     switch (activeView) {
       case "dashboard":
-        // Show getting started card for new campaigns with no components (unless dismissed)
-        if (isNewCampaign && isGM && !dismissedGettingStarted) {
-          return (
-            <GettingStartedCard
-              onOpenAIBuilder={() => setShowAIBuilder(true)}
-              onOpenRules={() => setActiveView("rules")}
-              onDismiss={handleDismissWelcome}
-            />
-          );
-        }
         return (
           <InfiniteCanvas
             components={components}
@@ -168,8 +146,22 @@ export default function CampaignDashboard() {
         );
       case "rules":
         return (
-          <div className="max-w-4xl mx-auto h-full">
-            <RulesLibrary campaignId={campaignId!} isGM={isGM} />
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-xl font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Scroll className="w-5 h-5" />
+              Rules Reference
+            </h2>
+            <div className="bg-card border border-primary/30 rounded p-4">
+              {campaign.rules_repo_url ? (
+                <p className="text-muted-foreground text-sm">
+                  Rules loaded from: {campaign.rules_repo_url}
+                </p>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  No rules repository configured. Add one in campaign settings.
+                </p>
+              )}
+            </div>
           </div>
         );
       case "map":

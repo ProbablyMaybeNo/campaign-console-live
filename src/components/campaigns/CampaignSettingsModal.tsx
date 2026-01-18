@@ -4,7 +4,8 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useCampaign, useUpdateCampaign } from "@/hooks/useCampaigns";
-import { Settings2 } from "lucide-react";
+import { useSyncRepoRules, useDiscoverRepoRules } from "@/hooks/useWargameRules";
+import { GitBranch, CheckCircle, AlertCircle, RefreshCw, Settings2 } from "lucide-react";
 
 interface CampaignSettingsModalProps {
   open: boolean;
@@ -15,10 +16,15 @@ interface CampaignSettingsModalProps {
 export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSettingsModalProps) {
   const { data: campaign, isLoading } = useCampaign(campaignId);
   const updateCampaign = useUpdateCampaign();
+  const syncRules = useSyncRepoRules();
+  const discoverRules = useDiscoverRepoRules();
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pointsLimit, setPointsLimit] = useState("");
+  const [repoUrl, setRepoUrl] = useState("");
+  const [repoValidated, setRepoValidated] = useState<boolean | null>(null);
+  const [repoCategories, setRepoCategories] = useState<string[]>([]);
 
   // Populate form when campaign loads
   useEffect(() => {
@@ -26,8 +32,35 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       setName(campaign.name);
       setDescription(campaign.description || "");
       setPointsLimit(String(campaign.points_limit || 1000));
+      setRepoUrl(campaign.rules_repo_url || "");
+      if (campaign.rules_repo_url) {
+        setRepoValidated(true); // Assume valid if already saved
+      }
     }
   }, [campaign]);
+
+  const handleValidateRepo = async () => {
+    if (!repoUrl.trim()) return;
+    
+    setRepoValidated(null);
+    try {
+      const categories = await discoverRules.mutateAsync(repoUrl);
+      setRepoCategories(categories.map(c => c.category));
+      setRepoValidated(true);
+    } catch {
+      setRepoValidated(false);
+      setRepoCategories([]);
+    }
+  };
+
+  const handleSyncRules = async () => {
+    if (!repoUrl.trim() || !repoValidated) return;
+    
+    await syncRules.mutateAsync({
+      repoUrl,
+      campaignId,
+    });
+  };
 
   const handleSave = async () => {
     await updateCampaign.mutateAsync({
@@ -35,7 +68,16 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       name,
       description: description || undefined,
       points_limit: parseInt(pointsLimit) || 1000,
+      rules_repo_url: repoValidated ? repoUrl : undefined,
     });
+    
+    // If repo is validated but hasn't been synced yet, sync it
+    if (repoValidated && repoUrl && repoUrl !== campaign?.rules_repo_url) {
+      await syncRules.mutateAsync({
+        repoUrl,
+        campaignId,
+      });
+    }
     
     onClose();
   };
@@ -87,6 +129,87 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
             value={pointsLimit}
             onChange={(e) => setPointsLimit(e.target.value)}
           />
+
+          {/* GitHub Repo Section */}
+          <div className="space-y-3 border border-border/50 p-4 bg-muted/20 rounded">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <GitBranch className="w-4 h-4" />
+              <span className="font-medium uppercase">Wargame Rules Repository</span>
+            </div>
+            
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <TerminalInput
+                  placeholder="https://github.com/username/repo"
+                  value={repoUrl}
+                  onChange={(e) => {
+                    setRepoUrl(e.target.value);
+                    if (e.target.value !== campaign?.rules_repo_url) {
+                      setRepoValidated(null);
+                      setRepoCategories([]);
+                    }
+                  }}
+                />
+              </div>
+              <TerminalButton
+                type="button"
+                variant="outline"
+                onClick={handleValidateRepo}
+                disabled={!repoUrl.trim() || discoverRules.isPending}
+                className="shrink-0"
+              >
+                {discoverRules.isPending ? (
+                  <TerminalLoader text="" size="sm" />
+                ) : (
+                  "Validate"
+                )}
+              </TerminalButton>
+            </div>
+
+            {/* Validation Status */}
+            {repoValidated === true && (
+              <div className="space-y-2">
+                <div className="flex items-start gap-2 text-xs text-green-400 bg-green-400/10 p-2 border border-green-400/30">
+                  <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium">Repository validated!</p>
+                    {repoCategories.length > 0 && (
+                      <p className="text-green-400/70 mt-1">
+                        Categories: {repoCategories.join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Sync Button */}
+                {campaign?.rules_repo_url === repoUrl && (
+                  <TerminalButton
+                    type="button"
+                    variant="outline"
+                    onClick={handleSyncRules}
+                    disabled={syncRules.isPending}
+                    className="w-full"
+                  >
+                    {syncRules.isPending ? (
+                      <TerminalLoader text="Syncing" size="sm" />
+                    ) : (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Re-sync Rules from Repository
+                      </>
+                    )}
+                  </TerminalButton>
+                )}
+              </div>
+            )}
+            
+            {repoValidated === false && (
+              <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 border border-destructive/30">
+                <AlertCircle className="w-4 h-4" />
+                <span>Could not access repository. Check the URL and try again.</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex gap-3 pt-2 border-t border-border">
@@ -101,9 +224,9 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
           <TerminalButton
             onClick={handleSave}
             className="flex-1"
-            disabled={!name.trim() || updateCampaign.isPending}
+            disabled={!name.trim() || updateCampaign.isPending || syncRules.isPending}
           >
-            {updateCampaign.isPending ? (
+            {updateCampaign.isPending || syncRules.isPending ? (
               <TerminalLoader text="Saving" size="sm" />
             ) : (
               "Save Settings"

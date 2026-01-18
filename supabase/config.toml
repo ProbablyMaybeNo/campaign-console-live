@@ -5,6 +5,3 @@ verify_jwt = false
 
 [functions.ai-component-builder]
 verify_jwt = false
-
-[functions.extract-rules]
-verify_jwt = false
