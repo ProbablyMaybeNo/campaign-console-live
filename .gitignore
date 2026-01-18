@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude / agent scratch
+.claude/
+tmpclaude-*/
+tmpclaude-*-cwd
