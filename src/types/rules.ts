@@ -176,7 +176,19 @@ export interface GitHubRulesDatasetDef {
 
 // Indexing progress
 export interface IndexingProgress {
-  stage: 'extracting_text' | 'building_sections' | 'chunking' | 'detecting_tables' | 'complete' | 'failed';
+  stage: 
+    | 'extracting_text' 
+    | 'extracting' 
+    | 'cleaning'
+    | 'saving'
+    | 'building_sections' 
+    | 'chunking' 
+    | 'detecting_tables' 
+    | 'indexing'
+    | 'fetching'
+    | 'parsing'
+    | 'complete' 
+    | 'failed';
   progress: number;
   message: string;
 }
