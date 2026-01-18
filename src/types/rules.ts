@@ -27,12 +27,17 @@ export interface RulesSource {
 }
 
 export interface IndexStats {
-  pages: number;
+  pages?: number;
+  pagesExtracted: number;
+  emptyPages: number;
+  avgCharsPerPage: number;
   sections: number;
   chunks: number;
   tablesHigh: number;
   tablesLow: number;
   datasets: number;
+  timeMsByStage: Record<string, number>;
+  pageHashes?: { pageNumber: number; hash: string }[];
 }
 
 export interface IndexError {
@@ -95,6 +100,7 @@ export interface DetectedTable {
   startLine: number;
   endLine: number;
   rawText: string;
+  headerContext?: string;
   columns?: string[];
   rows?: string[][];
   diceType?: 'd6' | 'd66' | '2d6';
@@ -117,6 +123,9 @@ export interface EnhancedExtractionResult {
   }[];
   totalPages: number;
   totalChars: number;
+  emptyPages: number;
+  avgCharsPerPage: number;
+  pageErrors: number[];
   detectedTables: DetectedTable[];
   detectedSections: DetectedSection[];
 }
