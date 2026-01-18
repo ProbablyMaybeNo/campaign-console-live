@@ -45,7 +45,7 @@ export function useExtractRules() {
 }
 
 /**
- * Save extracted rules to the database
+ * Save extracted rules to the database (upsert to handle duplicates)
  */
 export function useSaveRules() {
   const queryClient = useQueryClient();
@@ -57,7 +57,7 @@ export function useSaveRules() {
     }: {
       campaignId: string;
       rules: ExtractedRule[];
-    }): Promise<{ inserted: number }> => {
+    }): Promise<{ inserted: number; updated: number }> => {
       // Transform rules to match database schema
       const dbRules = rules.map((rule) => ({
         campaign_id: campaignId,
@@ -66,15 +66,24 @@ export function useSaveRules() {
         title: rule.title,
         content: rule.content as Json,
         metadata: (rule.metadata || {}) as Json,
+        updated_at: new Date().toISOString(),
       }));
 
+      // Use upsert to handle duplicates - updates existing rules with same campaign_id+category+rule_key
       const { data, error } = await supabase
         .from("wargame_rules")
-        .insert(dbRules)
+        .upsert(dbRules, {
+          onConflict: "campaign_id,category,rule_key",
+          ignoreDuplicates: false, // Update on conflict
+        })
         .select();
 
-      if (error) throw error;
-      return { inserted: data?.length || 0 };
+      if (error) {
+        console.error("Save error:", error);
+        throw error;
+      }
+      
+      return { inserted: data?.length || 0, updated: 0 };
     },
     onSuccess: (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
