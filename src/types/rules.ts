@@ -75,8 +75,47 @@ export interface RulesChunk {
 export interface ScoreHints {
   hasRollRanges?: boolean;
   hasTablePattern?: boolean;
+  hasDiceTable?: boolean;
   hasEquipmentList?: boolean;
   hasSkillList?: boolean;
+  sectionType?: 'exploration' | 'skills' | 'post-game' | 'core' | 'equipment' | 'other';
+  tableConfidence?: 'high' | 'medium' | 'low';
+}
+
+// Enhanced PDF extraction types
+export type DetectedTableType = 'pipe' | 'whitespace' | 'dice-roll';
+
+export interface DetectedTable {
+  type: DetectedTableType;
+  title: string;
+  pageNumber: number;
+  startLine: number;
+  endLine: number;
+  rawText: string;
+  columns?: string[];
+  rows?: string[][];
+  diceType?: 'd6' | 'd66' | '2d6';
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export interface DetectedSection {
+  title: string;
+  pageNumber: number;
+  lineNumber: number;
+  level: number;
+  type?: 'chapter' | 'section' | 'subsection';
+}
+
+export interface EnhancedExtractionResult {
+  pages: {
+    pageNumber: number;
+    text: string;
+    charCount: number;
+  }[];
+  totalPages: number;
+  totalChars: number;
+  detectedTables: DetectedTable[];
+  detectedSections: DetectedSection[];
 }
 
 export interface RulesTable {

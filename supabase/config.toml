@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.index-rules-source]
 verify_jwt = false
+
+[functions.parse-pdf-llamaparse]
+verify_jwt = false
