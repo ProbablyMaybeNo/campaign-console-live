@@ -91,6 +91,7 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
         campaignId,
         title: pdfTitle.trim(),
         storagePath: filePath,
+        useAdvancedParsing,
       });
 
       // Show option to index now

@@ -16,7 +16,8 @@ import {
   Clock,
   Loader2,
   Plus,
-  Settings
+  Settings,
+  Sparkles
 } from "lucide-react";
 import { useRulesSources, useDeleteSource, useIndexSource } from "@/hooks/useRulesSources";
 import { AddSourceModal } from "./AddSourceModal";
@@ -142,6 +143,12 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                               <Badge variant="outline" className="text-[10px] shrink-0">
                                 {typeConfig[source.type]?.label || source.type}
                               </Badge>
+                              {source.type === 'pdf' && source.type_source === 'llamaparse' && (
+                                <Badge variant="secondary" className="text-[10px] shrink-0 bg-primary/20 text-primary border-primary/30">
+                                  <Sparkles className="w-2.5 h-2.5 mr-1" />
+                                  AI Parsed
+                                </Badge>
+                              )}
                             </div>
 
                             {/* Tags */}
