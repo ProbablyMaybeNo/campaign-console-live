@@ -875,7 +875,6 @@ export function shouldUseOcrFallback(pages: PDFPage[]) {
   const lowText = avgCharsPerPage < 120 || totalChars < pages.length * 80;
   return emptyRatio >= 0.45 || (lowText && avgCharsPerPage < 180);
 }
-
 /**
  * Detect and remove repeated headers/footers
  */

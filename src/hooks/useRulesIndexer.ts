@@ -130,7 +130,6 @@ export function usePdfIndexer() {
         const fallbackStart = performance.now();
         const parseResult = await invokeLlamaParse();
         markStage("llamaParse", fallbackStart);
-
         const parsedPages: PageLike[] = (parseResult?.pages ?? []).map((page: PageLike) => ({
           pageNumber: page.pageNumber,
           text: page.text,
@@ -148,6 +147,7 @@ export function usePdfIndexer() {
           {
             body: {
               sourceId,
+              clientStats: ocrStats,
               clientStats: ocrStats,
               clientTimings: timeMsByStage,
             },

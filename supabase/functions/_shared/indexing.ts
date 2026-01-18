@@ -46,6 +46,10 @@ function splitIntoBlocks(text: string): string[] {
     }
 
     current.push(rawLine.trimEnd());
+
+    if (isHeadingLine(line)) {
+      flush();
+    }
   }
 
   flush();
