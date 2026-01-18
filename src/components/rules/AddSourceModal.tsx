@@ -6,13 +6,15 @@ import { TerminalInput } from "@/components/ui/TerminalInput";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { 
   FileText, 
   Github, 
   ClipboardPaste, 
   Upload,
   Loader2,
-  Check
+  Check,
+  Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,7 +24,7 @@ import {
   useCreateGitHubSource,
   useIndexSource
 } from "@/hooks/useRulesSources";
-import { usePdfIndexer, useGitHubIndexer } from "@/hooks/useRulesIndexer";
+import { usePdfIndexer, useGitHubIndexer, useLlamaParseIndexer } from "@/hooks/useRulesIndexer";
 
 interface AddSourceModalProps {
   open: boolean;
@@ -37,6 +39,7 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfTitle, setPdfTitle] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [useAdvancedParsing, setUseAdvancedParsing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Paste state
@@ -56,6 +59,7 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
   // Client-side indexers
   const pdfIndexer = usePdfIndexer();
   const githubIndexer = useGitHubIndexer();
+  const llamaParseIndexer = useLlamaParseIndexer();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,11 +95,16 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
 
       // Show option to index now
       toast.success("PDF uploaded!", {
-        description: "Ready to extract and index.",
+        description: useAdvancedParsing ? "Ready for advanced parsing." : "Ready to extract and index.",
         action: {
           label: "Index Now",
           onClick: async () => {
-            const result = await pdfIndexer.indexPdf(source.id, campaignId, filePath);
+            let result;
+            if (useAdvancedParsing) {
+              result = await llamaParseIndexer.indexWithLlamaParse(source.id, campaignId, filePath);
+            } else {
+              result = await pdfIndexer.indexPdf(source.id, campaignId, filePath);
+            }
             if (result.success) {
               toast.success(`Indexed ${result.stats?.pages} pages, ${result.stats?.chunks} chunks`);
             } else {
@@ -178,6 +187,7 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
   const handleClose = () => {
     setPdfFile(null);
     setPdfTitle("");
+    setUseAdvancedParsing(false);
     setPasteTitle("");
     setPasteText("");
     setGithubUrl("");
@@ -185,12 +195,13 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
     setGithubTitle("");
     pdfIndexer.reset();
     githubIndexer.reset();
+    llamaParseIndexer.reset();
     onOpenChange(false);
   };
 
   const isSubmitting = uploadingPdf || createPdfSource.isPending || createPasteSource.isPending || createGitHubSource.isPending;
-  const isIndexing = pdfIndexer.progress !== null || githubIndexer.progress !== null;
-  const currentProgress = pdfIndexer.progress || githubIndexer.progress;
+  const isIndexing = pdfIndexer.progress !== null || githubIndexer.progress !== null || llamaParseIndexer.progress !== null;
+  const currentProgress = pdfIndexer.progress || githubIndexer.progress || llamaParseIndexer.progress;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -265,6 +276,27 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
                 onChange={(e) => setPdfTitle(e.target.value)}
                 placeholder="e.g., Core Rulebook v2.1"
                 data-testid="pdf-title-input"
+              />
+            </div>
+
+            {/* Advanced Parsing Toggle */}
+            <div className="flex items-center justify-between p-3 border border-border rounded-lg bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <div>
+                  <Label htmlFor="advanced-parsing" className="text-sm font-medium cursor-pointer">
+                    Advanced PDF Parsing
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Uses AI to better preserve tables and dice roll data
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="advanced-parsing"
+                checked={useAdvancedParsing}
+                onCheckedChange={setUseAdvancedParsing}
+                data-testid="advanced-parsing-toggle"
               />
             </div>
 
