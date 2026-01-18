@@ -1,11 +1,16 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useCreateCampaign } from "@/hooks/useCampaigns";
 import { useDiscoverRepoRules, useSyncRepoRules } from "@/hooks/useWargameRules";
-import { GitBranch, CheckCircle, AlertCircle, Gamepad2 } from "lucide-react";
+import { useCreatePdfSource, useCreatePasteSource } from "@/hooks/useRulesSources";
+import { supabase } from "@/integrations/supabase/client";
+import { GitBranch, CheckCircle, AlertCircle, Gamepad2, Upload, FileText, Check } from "lucide-react";
+import { toast } from "sonner";
 
 interface CreateCampaignModalProps {
   open: boolean;
@@ -13,8 +18,10 @@ interface CreateCampaignModalProps {
 }
 
 const WARGAME_PRESETS = [
-  { value: "custom", label: "Custom / No Preset", description: "Set up rules manually" },
-  { value: "github", label: "Import from GitHub", description: "Load rules from a repository" },
+  { value: "custom", label: "Manual Setup", description: "Add rules later via dashboard" },
+  { value: "pdf", label: "Upload PDF", description: "Upload a PDF rulebook" },
+  { value: "paste", label: "Paste Text", description: "Copy/paste rules text" },
+  { value: "github", label: "GitHub Import", description: "Load from repository" },
 ];
 
 export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps) {
@@ -27,9 +34,20 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   const [repoCategories, setRepoCategories] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   
+  // PDF state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfTitle, setPdfTitle] = useState("");
+  
+  // Paste state
+  const [pasteTitle, setPasteTitle] = useState("");
+  const [pasteText, setPasteText] = useState("");
+  
   const createCampaign = useCreateCampaign();
   const discoverRules = useDiscoverRepoRules();
   const syncRules = useSyncRepoRules();
+  const createPdfSource = useCreatePdfSource();
+  const createPasteSource = useCreatePasteSource();
 
   const handleValidateRepo = async () => {
     if (!repoUrl.trim()) return;
@@ -45,6 +63,18 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === "application/pdf") {
+      setPdfFile(file);
+      if (!pdfTitle) {
+        setPdfTitle(file.name.replace(/\.pdf$/i, ""));
+      }
+    } else if (file) {
+      toast.error("Please select a PDF file");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -56,8 +86,51 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
       rules_repo_url: wargameOption === "github" && repoValidated ? repoUrl : undefined,
     });
     
+    if (!campaign) return;
+
+    // Handle PDF upload
+    if (wargameOption === "pdf" && pdfFile && pdfTitle.trim()) {
+      setIsSyncing(true);
+      try {
+        const storagePath = `${campaign.id}/${Date.now()}-${pdfFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("campaign-documents")
+          .upload(storagePath, pdfFile);
+        
+        if (uploadError) throw uploadError;
+        
+        await createPdfSource.mutateAsync({
+          campaignId: campaign.id,
+          title: pdfTitle.trim(),
+          storagePath,
+        });
+        toast.success("PDF uploaded! Open Rules Library to index it.");
+      } catch (error) {
+        console.error("Failed to upload PDF:", error);
+        toast.error("Campaign created, but PDF upload failed");
+      }
+      setIsSyncing(false);
+    }
+    
+    // Handle paste text
+    if (wargameOption === "paste" && pasteTitle.trim() && pasteText.trim()) {
+      setIsSyncing(true);
+      try {
+        await createPasteSource.mutateAsync({
+          campaignId: campaign.id,
+          title: pasteTitle.trim(),
+          text: pasteText.trim(),
+        });
+        toast.success("Text source added! Open Rules Library to index it.");
+      } catch (error) {
+        console.error("Failed to create text source:", error);
+        toast.error("Campaign created, but text source failed");
+      }
+      setIsSyncing(false);
+    }
+    
     // If we have a validated repo, sync the rules immediately after creating
-    if (wargameOption === "github" && repoValidated && repoUrl && campaign) {
+    if (wargameOption === "github" && repoValidated && repoUrl) {
       setIsSyncing(true);
       try {
         await syncRules.mutateAsync({
@@ -66,7 +139,6 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
         });
       } catch (error) {
         console.error("Failed to sync rules:", error);
-        // Don't block campaign creation if sync fails
       }
       setIsSyncing(false);
     }
@@ -85,6 +157,10 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     setRepoValidated(null);
     setRepoCategories([]);
     setIsSyncing(false);
+    setPdfFile(null);
+    setPdfTitle("");
+    setPasteTitle("");
+    setPasteText("");
   };
 
   const handleClose = () => {
@@ -145,10 +221,18 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
                   type="button"
                   onClick={() => {
                     setWargameOption(option.value);
-                    if (option.value === "custom") {
+                    if (option.value !== "github") {
                       setRepoUrl("");
                       setRepoValidated(null);
                       setRepoCategories([]);
+                    }
+                    if (option.value !== "pdf") {
+                      setPdfFile(null);
+                      setPdfTitle("");
+                    }
+                    if (option.value !== "paste") {
+                      setPasteTitle("");
+                      setPasteText("");
                     }
                   }}
                   className={`p-3 border text-left transition-all ${
@@ -163,6 +247,83 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               ))}
             </div>
           </div>
+
+          {/* PDF Upload */}
+          {wargameOption === "pdf" && (
+            <div className="space-y-3 animate-fade-in border border-border/50 p-4 bg-muted/30">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                {pdfFile ? (
+                  <div className="flex items-center justify-center gap-2 text-primary">
+                    <Check className="w-5 h-5" />
+                    <span className="font-mono text-sm">{pdfFile.name}</span>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground">
+                    <Upload className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                    <p className="text-xs">Click to select PDF file</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Source Title
+                </Label>
+                <TerminalInput
+                  value={pdfTitle}
+                  onChange={(e) => setPdfTitle(e.target.value)}
+                  placeholder="e.g., Core Rulebook v2.1"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Paste Text */}
+          {wargameOption === "paste" && (
+            <div className="space-y-3 animate-fade-in border border-border/50 p-4 bg-muted/30">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <FileText className="w-4 h-4" />
+                <span>Paste your rules text below</span>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Source Title
+                </Label>
+                <TerminalInput
+                  value={pasteTitle}
+                  onChange={(e) => setPasteTitle(e.target.value)}
+                  placeholder="e.g., House Rules"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Rules Text
+                </Label>
+                <Textarea
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  placeholder="Paste your rules text here..."
+                  className="min-h-[120px] bg-input border-border font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground text-right">
+                  {pasteText.length.toLocaleString()} characters
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* GitHub Repo Input */}
           {wargameOption === "github" && (
@@ -240,7 +401,9 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
               disabled={
                 !name.trim() || 
                 isCreating ||
-                (wargameOption === "github" && !repoValidated)
+                (wargameOption === "github" && !repoValidated) ||
+                (wargameOption === "pdf" && (!pdfFile || !pdfTitle.trim())) ||
+                (wargameOption === "paste" && (!pasteTitle.trim() || !pasteText.trim()))
               }
             >
               {isCreating ? (
