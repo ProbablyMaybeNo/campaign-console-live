@@ -860,15 +860,19 @@ export type Database = {
           github_imported_at: string | null
           github_json_path: string | null
           github_repo_url: string | null
+          github_sha: string | null
           id: string
           index_error: Json | null
           index_stats: Json | null
           index_status: string
           last_indexed_at: string | null
+          pseudo_page_size: number | null
+          raw_text: string | null
           storage_path: string | null
           tags: string[] | null
           title: string
           type: string
+          type_source: string | null
           updated_at: string
         }
         Insert: {
@@ -877,15 +881,19 @@ export type Database = {
           github_imported_at?: string | null
           github_json_path?: string | null
           github_repo_url?: string | null
+          github_sha?: string | null
           id?: string
           index_error?: Json | null
           index_stats?: Json | null
           index_status?: string
           last_indexed_at?: string | null
+          pseudo_page_size?: number | null
+          raw_text?: string | null
           storage_path?: string | null
           tags?: string[] | null
           title: string
           type: string
+          type_source?: string | null
           updated_at?: string
         }
         Update: {
@@ -894,15 +902,19 @@ export type Database = {
           github_imported_at?: string | null
           github_json_path?: string | null
           github_repo_url?: string | null
+          github_sha?: string | null
           id?: string
           index_error?: Json | null
           index_stats?: Json | null
           index_status?: string
           last_indexed_at?: string | null
+          pseudo_page_size?: number | null
+          raw_text?: string | null
           storage_path?: string | null
           tags?: string[] | null
           title?: string
           type?: string
+          type_source?: string | null
           updated_at?: string
         }
         Relationships: [
