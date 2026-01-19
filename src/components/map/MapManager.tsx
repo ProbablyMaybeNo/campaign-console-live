@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Cloud } from 'lucide-react';
 import { OverlayLoading, OverlayEmpty } from '@/components/ui/OverlayPanel';
 import { MapUploader } from './MapUploader';
 import { MapCanvas } from './MapCanvas';
@@ -18,6 +18,9 @@ import {
   useCreateMarker,
   useUpdateMarker,
   useDeleteMarker,
+  useCreateFogRegion,
+  useUpdateFogRegion,
+  useDeleteFogRegion,
 } from '@/hooks/useMapData';
 import type { MarkerShape, MarkerVisibility } from './types';
 import {
@@ -47,8 +50,11 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
   const createMarker = useCreateMarker();
   const updateMarkerMutation = useUpdateMarker();
   const deleteMarker = useDeleteMarker();
+  const createFogRegion = useCreateFogRegion();
+  const updateFogRegion = useUpdateFogRegion();
+  const deleteFogRegion = useDeleteFogRegion();
 
-  const [placementMode, setPlacementMode] = useState<'select' | 'place'>('select');
+  const [placementMode, setPlacementMode] = useState<'select' | 'place' | 'fog'>('select');
   const [selectedLegendItemId, setSelectedLegendItemId] = useState<string | null>(null);
   const [gmOnlyMode, setGmOnlyMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -67,7 +73,7 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
     );
   }
 
-  const { map, legendItems, markers } = data || { map: null, legendItems: [], markers: [] };
+  const { map, legendItems, markers, fogRegions } = data || { map: null, legendItems: [], markers: [], fogRegions: [] };
 
   // No map uploaded yet
   if (!map || !map.image_url) {
@@ -152,8 +158,9 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
           {/* Map Canvas */}
           <MapCanvas
             imageUrl={map.image_url}
-            markers={markers}
+            markers={isGM ? markers : markers.filter(m => m.visibility === 'all')}
             legendItems={legendItems}
+            fogRegions={fogRegions}
             isGM={isGM}
             placementMode={placementMode}
             selectedLegendItemId={selectedLegendItemId}
@@ -177,6 +184,22 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
             }}
             onDeleteMarker={(markerId) => {
               deleteMarker.mutate({ markerId, campaignId });
+            }}
+            onAddFogRegion={(posX, posY, width, height) => {
+              createFogRegion.mutate({
+                mapId: map.id,
+                positionX: posX,
+                positionY: posY,
+                width,
+                height,
+                campaignId,
+              });
+            }}
+            onToggleFogRegion={(regionId, revealed) => {
+              updateFogRegion.mutate({ regionId, revealed, campaignId });
+            }}
+            onDeleteFogRegion={(regionId) => {
+              deleteFogRegion.mutate({ regionId, campaignId });
             }}
           />
 

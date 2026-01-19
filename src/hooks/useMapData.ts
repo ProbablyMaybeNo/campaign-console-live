@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import type { CampaignMap, MapLegendItem, MapMarker, MarkerShape, MarkerVisibility } from '@/components/map/types';
+import type { CampaignMap, MapLegendItem, MapMarker, MarkerShape, MarkerVisibility, MapFogRegion } from '@/components/map/types';
 import { toast } from 'sonner';
 
 // ============ Fetch Map Data ============
@@ -18,7 +18,7 @@ export function useCampaignMap(campaignId: string) {
       if (mapError) throw mapError;
 
       if (!map) {
-        return { map: null, legendItems: [], markers: [] };
+        return { map: null, legendItems: [], markers: [], fogRegions: [] };
       }
 
       // Fetch legend items
@@ -38,6 +38,14 @@ export function useCampaignMap(campaignId: string) {
 
       if (markersError) throw markersError;
 
+      // Fetch fog regions
+      const { data: fogRegions, error: fogError } = await supabase
+        .from('map_fog_regions')
+        .select('*')
+        .eq('map_id', map.id);
+
+      if (fogError) throw fogError;
+
       // Join legend items to markers
       const legendMap = new Map((legendItems || []).map(l => [l.id, l]));
       const enrichedMarkers = (markers || []).map(m => ({
@@ -50,6 +58,7 @@ export function useCampaignMap(campaignId: string) {
         map: map as CampaignMap,
         legendItems: (legendItems || []).map(l => ({ ...l, shape: l.shape as MarkerShape })) as MapLegendItem[],
         markers: enrichedMarkers as MapMarker[],
+        fogRegions: (fogRegions || []) as MapFogRegion[],
       };
     },
     enabled: !!campaignId,
@@ -338,6 +347,98 @@ export function useDeleteMarker() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to remove marker: ${error.message}`);
+    },
+  });
+}
+
+// ============ Fog Region CRUD ============
+export function useCreateFogRegion() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ mapId, positionX, positionY, width, height, campaignId }: { 
+      mapId: string;
+      positionX: number;
+      positionY: number;
+      width: number;
+      height: number;
+      campaignId: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('map_fog_regions')
+        .insert({
+          map_id: mapId,
+          position_x: positionX,
+          position_y: positionY,
+          width,
+          height,
+          revealed: false,
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { ...data, campaignId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['campaign-map', data.campaignId] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to add fog region: ${error.message}`);
+    },
+  });
+}
+
+export function useUpdateFogRegion() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ regionId, revealed, campaignId }: { 
+      regionId: string;
+      revealed?: boolean;
+      campaignId: string;
+    }) => {
+      const updates: Record<string, unknown> = {};
+      if (revealed !== undefined) updates.revealed = revealed;
+      
+      const { data, error } = await supabase
+        .from('map_fog_regions')
+        .update(updates)
+        .eq('id', regionId)
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return { ...data, campaignId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['campaign-map', data.campaignId] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update fog region: ${error.message}`);
+    },
+  });
+}
+
+export function useDeleteFogRegion() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ regionId, campaignId }: { regionId: string; campaignId: string }) => {
+      const { error } = await supabase
+        .from('map_fog_regions')
+        .delete()
+        .eq('id', regionId);
+      
+      if (error) throw error;
+      return { campaignId };
+    },
+    onSuccess: ({ campaignId }) => {
+      queryClient.invalidateQueries({ queryKey: ['campaign-map', campaignId] });
+      toast.success('Fog region removed');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to remove fog region: ${error.message}`);
     },
   });
 }

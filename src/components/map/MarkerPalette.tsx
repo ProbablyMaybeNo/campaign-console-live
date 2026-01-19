@@ -1,4 +1,4 @@
-import { MousePointer2, Eye, EyeOff } from 'lucide-react';
+import { MousePointer2, Eye, EyeOff, Cloud } from 'lucide-react';
 import { MarkerIcon } from './MarkerIcon';
 import type { MapLegendItem } from './types';
 
@@ -6,8 +6,8 @@ interface MarkerPaletteProps {
   legendItems: MapLegendItem[];
   selectedItemId: string | null;
   onSelectItem: (itemId: string | null) => void;
-  placementMode: 'select' | 'place';
-  onModeChange: (mode: 'select' | 'place') => void;
+  placementMode: 'select' | 'place' | 'fog';
+  onModeChange: (mode: 'select' | 'place' | 'fog') => void;
   gmOnlyMode: boolean;
   onGmOnlyModeChange: (gmOnly: boolean) => void;
 }
@@ -22,12 +22,12 @@ export function MarkerPalette({
   onGmOnlyModeChange,
 }: MarkerPaletteProps) {
   return (
-    <div className="flex items-center gap-2 p-2 bg-muted/50 border border-border rounded-lg">
+    <div className="flex items-center gap-2 p-2 bg-muted/50 border border-border rounded-lg flex-wrap">
       {/* Mode Toggle */}
       <button
         onClick={() => onModeChange('select')}
         className={`p-2 rounded ${placementMode === 'select' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
-        title="Select mode - click markers to edit"
+        title="Select mode - click markers to edit, drag to move"
       >
         <MousePointer2 className="w-4 h-4" />
       </button>
@@ -56,6 +56,20 @@ export function MarkerPalette({
           </button>
         ))
       )}
+      
+      <div className="w-px h-6 bg-border" />
+      
+      {/* Fog of War Tool */}
+      <button
+        onClick={() => onModeChange('fog')}
+        className={`p-2 rounded flex items-center gap-1 text-xs ${
+          placementMode === 'fog' ? 'bg-amber-500/20 text-amber-400 border border-amber-500' : 'hover:bg-muted'
+        }`}
+        title="Fog of war - draw regions to hide from players"
+      >
+        <Cloud className="w-4 h-4" />
+        <span className="hidden sm:inline">Fog</span>
+      </button>
       
       <div className="w-px h-6 bg-border" />
       

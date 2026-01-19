@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { ZoomIn, ZoomOut, RotateCcw, Trash2, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Trash2, X, Move } from 'lucide-react';
 import { MarkerIcon } from './MarkerIcon';
-import type { MapMarker, MapLegendItem, MarkerVisibility } from './types';
+import type { MapMarker, MapLegendItem, MarkerVisibility, MapFogRegion } from './types';
 import { TerminalInput } from '@/components/ui/TerminalInput';
 import { TerminalButton } from '@/components/ui/TerminalButton';
 
@@ -10,21 +10,26 @@ interface MapCanvasProps {
   imageUrl: string;
   markers: MapMarker[];
   legendItems: MapLegendItem[];
+  fogRegions: MapFogRegion[];
   isGM: boolean;
   // Placement state
-  placementMode: 'select' | 'place';
+  placementMode: 'select' | 'place' | 'fog';
   selectedLegendItemId: string | null;
   gmOnlyMode: boolean;
   // Callbacks
   onAddMarker: (posX: number, posY: number, legendItemId: string, visibility: MarkerVisibility) => void;
   onUpdateMarker: (markerId: string, updates: { label?: string | null; positionX?: number; positionY?: number; visibility?: MarkerVisibility }) => void;
   onDeleteMarker: (markerId: string) => void;
+  onAddFogRegion: (posX: number, posY: number, width: number, height: number) => void;
+  onToggleFogRegion: (regionId: string, revealed: boolean) => void;
+  onDeleteFogRegion: (regionId: string) => void;
 }
 
 export function MapCanvas({
   imageUrl,
   markers,
   legendItems,
+  fogRegions,
   isGM,
   placementMode,
   selectedLegendItemId,
@@ -32,27 +37,120 @@ export function MapCanvas({
   onAddMarker,
   onUpdateMarker,
   onDeleteMarker,
+  onAddFogRegion,
+  onToggleFogRegion,
+  onDeleteFogRegion,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
   const [editingMarkerId, setEditingMarkerId] = useState<string | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null);
+  
+  // Drag state for markers
+  const [draggingMarkerId, setDraggingMarkerId] = useState<string | null>(null);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  
+  // Fog drawing state
+  const [fogDrawStart, setFogDrawStart] = useState<{ x: number; y: number } | null>(null);
+  const [fogDrawCurrent, setFogDrawCurrent] = useState<{ x: number; y: number } | null>(null);
 
   const legendMap = new Map(legendItems.map(l => [l.id, l]));
+  
+  // Calculate position from mouse event relative to image
+  const getRelativePosition = useCallback((e: React.MouseEvent | MouseEvent) => {
+    if (!imageRef.current) return null;
+    const rect = imageRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+  }, []);
+  
+  // Marker drag handlers
+  const handleMarkerDragStart = useCallback((e: React.MouseEvent, marker: MapMarker) => {
+    if (!isGM || placementMode !== 'select') return;
+    e.stopPropagation();
+    e.preventDefault();
+    setDraggingMarkerId(marker.id);
+    setDragStart({ x: marker.position_x, y: marker.position_y });
+    setDragOffset({ x: 0, y: 0 });
+  }, [isGM, placementMode]);
+  
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    // Handle marker dragging
+    if (draggingMarkerId && dragStart) {
+      const pos = getRelativePosition(e);
+      if (pos) {
+        const marker = markers.find(m => m.id === draggingMarkerId);
+        if (marker) {
+          setDragOffset({
+            x: pos.x - dragStart.x,
+            y: pos.y - dragStart.y
+          });
+        }
+      }
+    }
+    
+    // Handle fog drawing
+    if (fogDrawStart && placementMode === 'fog') {
+      const pos = getRelativePosition(e);
+      if (pos) {
+        setFogDrawCurrent(pos);
+      }
+    }
+  }, [draggingMarkerId, dragStart, fogDrawStart, placementMode, getRelativePosition, markers]);
+  
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    // Finish marker drag
+    if (draggingMarkerId && dragStart) {
+      const pos = getRelativePosition(e);
+      if (pos) {
+        onUpdateMarker(draggingMarkerId, { positionX: pos.x, positionY: pos.y });
+      }
+      setDraggingMarkerId(null);
+      setDragStart(null);
+      setDragOffset({ x: 0, y: 0 });
+    }
+    
+    // Finish fog drawing
+    if (fogDrawStart && fogDrawCurrent && placementMode === 'fog') {
+      const width = Math.abs(fogDrawCurrent.x - fogDrawStart.x);
+      const height = Math.abs(fogDrawCurrent.y - fogDrawStart.y);
+      if (width > 2 && height > 2) {
+        const posX = Math.min(fogDrawStart.x, fogDrawCurrent.x);
+        const posY = Math.min(fogDrawStart.y, fogDrawCurrent.y);
+        onAddFogRegion(posX, posY, width, height);
+      }
+      setFogDrawStart(null);
+      setFogDrawCurrent(null);
+    }
+  }, [draggingMarkerId, dragStart, fogDrawStart, fogDrawCurrent, placementMode, getRelativePosition, onUpdateMarker, onAddFogRegion]);
 
+  const handleMapMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isGM) return;
+    
+    if (placementMode === 'fog') {
+      const pos = getRelativePosition(e);
+      if (pos) {
+        setFogDrawStart(pos);
+        setFogDrawCurrent(pos);
+      }
+    }
+  };
+  
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isGM || placementMode !== 'place' || !selectedLegendItemId) return;
     
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
-    onAddMarker(x, y, selectedLegendItemId, gmOnlyMode ? 'gm_only' : 'all');
+    const pos = getRelativePosition(e);
+    if (pos) {
+      onAddMarker(pos.x, pos.y, selectedLegendItemId, gmOnlyMode ? 'gm_only' : 'all');
+    }
   };
 
   const handleMarkerClick = (e: React.MouseEvent, marker: MapMarker) => {
     e.stopPropagation();
-    if (!isGM) return;
+    if (!isGM || draggingMarkerId) return;
     
     if (placementMode === 'select') {
       setEditingMarkerId(marker.id);
@@ -86,6 +184,13 @@ export function MapCanvas({
     }
   };
 
+  const getCursor = () => {
+    if (!isGM) return 'default';
+    if (placementMode === 'place') return 'crosshair';
+    if (placementMode === 'fog') return 'crosshair';
+    return 'default';
+  };
+
   return (
     <div className="relative w-full h-[500px] bg-muted/30 border border-border rounded-lg overflow-hidden" ref={containerRef}>
       <TransformWrapper
@@ -94,7 +199,7 @@ export function MapCanvas({
         maxScale={4}
         centerOnInit
         wheel={{ step: 0.1 }}
-        panning={{ disabled: placementMode === 'place' && isGM }}
+        panning={{ disabled: (placementMode === 'place' || placementMode === 'fog' || !!draggingMarkerId) && isGM }}
       >
         {({ zoomIn, zoomOut, resetTransform }) => (
           <>
@@ -113,16 +218,76 @@ export function MapCanvas({
 
             <TransformComponent wrapperStyle={{ width: '100%', height: '100%' }}>
               <div 
-                className="relative"
+                className="relative select-none"
                 onClick={handleMapClick}
-                style={{ cursor: isGM && placementMode === 'place' ? 'crosshair' : 'default' }}
+                onMouseDown={handleMapMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                style={{ cursor: getCursor() }}
               >
                 <img
+                  ref={imageRef}
                   src={imageUrl}
                   alt="Campaign map"
                   className="max-w-full h-auto"
                   draggable={false}
                 />
+                
+                {/* Fog of War Regions */}
+                {fogRegions.map((region) => {
+                  // Players see unrevealed regions as opaque fog
+                  // GM sees all regions with visual indicator
+                  const showAsFog = !isGM && !region.revealed;
+                  const gmUnrevealed = isGM && !region.revealed;
+                  
+                  if (!isGM && region.revealed) return null; // Don't show revealed regions to players
+                  
+                  return (
+                    <div
+                      key={region.id}
+                      className={`absolute ${showAsFog ? 'bg-black/90' : gmUnrevealed ? 'bg-black/60 border-2 border-dashed border-amber-500/50' : 'bg-emerald-500/20 border-2 border-emerald-500/50'}`}
+                      style={{
+                        left: `${region.position_x}%`,
+                        top: `${region.position_y}%`,
+                        width: `${region.width}%`,
+                        height: `${region.height}%`,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isGM && placementMode === 'select') {
+                          // Toggle reveal on click
+                          onToggleFogRegion(region.id, !region.revealed);
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        if (isGM) {
+                          onDeleteFogRegion(region.id);
+                        }
+                      }}
+                    >
+                      {isGM && (
+                        <div className="absolute inset-0 flex items-center justify-center text-xs text-white/70">
+                          {region.revealed ? '✓ Revealed' : 'Hidden'}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {/* Fog drawing preview */}
+                {fogDrawStart && fogDrawCurrent && (
+                  <div
+                    className="absolute bg-black/40 border-2 border-dashed border-amber-500"
+                    style={{
+                      left: `${Math.min(fogDrawStart.x, fogDrawCurrent.x)}%`,
+                      top: `${Math.min(fogDrawStart.y, fogDrawCurrent.y)}%`,
+                      width: `${Math.abs(fogDrawCurrent.x - fogDrawStart.x)}%`,
+                      height: `${Math.abs(fogDrawCurrent.y - fogDrawStart.y)}%`,
+                    }}
+                  />
+                )}
                 
                 {/* Markers */}
                 {markers.map((marker) => {
@@ -132,22 +297,35 @@ export function MapCanvas({
                   const isEditing = editingMarkerId === marker.id;
                   const isHovered = hoveredMarkerId === marker.id;
                   const isGmOnly = marker.visibility === 'gm_only';
+                  const isDragging = draggingMarkerId === marker.id;
+                  
+                  // Calculate display position (original + drag offset if dragging)
+                  const displayX = isDragging ? marker.position_x + dragOffset.x : marker.position_x;
+                  const displayY = isDragging ? marker.position_y + dragOffset.y : marker.position_y;
                   
                   return (
                     <div
                       key={marker.id}
                       className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-transform ${
-                        isGM ? 'cursor-pointer hover:scale-110' : ''
-                      } ${isGmOnly ? 'opacity-60' : ''}`}
+                        isGM && placementMode === 'select' ? 'cursor-grab active:cursor-grabbing hover:scale-110' : isGM ? 'cursor-pointer' : ''
+                      } ${isGmOnly ? 'opacity-60' : ''} ${isDragging ? 'z-50 scale-110' : ''}`}
                       style={{
-                        left: `${marker.position_x}%`,
-                        top: `${marker.position_y}%`,
+                        left: `${displayX}%`,
+                        top: `${displayY}%`,
                       }}
                       onClick={(e) => handleMarkerClick(e, marker)}
-                      onMouseEnter={() => setHoveredMarkerId(marker.id)}
+                      onMouseDown={(e) => handleMarkerDragStart(e, marker)}
+                      onMouseEnter={() => !isDragging && setHoveredMarkerId(marker.id)}
                       onMouseLeave={() => setHoveredMarkerId(null)}
                     >
                       <MarkerIcon shape={legend.shape} color={legend.color} size={32} />
+                      
+                      {/* Drag indicator for GM */}
+                      {isGM && placementMode === 'select' && isHovered && !isDragging && !isEditing && (
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-background/90 rounded px-1.5 py-0.5 text-[10px] flex items-center gap-1 whitespace-nowrap">
+                          <Move className="w-2.5 h-2.5" /> Drag to move
+                        </div>
+                      )}
                       
                       {/* Label tooltip on hover */}
                       {(isHovered || isEditing) && marker.label && !isEditing && (
@@ -224,6 +402,13 @@ export function MapCanvas({
               size={20} 
             />
           )}
+        </div>
+      )}
+      
+      {/* Fog mode indicator */}
+      {isGM && placementMode === 'fog' && (
+        <div className="absolute bottom-2 left-2 z-10 bg-amber-600/90 text-white px-3 py-1.5 rounded-lg text-sm">
+          Draw rectangle to add fog region • Click fog to reveal/hide • Right-click to delete
         </div>
       )}
     </div>
