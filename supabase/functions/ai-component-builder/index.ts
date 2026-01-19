@@ -1,9 +1,46 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.25.76";
+import { buildTableDataFromDbRecord, extractQueryTerms, scoreText } from "../_shared/rules_retrieval.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+const ConversationMessageSchema = z.object({
+  role: z.string().min(1).max(20),
+  content: z.string().max(20000),
+});
+
+const RequestSchema = z.object({
+  prompt: z.string().trim().min(1).max(2000),
+  conversationHistory: z.array(ConversationMessageSchema).optional().default([]),
+  sourceContent: z.string().max(30000).optional(),
+  campaignId: z.string().uuid().optional(),
+});
+
+type CandidateTableMeta = {
+  id: string;
+  title_guess: string | null;
+  confidence: string;
+  keywords: string[] | null;
+  page_number: number | null;
+  source_id: string;
+  header_context: string | null;
+};
+
+type CandidateChunk = {
+  id: string;
+  text: string;
+  section_path: string[] | null;
+  source_id: string;
+};
+
+type SelectedComponent = {
+  type: "table" | "card";
+  title: string;
+  tableId?: string;
 };
 
 Deno.serve(async (req) => {
@@ -19,147 +56,231 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase: any = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { prompt, conversationHistory = [], sourceContent, campaignId } = await req.json();
-
-    // Fetch indexed rules data for auto-pick scoring
-    let rulesContext = "";
-    let availableData: { datasets: any[]; tables: any[]; chunks: any[] } = { datasets: [], tables: [], chunks: [] };
-
-    if (campaignId) {
-      // Get sources for this campaign
-      const { data: sources } = await supabase
-        .from("rules_sources")
-        .select("id")
-        .eq("campaign_id", campaignId)
-        .eq("index_status", "indexed");
-
-      const sourceIds = sources?.map((s: any) => s.id) || [];
-
-      if (sourceIds.length > 0) {
-        // Fetch datasets (highest priority)
-        const { data: datasets } = await supabase
-          .from("rules_datasets")
-          .select("id, name, dataset_type, fields, source_id")
-          .in("source_id", sourceIds);
-
-        // Fetch tables with content (medium priority)
-        const { data: tables } = await supabase
-          .from("rules_tables")
-          .select("id, title_guess, confidence, keywords, page_number, source_id, raw_text, parsed_rows")
-          .in("source_id", sourceIds)
-          .order("confidence", { ascending: false })
-          .limit(50);
-
-        // Fetch chunks (fallback)
-        const { data: chunks } = await supabase
-          .from("rules_chunks")
-          .select("id, text, section_path, score_hints, source_id")
-          .in("source_id", sourceIds)
-          .limit(100);
-
-        availableData = { datasets: datasets || [], tables: tables || [], chunks: chunks || [] };
-
-        // Build detailed table context with actual content
-        const tableDetails = (tables || []).slice(0, 30).map((t: any) => {
-          let content = "";
-          if (t.parsed_rows && Array.isArray(t.parsed_rows) && t.parsed_rows.length > 0) {
-            const cols = Object.keys(t.parsed_rows[0]);
-            content = `Columns: ${cols.join(', ')}\nRows (${t.parsed_rows.length}): ${JSON.stringify(t.parsed_rows.slice(0, 10))}`;
-          } else if (t.raw_text) {
-            content = `Raw: ${t.raw_text.substring(0, 1500)}`;
-          }
-          return `### ${t.title_guess || 'Untitled'} (id: ${t.id}, page: ${t.page_number}, confidence: ${t.confidence})\n${content}`;
-        }).join('\n\n');
-
-        rulesContext = `
-INDEXED RULES DATA (use these IDs and ACTUAL CONTENT when creating components):
-
-DATASETS (${datasets?.length || 0}) - HIGHEST PRIORITY:
-${datasets?.map((d: any) => `- ${d.name} (id: ${d.id}, type: ${d.dataset_type}, fields: ${d.fields?.join(', ')}, sourceId: ${d.source_id})`).join('\n') || 'None'}
-
-TABLES WITH CONTENT (${tables?.length || 0}) - USE THIS DATA TO POPULATE COMPONENTS:
-${tableDetails || 'None'}
-
-CHUNKS (${chunks?.length || 0}) - FALLBACK:
-${chunks?.slice(0, 10).map((c: any) => `- Section: ${c.section_path?.join(' > ') || 'Unknown'} (id: ${c.id})\n  Text: ${c.text?.substring(0, 500) || ''}`).join('\n') || 'None'}
-
-CRITICAL INSTRUCTIONS:
-- When asked to create tables, USE THE ACTUAL CONTENT from the tables above
-- Copy the real data (columns and rows) from the matching table
-- Do NOT invent or make up data - use what's in the indexed tables
-- Include dataSource/sourceId/tableId for provenance tracking
-`;
-      }
+    const rawBody = await req.json();
+    const parsedReq = RequestSchema.safeParse(rawBody);
+    if (!parsedReq.success) {
+      return new Response(JSON.stringify({ error: "Invalid request", details: parsedReq.error.flatten() }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const systemPrompt = `You are an AI helping create dashboard components for wargaming campaigns.
-${rulesContext}
-${sourceContent ? `\nSOURCE CONTENT:\n${sourceContent.substring(0, 30000)}` : ''}
+    const { prompt, conversationHistory, campaignId } = parsedReq.data;
 
-RESPONSE FORMAT (always valid JSON):
-{
-  "message": "Your response explaining what you created",
-  "components": [{
-    "type": "table" | "card",
-    "data": { 
-      "title": "Component Name",
-      "columns": ["Column1", "Column2", ...],  // Use real column names from the indexed data
-      "rows": [{"id": "uuid", "Column1": "value", "Column2": "value"}, ...]  // Use REAL data from tables
-    },
-    "dataSource": "rules",
-    "sourceId": "uuid-of-source",
-    "tableId": "uuid-of-table",
-    "preferred": "table"
-  }]
-}
+    // If no campaignId, we can't access indexed rules
+    if (!campaignId) {
+      return new Response(JSON.stringify({
+        message: "I need a campaign context to search your indexed rules.",
+        components: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
-CRITICAL RULES:
-1. ALWAYS use the ACTUAL content from the indexed tables above - never invent data
-2. For table components, copy the real columns and rows from the matching indexed table
-3. Each row must have a unique "id" field (generate UUIDs)
-4. Columns must be an array of strings
-5. Include tableId/sourceId for data provenance`;
+    // Get indexed sources for this campaign
+    const { data: sources, error: sourcesError } = await supabase
+      .from("rules_sources")
+      .select("id")
+      .eq("campaign_id", campaignId)
+      .eq("index_status", "indexed");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    if (sourcesError) throw sourcesError;
+
+    const sourceIds = (sources || []).map((s: any) => s.id).filter(Boolean);
+    if (sourceIds.length === 0) {
+      return new Response(JSON.stringify({
+        message: "No indexed rules sources found for this campaign. Index a rules source first.",
+        components: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Extract query terms from the user's prompt
+    const terms = extractQueryTerms(prompt);
+
+    // Fetch candidate tables metadata (no big payload yet)
+    const { data: tableMeta, error: tableMetaError } = await supabase
+      .from("rules_tables")
+      .select("id, title_guess, confidence, keywords, page_number, source_id, header_context")
+      .in("source_id", sourceIds)
+      .limit(500);
+
+    if (tableMetaError) throw tableMetaError;
+
+    // Fetch candidate chunks (fallback context)
+    const { data: chunks, error: chunkError } = await supabase
+      .from("rules_chunks")
+      .select("id, text, section_path, source_id")
+      .in("source_id", sourceIds)
+      .limit(200);
+
+    if (chunkError) throw chunkError;
+
+    const rankedTables = (tableMeta as CandidateTableMeta[] | null || [])
+      .map((t) => {
+        const confidenceBoost = t.confidence === "high" ? 10 : t.confidence === "medium" ? 6 : 2;
+        const keywordText = (t.keywords || []).join(" ");
+        const titleText = t.title_guess || "";
+        const headerText = t.header_context || "";
+        const score =
+          confidenceBoost +
+          scoreText(titleText, terms) * 4 +
+          scoreText(keywordText, terms) * 3 +
+          scoreText(headerText, terms) * 2;
+
+        return { t, score };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    const topMeta = rankedTables.slice(0, 30).map((x) => x.t);
+    const topIds = topMeta.map((t) => t.id);
+
+    // Fetch full content only for top candidates
+    const { data: topTables, error: topTablesError } = await supabase
+      .from("rules_tables")
+      .select("id, title_guess, confidence, keywords, page_number, source_id, raw_text, parsed_rows")
+      .in("id", topIds)
+      .limit(30);
+
+    if (topTablesError) throw topTablesError;
+
+    const tablesById = new Map<string, any>((topTables || []).map((t: any) => [t.id, t]));
+
+    // Build a short candidate list for the model to choose from
+    const candidateList = topMeta
+      .map((t, idx) => {
+        const kw = (t.keywords || []).slice(0, 6).join(", ");
+        return `${idx + 1}. id=${t.id} | ${t.title_guess || "Untitled"} | page=${t.page_number ?? "?"} | confidence=${t.confidence} | keywords=${kw}`;
+      })
+      .join("\n");
+
+    // Use tool calling so the model selects IDs; we then populate rows/columns deterministically from DB
+    const selectionSystemPrompt = `You are selecting which indexed RULE TABLES to use to satisfy the user's request.
+
+Choose ONLY from the candidates list below. Return your answer via the select_components tool.
+
+CANDIDATE TABLES:\n${candidateList || "(none)"}\n\nRules:\n- Prefer candidates whose title/keywords match the request terms (${terms.join(", ") || "none"}).\n- If the user asked for N tables, return N table components.\n- Do not invent table IDs.\n- Keep titles short and specific (e.g. 'Common Exploration Table', 'Rare Exploration Table').`;
+
+    const toolBody: any = {
+      model: "google/gemini-3-flash-preview",
+      messages: [
+        { role: "system", content: selectionSystemPrompt },
+        ...conversationHistory,
+        { role: "user", content: prompt },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "select_components",
+            description: "Select indexed rules items to create dashboard components.",
+            parameters: {
+              type: "object",
+              properties: {
+                components: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      type: { type: "string", enum: ["table", "card"] },
+                      title: { type: "string" },
+                      tableId: { type: "string" },
+                    },
+                    required: ["type", "title"],
+                    additionalProperties: false,
+                  },
+                },
+              },
+              required: ["components"],
+              additionalProperties: false,
+            },
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "select_components" } },
+      temperature: 0.2,
+    };
+
+    const selectionResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...conversationHistory,
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.3,
-      }),
+      body: JSON.stringify(toolBody),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (response.status === 402) return new Response(JSON.stringify({ error: "Credits depleted" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI error: ${response.status}`);
+    if (!selectionResp.ok) {
+      if (selectionResp.status === 429) return new Response(JSON.stringify({ error: "Rate limit exceeded" }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (selectionResp.status === 402) return new Response(JSON.stringify({ error: "Credits depleted" }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const t = await selectionResp.text();
+      console.error("AI selection error:", selectionResp.status, t);
+      throw new Error(`AI error: ${selectionResp.status}`);
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
+    const selectionData = await selectionResp.json();
+    const toolCall = selectionData.choices?.[0]?.message?.tool_calls?.[0];
+    let selected: SelectedComponent[] = [];
 
-    let parsed: any;
     try {
-      const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) || [null, content];
-      parsed = JSON.parse(jsonMatch[1].trim());
+      const argsRaw = toolCall?.function?.arguments;
+      const args = typeof argsRaw === "string" ? JSON.parse(argsRaw) : argsRaw;
+      selected = Array.isArray(args?.components) ? args.components : [];
     } catch {
-      parsed = { message: content, components: [] };
+      selected = [];
     }
 
-    return new Response(JSON.stringify({
-      message: parsed.message || "Here's what I found.",
-      components: Array.isArray(parsed.components) ? parsed.components.filter((c: any) => c?.type && c?.data?.title) : []
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // Fallback: if tool call fails, just take top 3 ranked tables
+    if (selected.length === 0) {
+      selected = rankedTables.slice(0, 3).map(({ t }) => ({
+        type: "table",
+        title: t.title_guess || "Table",
+        tableId: t.id,
+      }));
+    }
+
+    const builtComponents = selected
+      .filter((c) => c.type === "table" && typeof c.tableId === "string" && tablesById.has(c.tableId))
+      .slice(0, 5)
+      .map((c) => {
+        const table = tablesById.get(c.tableId!)!;
+        const tableData = buildTableDataFromDbRecord(table);
+        if (!tableData) return null;
+
+        const columns = tableData.columns.slice(0, 12);
+        const rows = tableData.rows.slice(0, 200).map((r) => {
+          const out: Record<string, string> = { id: crypto.randomUUID() };
+          columns.forEach((col) => {
+            const v = r[col];
+            // Keep cells bounded to avoid giant widgets
+            out[col] = (v ?? "").toString().slice(0, 2000);
+          });
+          return out;
+        });
+
+        return {
+          type: "table",
+          data: {
+            title: c.title || table.title_guess || "Table",
+            columns,
+            rows,
+          },
+        };
+      })
+      .filter(Boolean);
+
+    const fallbackChunks = (chunks as CandidateChunk[] | null || [])
+      .slice(0, 5)
+      .map((c) => `- ${c.section_path?.join(" > ") || "Unknown"}: ${c.text?.substring(0, 200) || ""}`)
+      .join("\n");
+
+    const message = builtComponents.length
+      ? "Created table components from the best-matching indexed rules tables."
+      : `I couldn't confidently match your request to any indexed tables. Try using more specific terms (e.g. 'exploration', 'rare exploration', 'legendary exploration').\n\nNearby content:\n${fallbackChunks || "(none)"}`;
+
+    return new Response(JSON.stringify({ message, components: builtComponents }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
   } catch (error) {
     console.error("AI builder error:", error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
