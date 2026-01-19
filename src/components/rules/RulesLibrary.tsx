@@ -4,11 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  Database, 
-  FileText, 
-  Github, 
-  ClipboardPaste, 
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import {
+  Database,
+  FileText,
+  Github,
+  ClipboardPaste,
   RefreshCw,
   Trash2,
   AlertCircle,
@@ -16,9 +18,11 @@ import {
   Clock,
   Loader2,
   Plus,
-  Settings
+  Settings,
+  Sparkles,
 } from "lucide-react";
-import { useRulesSources, useDeleteSource, useIndexSource } from "@/hooks/useRulesSources";
+import { useRulesSources, useDeleteSource, useIndexSource, useReindexFromPages } from "@/hooks/useRulesSources";
+import { usePdfIndexer, useGitHubIndexer, useLlamaParseIndexer } from "@/hooks/useRulesIndexer";
 import { AddSourceModal } from "./AddSourceModal";
 import { SourceDiagnostics } from "./SourceDiagnostics";
 import type { RulesSource } from "@/types/rules";
@@ -46,13 +50,67 @@ const typeConfig: Record<string, { icon: React.ElementType; label: string }> = {
 export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibraryProps) {
   const [addSourceOpen, setAddSourceOpen] = useState(false);
   const [diagnosticsSource, setDiagnosticsSource] = useState<RulesSource | null>(null);
+  const debugEnabled = typeof window !== "undefined" && window.localStorage.getItem("rules_index_debug") === "true";
   
   const { data: sources = [], isLoading } = useRulesSources(campaignId);
   const deleteSource = useDeleteSource();
   const indexSource = useIndexSource();
+  const reindexFromPages = useReindexFromPages();
 
-  const handleIndex = (source: RulesSource) => {
-    indexSource.mutate({ sourceId: source.id, campaignId });
+  const pdfIndexer = usePdfIndexer();
+  const githubIndexer = useGitHubIndexer();
+  const llamaParseIndexer = useLlamaParseIndexer();
+
+  const isIndexing =
+    indexSource.isPending ||
+    reindexFromPages.isPending ||
+    pdfIndexer.progress !== null ||
+    githubIndexer.progress !== null ||
+    llamaParseIndexer.progress !== null;
+
+  const currentProgress =
+    pdfIndexer.progress || githubIndexer.progress || llamaParseIndexer.progress;
+
+  const handleIndex = async (source: RulesSource) => {
+    try {
+      if (source.type === "pdf") {
+        if (!source.storage_path) throw new Error("Missing storage path for PDF.");
+
+        const result =
+          source.type_source === "llamaparse"
+            ? await llamaParseIndexer.indexWithLlamaParse(source.id, campaignId, source.storage_path)
+            : await pdfIndexer.indexPdf(source.id, campaignId, source.storage_path);
+
+        if (!result.success) throw new Error(result.error || "Indexing failed");
+        toast.success(
+          `Indexed ${result.stats?.pages ?? 0} pages, ${result.stats?.chunks ?? 0} chunks`
+        );
+        return;
+      }
+
+      if (source.type === "github_json") {
+        if (!source.github_repo_url) throw new Error("Missing repository URL.");
+
+        const result = await githubIndexer.indexGitHub(
+          source.id,
+          campaignId,
+          source.github_repo_url,
+          source.github_json_path || "rules.json"
+        );
+
+        if (!result.success) throw new Error(result.error || "Indexing failed");
+        toast.success(
+          `Indexed ${result.stats?.sections ?? 0} sections, ${result.stats?.chunks ?? 0} chunks`
+        );
+        return;
+      }
+
+      // For paste sources, pages already exist; server-side indexing is enough.
+      indexSource.mutate({ sourceId: source.id, campaignId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Indexing failed";
+      toast.error(message);
+    }
   };
 
   const handleDelete = (source: RulesSource) => {
@@ -64,6 +122,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
   const indexedCount = sources.filter(s => s.index_status === "indexed").length;
   const totalChunks = sources.reduce((acc, s) => acc + (s.index_stats?.chunks || 0), 0);
   const totalTables = sources.reduce((acc, s) => acc + (s.index_stats?.tablesHigh || 0) + (s.index_stats?.tablesLow || 0), 0);
+  const totalPages = sources.reduce((acc, s) => acc + (s.index_stats?.pagesExtracted || s.index_stats?.pages || 0), 0);
 
   return (
     <>
@@ -89,6 +148,9 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                 <span className="text-primary font-medium">{totalChunks}</span> chunks
               </span>
               <span className="text-muted-foreground">
+                <span className="text-primary font-medium">{totalPages}</span> pages
+              </span>
+              <span className="text-muted-foreground">
                 <span className="text-primary font-medium">{totalTables}</span> tables
               </span>
               <div className="flex-1" />
@@ -99,6 +161,17 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                 </TerminalButton>
               )}
             </div>
+
+            {/* Indexing Progress */}
+            {currentProgress && (
+              <div className="px-4 py-2 border-b border-border bg-primary/5">
+                <div className="flex items-center gap-2 mb-1">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span className="text-xs font-mono text-primary">{currentProgress.message}</span>
+                </div>
+                <Progress value={currentProgress.progress} className="h-2" />
+              </div>
+            )}
 
             {/* Sources List */}
             <ScrollArea className="flex-1 p-4">
@@ -142,6 +215,12 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                               <Badge variant="outline" className="text-[10px] shrink-0">
                                 {typeConfig[source.type]?.label || source.type}
                               </Badge>
+                              {source.type === 'pdf' && source.type_source === 'llamaparse' && (
+                                <Badge variant="secondary" className="text-[10px] shrink-0 bg-primary/20 text-primary border-primary/30">
+                                  <Sparkles className="w-2.5 h-2.5 mr-1" />
+                                  AI Parsed
+                                </Badge>
+                              )}
                             </div>
 
                             {/* Tags */}
@@ -164,7 +243,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                               
                               {source.index_stats && source.index_status === "indexed" && (
                                 <span className="text-muted-foreground">
-                                  {source.index_stats.pages} pages, {source.index_stats.chunks} chunks, {source.index_stats.tablesHigh + source.index_stats.tablesLow} tables
+                                  {(source.index_stats.pagesExtracted || source.index_stats.pages || 0)} pages, {source.index_stats.chunks} chunks, {source.index_stats.tablesHigh + source.index_stats.tablesLow} tables
                                 </span>
                               )}
                             </div>
@@ -173,12 +252,12 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                           {/* Actions */}
                           {isGM && (
                             <div className="flex items-center gap-1 shrink-0">
-                              {source.index_status === "failed" && (
+                              {(source.index_status === "failed" || debugEnabled) && (
                                 <TerminalButton
                                   size="sm"
                                   variant="outline"
                                   onClick={() => setDiagnosticsSource(source)}
-                                  className="text-destructive"
+                                  className={source.index_status === "failed" ? "text-destructive" : undefined}
                                 >
                                   <AlertCircle className="w-3 h-3" />
                                 </TerminalButton>
@@ -188,7 +267,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleIndex(source)}
-                                disabled={source.index_status === "indexing" || indexSource.isPending}
+                                disabled={source.index_status === "indexing" || isIndexing}
                                 title="Index this source"
                               >
                                 <RefreshCw className={`w-3 h-3 ${source.index_status === 'indexing' ? 'animate-spin' : ''}`} />
@@ -234,6 +313,11 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
             handleIndex(diagnosticsSource);
             setDiagnosticsSource(null);
           }}
+          onReindexFromPages={() => {
+            reindexFromPages.mutate({ sourceId: diagnosticsSource.id, campaignId });
+            setDiagnosticsSource(null);
+          }}
+          isReindexingFromPages={reindexFromPages.isPending}
         />
       )}
     </>

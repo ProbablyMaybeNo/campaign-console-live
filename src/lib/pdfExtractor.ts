@@ -13,13 +13,40 @@ interface ExtractionResult {
   pages: PDFPage[];
   totalPages: number;
   totalChars: number;
+  pageErrors: number[];
 }
 
+interface PdfjsLib {
+  getDocument: (options: { data: ArrayBuffer }) => { promise: Promise<PdfDocument> };
+  GlobalWorkerOptions: { workerSrc: string };
+}
+
+interface PdfDocument {
+  numPages: number;
+  getPage: (pageNumber: number) => Promise<PdfPageProxy>;
+}
+
+interface PdfPageProxy {
+  getTextContent: () => Promise<PdfTextContent>;
+}
+
+interface PdfTextContent {
+  items: PdfTextItem[];
+}
+
+interface PdfTextItem {
+  str?: string;
+  transform?: number[];
+}
+
+type PdfjsWindow = Window & { pdfjsLib?: PdfjsLib };
+
 // Dynamically load pdf.js from CDN
-async function loadPdfJs(): Promise<any> {
+async function loadPdfJs(): Promise<PdfjsLib> {
   // Check if already loaded
-  if ((window as any).pdfjsLib) {
-    return (window as any).pdfjsLib;
+  const pdfWindow = window as PdfjsWindow;
+  if (pdfWindow.pdfjsLib) {
+    return pdfWindow.pdfjsLib;
   }
 
   return new Promise((resolve, reject) => {
@@ -39,7 +66,7 @@ async function loadPdfJs(): Promise<any> {
     
     const handleLoad = () => {
       window.removeEventListener("pdfjs-loaded", handleLoad);
-      resolve((window as any).pdfjsLib);
+      resolve((window as PdfjsWindow).pdfjsLib as PdfjsLib);
     };
     
     window.addEventListener("pdfjs-loaded", handleLoad);
@@ -54,16 +81,17 @@ async function loadPdfJs(): Promise<any> {
 }
 
 // Alternative: Load as regular script for broader compatibility
-async function loadPdfJsLegacy(): Promise<any> {
-  if ((window as any).pdfjsLib) {
-    return (window as any).pdfjsLib;
+async function loadPdfJsLegacy(): Promise<PdfjsLib> {
+  const pdfWindow = window as PdfjsWindow;
+  if (pdfWindow.pdfjsLib) {
+    return pdfWindow.pdfjsLib;
   }
 
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
     script.onload = () => {
-      const pdfjsLib = (window as any).pdfjsLib;
+      const pdfjsLib = (window as PdfjsWindow).pdfjsLib;
       if (pdfjsLib) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 
           "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -97,43 +125,52 @@ export async function extractPdfText(
   const totalPages = pdf.numPages;
   const pages: PDFPage[] = [];
   let totalChars = 0;
+  const pageErrors: number[] = [];
   
   // Extract text from each page
   for (let i = 1; i <= totalPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent();
-    
-    // Combine text items
-    let pageText = "";
-    let lastY = -1;
-    
-    for (const item of textContent.items) {
-      if ("str" in item) {
-        const textItem = item as { str: string; transform: number[] };
-        const y = textItem.transform[5];
-        
-        // Add newline if Y position changed significantly (new line)
-        if (lastY !== -1 && Math.abs(y - lastY) > 5) {
-          pageText += "\n";
-        } else if (pageText && !pageText.endsWith(" ") && !pageText.endsWith("\n")) {
-          pageText += " ";
+    try {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      
+      // Combine text items
+      let pageText = "";
+      let lastY = -1;
+      
+      for (const item of textContent.items) {
+        if (typeof item.str === "string" && Array.isArray(item.transform)) {
+          const y = item.transform[5] ?? 0;
+          
+          // Add newline if Y position changed significantly (new line)
+          if (lastY !== -1 && Math.abs(y - lastY) > 5) {
+            pageText += "\n";
+          } else if (pageText && !pageText.endsWith(" ") && !pageText.endsWith("\n")) {
+            pageText += " ";
+          }
+          
+          pageText += item.str;
+          lastY = y;
         }
-        
-        pageText += textItem.str;
-        lastY = y;
       }
+      
+      // Clean up the text
+      const cleanedText = cleanPdfText(pageText);
+      
+      pages.push({
+        pageNumber: i,
+        text: cleanedText,
+        charCount: cleanedText.length,
+      });
+      
+      totalChars += cleanedText.length;
+    } catch (error) {
+      pageErrors.push(i);
+      pages.push({
+        pageNumber: i,
+        text: "",
+        charCount: 0,
+      });
     }
-    
-    // Clean up the text
-    const cleanedText = cleanPdfText(pageText);
-    
-    pages.push({
-      pageNumber: i,
-      text: cleanedText,
-      charCount: cleanedText.length,
-    });
-    
-    totalChars += cleanedText.length;
     
     if (onProgress) {
       onProgress(i, totalPages);
@@ -144,6 +181,7 @@ export async function extractPdfText(
     pages,
     totalPages,
     totalChars,
+    pageErrors,
   };
 }
 
@@ -162,6 +200,7 @@ export async function extractPdfTextEnhanced(
   // Detect tables across all pages
   const detectedTables: DetectedTable[] = [];
   const detectedSections: DetectedSection[] = [];
+  const extractionStats = getExtractionStats(baseResult.pages);
 
   for (const page of baseResult.pages) {
     // Detect dice roll tables
@@ -200,6 +239,9 @@ export async function extractPdfTextEnhanced(
     pages: baseResult.pages,
     totalPages: baseResult.totalPages,
     totalChars: baseResult.totalChars,
+    emptyPages: extractionStats.emptyPages,
+    avgCharsPerPage: extractionStats.avgCharsPerPage,
+    pageErrors: baseResult.pageErrors,
     detectedTables,
     detectedSections,
   };
@@ -222,6 +264,7 @@ export function detectDiceRollTables(text: string, pageNumber: number): Detected
     startLine: number; 
     endLine: number; 
     title: string; 
+    headerContext: string;
     rows: string[][]; 
     diceType: 'd6' | 'd66' | '2d6';
     rawLines: string[];
@@ -241,6 +284,7 @@ export function detectDiceRollTables(text: string, pageNumber: number): Detected
           startLine: i,
           endLine: i,
           title: findTableTitle(lines, i),
+          headerContext: findTableHeaderContext(lines, i),
           rows: [],
           diceType: 'd6',
           rawLines: [],
@@ -263,6 +307,7 @@ export function detectDiceRollTables(text: string, pageNumber: number): Detected
           startLine: i,
           endLine: i,
           title: findTableTitle(lines, i),
+          headerContext: findTableHeaderContext(lines, i),
           rows: [],
           diceType: 'd66',
           rawLines: [],
@@ -290,16 +335,39 @@ export function detectDiceRollTables(text: string, pageNumber: number): Detected
             startLine: i,
             endLine: i,
             title: findTableTitle(lines, i),
+            headerContext: findTableHeaderContext(lines, i),
             rows: [],
             diceType: 'd6',
             rawLines: [],
           };
         }
-        currentTable.endLine = i;
-        currentTable.rows.push([singleMatch[1], singleMatch[2]]);
-        currentTable.rawLines.push(line);
-        continue;
       }
+      currentTable.endLine = i;
+      currentTable.rows.push([singleMatch[1], singleMatch[2]]);
+      currentTable.rawLines.push(line);
+      continue;
+    }
+
+    const twoD6Match = line.match(twoD6RangePattern);
+    if (twoD6Match) {
+      if (!currentTable || currentTable.diceType !== '2d6') {
+        if (currentTable && currentTable.rows.length >= 3) {
+          tables.push(buildTableFromCurrent(currentTable, pageNumber));
+        }
+        currentTable = {
+          startLine: i,
+          endLine: i,
+          title: findTableTitle(lines, i),
+          headerContext: findTableHeaderContext(lines, i),
+          rows: [],
+          diceType: '2d6',
+          rawLines: [],
+        };
+      }
+      currentTable.endLine = i;
+      currentTable.rows.push([twoD6Match[1], twoD6Match[2]]);
+      currentTable.rawLines.push(line);
+      continue;
     }
 
     // If we hit a non-matching line, close the current table if valid
@@ -328,12 +396,13 @@ export function detectDiceRollTables(text: string, pageNumber: number): Detected
 }
 
 function buildTableFromCurrent(
-  current: { startLine: number; endLine: number; title: string; rows: string[][]; diceType: 'd6' | 'd66' | '2d6'; rawLines: string[] },
+  current: { startLine: number; endLine: number; title: string; headerContext: string; rows: string[][]; diceType: 'd6' | 'd66' | '2d6'; rawLines: string[] },
   pageNumber: number
 ): DetectedTable {
   return {
     type: 'dice-roll',
     title: current.title,
+    headerContext: current.headerContext,
     pageNumber,
     startLine: current.startLine,
     endLine: current.endLine,
@@ -346,15 +415,29 @@ function buildTableFromCurrent(
 }
 
 function findTableTitle(lines: string[], tableStartLine: number): string {
-  // Look backwards for a title (usually within 3 lines, not starting with a number)
   for (let i = tableStartLine - 1; i >= Math.max(0, tableStartLine - 3); i--) {
     const line = lines[i].trim();
-    if (line.length > 0 && line.length < 80 && !line.match(/^\d/) && !line.match(/^\|/)) {
-      // Looks like a title
-      return line.replace(/[:\-–—]$/, '').trim();
+    if (line.length === 0 || line.length > 80) continue;
+    if (line.match(/^\|/)) continue;
+
+    const explicitMatch = line.match(/^(Table|Roll on|Rolls on|Roll)\s*:?\s*(.+)?/i);
+    if (explicitMatch) {
+      return explicitMatch[2]?.trim() || explicitMatch[1];
+    }
+
+    if (!line.match(/^\d/)) {
+      return line.replace(/[:-–—]$/, '').trim();
     }
   }
   return 'Untitled Table';
+}
+
+function findTableHeaderContext(lines: string[], tableStartLine: number): string {
+  return lines
+    .slice(Math.max(0, tableStartLine - 3), tableStartLine)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(" | ");
 }
 
 /**
@@ -395,6 +478,7 @@ export function detectWhitespaceAlignedTables(text: string, pageNumber: number):
           tables.push({
             type: 'whitespace',
             title: tableTitle,
+            headerContext: findTableHeaderContext(lines, tableStart),
             pageNumber,
             startLine: tableStart,
             endLine: tableStart + tableLines.length - 1,
@@ -417,6 +501,7 @@ export function detectWhitespaceAlignedTables(text: string, pageNumber: number):
       tables.push({
         type: 'whitespace',
         title: tableTitle,
+        headerContext: findTableHeaderContext(lines, tableStart),
         pageNumber,
         startLine: tableStart,
         endLine: tableStart + tableLines.length - 1,
@@ -552,6 +637,7 @@ function detectPipeTables(text: string, pageNumber: number): DetectedTable[] {
         tables.push({
           type: 'pipe',
           title: tableTitle,
+          headerContext: findTableHeaderContext(lines, tableStart),
           pageNumber,
           startLine: tableStart,
           endLine: tableStart + tableLines.length - 1,
@@ -574,6 +660,7 @@ function detectPipeTables(text: string, pageNumber: number): DetectedTable[] {
     tables.push({
       type: 'pipe',
       title: tableTitle,
+      headerContext: findTableHeaderContext(lines, tableStart),
       pageNumber,
       startLine: tableStart,
       endLine: tableStart + tableLines.length - 1,
@@ -597,7 +684,7 @@ export function detectSections(text: string, pageNumber: number): DetectedSectio
   // Section header patterns (ordered by specificity)
   const patterns: { pattern: RegExp; level: number; type: 'chapter' | 'section' | 'subsection' }[] = [
     // Chapter markers
-    { pattern: /^(?:CHAPTER|PART)\s+[\dIVXLC]+[:\.]?\s*(.+)?$/i, level: 1, type: 'chapter' },
+    { pattern: /^(?:CHAPTER|PART)\s+[\dIVXLC]+[:.]?\s*(.+)?$/i, level: 1, type: 'chapter' },
     
     // Markdown headers
     { pattern: /^###\s+(.+)$/, level: 3, type: 'subsection' },
@@ -659,19 +746,65 @@ export function detectSections(text: string, pageNumber: number): DetectedSectio
  * Clean up extracted PDF text
  */
 function cleanPdfText(text: string): string {
-  return text
-    // Normalize whitespace
+  const normalized = text
     .replace(/[ \t]+/g, " ")
-    // Remove excessive newlines
+    .replace(/\r/g, "")
+    .replace(/(\w)-\n(\w)/g, "$1$2");
+
+  const merged = mergeSoftLineBreaks(normalized);
+
+  return merged
     .replace(/\n{3,}/g, "\n\n")
-    // Fix hyphenation at line breaks
-    .replace(/(\w)-\n(\w)/g, "$1$2")
-    // Trim lines
     .split("\n")
     .map(line => line.trim())
     .join("\n")
-    // Trim overall
     .trim();
+}
+
+function mergeSoftLineBreaks(text: string): string {
+  const lines = text.split("\n");
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]?.trim() ?? "";
+    const nextLine = lines[i + 1]?.trim() ?? "";
+
+    if (!line) {
+      result.push("");
+      continue;
+    }
+
+    const isList = /^([-*•]|\d+\.)\s+/.test(line);
+    const nextIsList = /^([-*•]|\d+\.)\s+/.test(nextLine);
+    const isTableLine = /\|/.test(line) || /\S\s{2,}\S/.test(line);
+    const nextIsTable = /\|/.test(nextLine) || /\S\s{2,}\S/.test(nextLine);
+    const endsSentence = /[.!?":]$/.test(line);
+
+    if (!endsSentence && nextLine && !isList && !nextIsList && !isTableLine && !nextIsTable && /^[a-z]/.test(nextLine)) {
+      result.push(`${line} ${nextLine}`);
+      i += 1;
+      continue;
+    }
+
+    result.push(line);
+  }
+
+  return result.join("\n");
+}
+
+export function getExtractionStats(pages: PDFPage[]) {
+  const totalChars = pages.reduce((acc, page) => acc + page.text.trim().length, 0);
+  const emptyPages = pages.filter((page) => page.text.trim().length < 20).length;
+  const avgCharsPerPage = pages.length ? Math.round(totalChars / pages.length) : 0;
+
+  return { emptyPages, avgCharsPerPage, totalChars };
+}
+
+export function shouldFlagScannedPdf(pages: PDFPage[]) {
+  if (!pages.length) return false;
+  const { emptyPages, avgCharsPerPage } = getExtractionStats(pages);
+  const emptyRatio = emptyPages / pages.length;
+  return emptyRatio >= 0.6 || avgCharsPerPage < 40;
 }
 
 /**
@@ -680,12 +813,14 @@ function cleanPdfText(text: string): string {
 export function removeHeadersFooters(pages: PDFPage[]): PDFPage[] {
   if (pages.length < 3) return pages;
   
-  // Find repeated first/last lines across pages
-  const firstLines = pages.map(p => p.text.split("\n")[0]?.trim()).filter(Boolean);
-  const lastLines = pages.map(p => {
-    const lines = p.text.split("\n");
-    return lines[lines.length - 1]?.trim();
-  }).filter(Boolean);
+  const headerLines: string[] = [];
+  const footerLines: string[] = [];
+
+  pages.forEach((page) => {
+    const lines = page.text.split("\n");
+    headerLines.push(...lines.slice(0, 3).map(line => line.trim()).filter(Boolean));
+    footerLines.push(...lines.slice(-3).map(line => line.trim()).filter(Boolean));
+  });
   
   // Count occurrences
   const countOccurrences = (arr: string[]) => {
@@ -694,21 +829,21 @@ export function removeHeadersFooters(pages: PDFPage[]): PDFPage[] {
     return counts;
   };
   
-  const firstCounts = countOccurrences(firstLines);
-  const lastCounts = countOccurrences(lastLines);
+  const headerCounts = countOccurrences(headerLines);
+  const footerCounts = countOccurrences(footerLines);
   
-  // Find headers/footers that appear on more than 50% of pages
-  const threshold = pages.length * 0.5;
+  // Find headers/footers that appear on more than 30% of pages
+  const threshold = pages.length * 0.3;
   const repeatedHeaders = new Set<string>();
   const repeatedFooters = new Set<string>();
   
-  firstCounts.forEach((count, line) => {
+  headerCounts.forEach((count, line) => {
     if (count > threshold && line.length < 100) {
       repeatedHeaders.add(line);
     }
   });
   
-  lastCounts.forEach((count, line) => {
+  footerCounts.forEach((count, line) => {
     if (count > threshold && line.length < 100) {
       repeatedFooters.add(line);
     }
@@ -717,18 +852,21 @@ export function removeHeadersFooters(pages: PDFPage[]): PDFPage[] {
   // Remove repeated headers/footers
   return pages.map(page => {
     const lines = page.text.split("\n");
+
+    const cleanedLines = lines.filter((line, index) => {
+      const trimmed = line.trim();
+      if (!trimmed) return true;
+
+      const isHeaderZone = index <= 2;
+      const isFooterZone = index >= lines.length - 3;
+
+      if (isHeaderZone && repeatedHeaders.has(trimmed)) return false;
+      if (isFooterZone && repeatedFooters.has(trimmed)) return false;
+
+      return true;
+    });
     
-    // Remove header
-    if (lines.length > 0 && repeatedHeaders.has(lines[0]?.trim())) {
-      lines.shift();
-    }
-    
-    // Remove footer
-    if (lines.length > 0 && repeatedFooters.has(lines[lines.length - 1]?.trim())) {
-      lines.pop();
-    }
-    
-    const newText = lines.join("\n").trim();
+    const newText = cleanedLines.join("\n").trim();
     return {
       ...page,
       text: newText,
