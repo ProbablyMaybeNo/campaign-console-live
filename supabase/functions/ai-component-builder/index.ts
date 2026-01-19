@@ -50,6 +50,7 @@ function extractQueryTerms(prompt: string): string[] {
 }
 
 function scoreTables(tables: TableData[], queryTerms: string[]): TableData[] {
+  // If no query terms, return top tables by confidence
   if (queryTerms.length === 0) return tables.slice(0, 10);
 
   const scored = tables.map(table => {
@@ -59,25 +60,28 @@ function scoreTables(tables: TableData[], queryTerms: string[]): TableData[] {
     const keywordsLower = (table.keywords || []).map(k => k.toLowerCase());
 
     for (const term of queryTerms) {
-      // Title matches are highest priority
-      if (titleLower.includes(term)) score += 10;
+      // Title matches are highest priority - if title contains term, strong boost
+      if (titleLower.includes(term)) score += 15;
       // Keyword matches are good
-      if (keywordsLower.some(k => k.includes(term))) score += 5;
+      if (keywordsLower.some(k => k.includes(term))) score += 8;
       // Text content matches
-      if (textLower.includes(term)) score += 2;
+      if (textLower.includes(term)) score += 3;
     }
 
-    // Boost high-confidence tables
-    if (table.confidence === 'high') score += 5;
-    else if (table.confidence === 'medium') score += 2;
+    // Confidence boost is secondary to relevance matching
+    // This ensures low-confidence tables with matching terms still appear
+    if (table.confidence === 'high') score += 3;
+    else if (table.confidence === 'medium') score += 1;
+    // Low confidence tables get no penalty - their score is based on relevance
 
     return { table, score };
   });
 
+  // Return tables with ANY score > 0, sorted by score
   return scored
     .filter(s => s.score > 0)
     .sort((a, b) => b.score - a.score)
-    .slice(0, 8)
+    .slice(0, 12) // Increased limit to include more relevant tables
     .map(s => s.table);
 }
 
