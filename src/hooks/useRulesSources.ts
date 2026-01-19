@@ -282,3 +282,28 @@ export function useIndexSource() {
     },
   });
 }
+
+// Rebuild sections/chunks/tables from existing pages (skip re-extraction)
+export function useReindexFromPages() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ sourceId, campaignId }: { sourceId: string; campaignId: string }) => {
+      const { data, error } = await supabase.functions.invoke("index-rules-source", {
+        body: { sourceId, forceReindex: true },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      
+      return { ...data, campaignId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["rules_sources", data.campaignId] });
+      toast.success(data.message || "Reindex from pages complete");
+    },
+    onError: (error: Error) => {
+      toast.error(`Reindex failed: ${error.message}`);
+    },
+  });
+}

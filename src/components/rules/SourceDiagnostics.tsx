@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
-import { AlertCircle, RefreshCw, FileQuestion, ExternalLink } from "lucide-react";
+import { AlertCircle, RefreshCw, FileQuestion, RotateCcw } from "lucide-react";
 import type { RulesSource } from "@/types/rules";
 
 interface SourceDiagnosticsProps {
@@ -8,6 +8,8 @@ interface SourceDiagnosticsProps {
   onOpenChange: (open: boolean) => void;
   source: RulesSource;
   onReindex: () => void;
+  onReindexFromPages?: () => void;
+  isReindexingFromPages?: boolean;
 }
 
 const errorSuggestions: Record<string, { title: string; description: string; action?: string }> = {
@@ -53,13 +55,22 @@ const errorSuggestions: Record<string, { title: string; description: string; act
   },
 };
 
-export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: SourceDiagnosticsProps) {
+export function SourceDiagnostics({ 
+  open, 
+  onOpenChange, 
+  source, 
+  onReindex,
+  onReindexFromPages,
+  isReindexingFromPages 
+}: SourceDiagnosticsProps) {
   const error = source.index_error;
   const stage = error?.stage || "unknown";
   const suggestion = errorSuggestions[stage] || {
     title: "Indexing Error",
     description: error?.message || "An unknown error occurred during indexing.",
   };
+
+  const hasPages = (source.index_stats?.pagesExtracted ?? source.index_stats?.pages ?? 0) > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -122,14 +133,30 @@ export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: Sou
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2">
-            <TerminalButton onClick={onReindex} className="flex-1">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Re-run Indexing
-            </TerminalButton>
-            <TerminalButton variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </TerminalButton>
+          <div className="flex flex-col gap-2 pt-2">
+            <div className="flex gap-2">
+              <TerminalButton onClick={onReindex} className="flex-1">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Re-run Indexing
+              </TerminalButton>
+              <TerminalButton variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </TerminalButton>
+            </div>
+            
+            {/* Reindex from pages button - only show if pages exist */}
+            {hasPages && onReindexFromPages && (
+              <TerminalButton 
+                variant="outline" 
+                onClick={onReindexFromPages}
+                disabled={isReindexingFromPages}
+                className="w-full text-xs"
+                title="Rebuild sections, chunks, and tables from existing pages (useful after improving the indexer)"
+              >
+                <RotateCcw className={`w-3 h-3 mr-2 ${isReindexingFromPages ? 'animate-spin' : ''}`} />
+                Rebuild from Saved Pages
+              </TerminalButton>
+            )}
           </div>
         </div>
       </DialogContent>
