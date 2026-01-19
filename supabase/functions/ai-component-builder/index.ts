@@ -42,12 +42,13 @@ Deno.serve(async (req) => {
           .select("id, name, dataset_type, fields, source_id")
           .in("source_id", sourceIds);
 
-        // Fetch tables (medium priority)
+        // Fetch tables with content (medium priority)
         const { data: tables } = await supabase
           .from("rules_tables")
-          .select("id, title_guess, confidence, keywords, page_number, source_id")
+          .select("id, title_guess, confidence, keywords, page_number, source_id, raw_text, parsed_rows")
           .in("source_id", sourceIds)
-          .order("confidence", { ascending: false });
+          .order("confidence", { ascending: false })
+          .limit(50);
 
         // Fetch chunks (fallback)
         const { data: chunks } = await supabase
@@ -58,23 +59,35 @@ Deno.serve(async (req) => {
 
         availableData = { datasets: datasets || [], tables: tables || [], chunks: chunks || [] };
 
+        // Build detailed table context with actual content
+        const tableDetails = (tables || []).slice(0, 30).map((t: any) => {
+          let content = "";
+          if (t.parsed_rows && Array.isArray(t.parsed_rows) && t.parsed_rows.length > 0) {
+            const cols = Object.keys(t.parsed_rows[0]);
+            content = `Columns: ${cols.join(', ')}\nRows (${t.parsed_rows.length}): ${JSON.stringify(t.parsed_rows.slice(0, 10))}`;
+          } else if (t.raw_text) {
+            content = `Raw: ${t.raw_text.substring(0, 1500)}`;
+          }
+          return `### ${t.title_guess || 'Untitled'} (id: ${t.id}, page: ${t.page_number}, confidence: ${t.confidence})\n${content}`;
+        }).join('\n\n');
+
         rulesContext = `
-INDEXED RULES DATA (use these IDs when creating components):
+INDEXED RULES DATA (use these IDs and ACTUAL CONTENT when creating components):
 
 DATASETS (${datasets?.length || 0}) - HIGHEST PRIORITY:
-${datasets?.map((d: any) => `- ${d.name} (id: ${d.id}, type: ${d.dataset_type}, sourceId: ${d.source_id})`).join('\n') || 'None'}
+${datasets?.map((d: any) => `- ${d.name} (id: ${d.id}, type: ${d.dataset_type}, fields: ${d.fields?.join(', ')}, sourceId: ${d.source_id})`).join('\n') || 'None'}
 
-TABLES (${tables?.length || 0}) - MEDIUM PRIORITY:
-${tables?.slice(0, 20).map((t: any) => `- ${t.title_guess} (id: ${t.id}, confidence: ${t.confidence}, sourceId: ${t.source_id})`).join('\n') || 'None'}
+TABLES WITH CONTENT (${tables?.length || 0}) - USE THIS DATA TO POPULATE COMPONENTS:
+${tableDetails || 'None'}
 
 CHUNKS (${chunks?.length || 0}) - FALLBACK:
-${chunks?.slice(0, 10).map((c: any) => `- Section: ${c.section_path?.join(' > ') || 'Unknown'} (id: ${c.id})`).join('\n') || 'None'}
+${chunks?.slice(0, 10).map((c: any) => `- Section: ${c.section_path?.join(' > ') || 'Unknown'} (id: ${c.id})\n  Text: ${c.text?.substring(0, 500) || ''}`).join('\n') || 'None'}
 
-When creating components, include these fields:
-- dataSource: "rules"
-- sourceId: the source_id
-- datasetId/tableId/chunkIds: the specific data IDs
-- preferred: "dataset" | "table" | "chunks"
+CRITICAL INSTRUCTIONS:
+- When asked to create tables, USE THE ACTUAL CONTENT from the tables above
+- Copy the real data (columns and rows) from the matching table
+- Do NOT invent or make up data - use what's in the indexed tables
+- Include dataSource/sourceId/tableId for provenance tracking
 `;
       }
     }
@@ -85,20 +98,27 @@ ${sourceContent ? `\nSOURCE CONTENT:\n${sourceContent.substring(0, 30000)}` : ''
 
 RESPONSE FORMAT (always valid JSON):
 {
-  "message": "Your response",
+  "message": "Your response explaining what you created",
   "components": [{
     "type": "table" | "card",
-    "data": { "title": "Name", "columns": [...], "rows": [...] },
+    "data": { 
+      "title": "Component Name",
+      "columns": ["Column1", "Column2", ...],  // Use real column names from the indexed data
+      "rows": [{"id": "uuid", "Column1": "value", "Column2": "value"}, ...]  // Use REAL data from tables
+    },
     "dataSource": "rules",
-    "sourceId": "uuid",
-    "tableId": "uuid",
-    "datasetId": "uuid",
-    "chunkIds": ["uuid"],
-    "preferred": "dataset" | "table" | "chunks"
+    "sourceId": "uuid-of-source",
+    "tableId": "uuid-of-table",
+    "preferred": "table"
   }]
 }
 
-Auto-pick priority: datasets > high-confidence tables > chunks. Include IDs for provenance.`;
+CRITICAL RULES:
+1. ALWAYS use the ACTUAL content from the indexed tables above - never invent data
+2. For table components, copy the real columns and rows from the matching indexed table
+3. Each row must have a unique "id" field (generate UUIDs)
+4. Columns must be an array of strings
+5. Include tableId/sourceId for data provenance`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
