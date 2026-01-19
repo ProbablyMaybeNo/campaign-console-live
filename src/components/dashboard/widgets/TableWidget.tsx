@@ -16,17 +16,62 @@ interface TableRow {
 }
 
 interface TableConfig {
-  columns?: string[];
+  columns?: unknown[]; // Accept any format, we'll normalize on read/save
   rows?: TableRow[];
   rule_category?: string;
   rule_key?: string;
   manual_setup?: boolean;
 }
 
+// Helper to normalize column to string
+function normalizeColumn(col: unknown): string {
+  if (typeof col === 'string') return col.trim() || 'Column';
+  if (col && typeof col === 'object') {
+    const obj = col as Record<string, unknown>;
+    return String(obj.header || obj.key || obj.name || 'Column').trim();
+  }
+  return String(col || 'Column');
+}
+
+// Helper to normalize columns array to string[]
+function normalizeColumns(cols: unknown[]): string[] {
+  return cols.map(normalizeColumn);
+}
+
+// Helper to ensure row values are strings
+function normalizeRow(row: TableRow, columns: string[]): TableRow {
+  const normalized: TableRow = { id: row.id };
+  columns.forEach(col => {
+    const val = row[col];
+    normalized[col] = typeof val === 'string' ? val : 
+      (val !== null && val !== undefined ? String(val) : '');
+  });
+  return normalized;
+}
+
+// Create a validated config object for saving
+function createValidatedConfig(
+  baseConfig: TableConfig, 
+  columns: string[], 
+  rows: TableRow[]
+): TableConfig {
+  const normalizedCols = normalizeColumns(columns);
+  const normalizedRows = rows.map(row => normalizeRow(row, normalizedCols));
+  return {
+    ...baseConfig,
+    columns: normalizedCols,
+    rows: normalizedRows,
+  };
+}
+
 export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   const updateComponent = useUpdateComponent();
   const config = (component.config as TableConfig) || {};
-  const columns = config.columns || ["Name", "Value"];
+  
+  // Normalize columns using helper function
+  const rawColumns = (config.columns as unknown[]) || ["Name", "Value"];
+  const columns: string[] = normalizeColumns(rawColumns);
+  
   const rows = config.rows || [];
   const ruleCategory = config.rule_category;
   const ruleKey = config.rule_key;
@@ -50,11 +95,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
       const tableData = extractTableData(content);
       
       if (tableData.columns.length > 0 && tableData.rows.length > 0) {
-        const newConfig = { 
-          ...config, 
-          columns: tableData.columns, 
-          rows: tableData.rows 
-        };
+        const newConfig = createValidatedConfig(config, tableData.columns, tableData.rows);
         updateComponent.mutate({
           id: component.id,
           config: newConfig as unknown as Json,
@@ -115,11 +156,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
       const tableData = extractTableData(content);
       
       if (tableData.columns.length > 0) {
-        const newConfig = { 
-          ...config, 
-          columns: tableData.columns, 
-          rows: tableData.rows 
-        };
+        const newConfig = createValidatedConfig(config, tableData.columns, tableData.rows);
         updateComponent.mutate({
           id: component.id,
           config: newConfig as unknown as Json,
@@ -132,7 +169,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
     const newRow: TableRow = { id: crypto.randomUUID() };
     columns.forEach((col) => (newRow[col] = ""));
     
-    const newConfig = { ...config, columns, rows: [...rows, newRow] };
+    const newConfig = createValidatedConfig(config, columns, [...rows, newRow]);
     updateComponent.mutate({
       id: component.id,
       config: newConfig as unknown as Json,
@@ -140,7 +177,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   };
 
   const handleDeleteRow = (rowId: string) => {
-    const newConfig = { ...config, columns, rows: rows.filter((r) => r.id !== rowId) };
+    const newConfig = createValidatedConfig(config, columns, rows.filter((r) => r.id !== rowId));
     updateComponent.mutate({
       id: component.id,
       config: newConfig as unknown as Json,
@@ -151,7 +188,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
     const updatedRows = rows.map((row) =>
       row.id === rowId ? { ...row, [col]: value } : row
     );
-    const newConfig = { ...config, columns, rows: updatedRows };
+    const newConfig = createValidatedConfig(config, columns, updatedRows);
     updateComponent.mutate({
       id: component.id,
       config: newConfig as unknown as Json,
@@ -161,7 +198,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   const handleAddColumn = () => {
     const newColName = `Column ${columns.length + 1}`;
     const updatedRows = rows.map((row) => ({ ...row, [newColName]: "" }));
-    const newConfig = { ...config, columns: [...columns, newColName], rows: updatedRows };
+    const newConfig = createValidatedConfig(config, [...columns, newColName], updatedRows);
     updateComponent.mutate({
       id: component.id,
       config: newConfig as unknown as Json,
@@ -203,7 +240,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
       return newRow;
     });
 
-    const newConfig = { ...config, columns: updatedColumns, rows: updatedRows };
+    const newConfig = createValidatedConfig(config, updatedColumns, updatedRows);
     updateComponent.mutate({
       id: component.id,
       config: newConfig as unknown as Json,
@@ -224,7 +261,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
       return newRow;
     });
 
-    const newConfig = { ...config, columns: updatedColumns, rows: updatedRows };
+    const newConfig = createValidatedConfig(config, updatedColumns, updatedRows);
     updateComponent.mutate({
       id: component.id,
       config: newConfig as unknown as Json,
@@ -301,28 +338,38 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
             ) : (
               rows.map((row) => (
                 <tr key={row.id} className="border-b border-border/50 hover:bg-accent/30">
-                  {columns.map((col) => (
-                    <td key={col} className="p-2">
-                      {isGM && editingCell?.rowId === row.id && editingCell?.col === col ? (
-                        <input
-                          autoFocus
-                          className="w-full bg-input border border-primary rounded px-1 py-0.5 text-xs"
-                          value={row[col] || ""}
-                          onChange={(e) => handleCellChange(row.id, col, e.target.value)}
-                          onBlur={() => setEditingCell(null)}
-                          onKeyDown={(e) => e.key === "Enter" && setEditingCell(null)}
-                        />
-                      ) : (
-                        <span
-                          className={isGM ? "cursor-pointer hover:text-primary block min-h-[1.25rem]" : ""}
-                          onClick={() => isGM && setEditingCell({ rowId: row.id, col })}
-                          title={isGM ? "Click to edit" : undefined}
-                        >
-                          {row[col] || <span className="text-muted-foreground/50 italic">Click to edit</span>}
-                        </span>
-                      )}
-                    </td>
-                  ))}
+                  {columns.map((col, colIndex) => {
+                    // Safely get cell value as string
+                    const cellValue = row[col];
+                    const displayValue = typeof cellValue === 'string' || typeof cellValue === 'number' 
+                      ? String(cellValue) 
+                      : cellValue && typeof cellValue === 'object'
+                        ? JSON.stringify(cellValue)
+                        : '';
+                    
+                    return (
+                      <td key={`${row.id}-${colIndex}`} className="p-2">
+                        {isGM && editingCell?.rowId === row.id && editingCell?.col === col ? (
+                          <input
+                            autoFocus
+                            className="w-full bg-input border border-primary rounded px-1 py-0.5 text-xs"
+                            value={displayValue}
+                            onChange={(e) => handleCellChange(row.id, col, e.target.value)}
+                            onBlur={() => setEditingCell(null)}
+                            onKeyDown={(e) => e.key === "Enter" && setEditingCell(null)}
+                          />
+                        ) : (
+                          <span
+                            className={isGM ? "cursor-pointer hover:text-primary block min-h-[1.25rem]" : ""}
+                            onClick={() => isGM && setEditingCell({ rowId: row.id, col })}
+                            title={isGM ? "Click to edit" : undefined}
+                          >
+                            {displayValue || <span className="text-muted-foreground/50 italic">Click to edit</span>}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                   {isGM && (
                     <td className="p-1">
                       <button

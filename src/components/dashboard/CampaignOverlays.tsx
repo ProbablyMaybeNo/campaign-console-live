@@ -7,6 +7,8 @@ import { ScheduleWidget } from "./widgets/ScheduleWidget";
 import { RulesLibrary } from "@/components/rules/RulesLibrary";
 import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
 import { MapManager } from "@/components/map/MapManager";
+import { ComponentsManager } from "./ComponentsManager";
+import { WarbandsWidget } from "./WarbandsWidget";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Link } from "react-router-dom";
@@ -217,18 +219,7 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
             </div>
           }
         >
-          <OverlayEmpty
-            icon={<Swords className="w-8 h-8" />}
-            title="Warband Builder Coming Soon"
-            description="Manage your army rosters, units, and points here."
-            action={
-              <Link to={`/campaign/${campaignId}/warband-builder`}>
-                <TerminalButton size="sm" variant="outline">
-                  Open Warband Builder
-                </TerminalButton>
-              </Link>
-            }
-          />
+          <WarbandsWidget campaignId={campaignId} isGM={isGM} />
         </OverlayPanel>
       );
 
@@ -256,11 +247,7 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
           icon={config.icon}
           size={config.size}
         >
-          <OverlayEmpty
-            icon={<Database className="w-8 h-8" />}
-            title="Component Manager Coming Soon"
-            description="Manage dashboard widgets, visibility, and layout here."
-          />
+          <ComponentsManager campaignId={campaignId} />
         </OverlayPanel>
       );
 

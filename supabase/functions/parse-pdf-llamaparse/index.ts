@@ -193,36 +193,74 @@ Deno.serve(async (req) => {
     }
 
     const resultData = (await resultResponse.json()) as LlamaParseResultResponse;
-    const markdown = resultData.markdown || resultData.text || '';
+    const markdown = (resultData.markdown || resultData.text || '').trim();
 
     timeMsByStage.fetchResult = Math.round(performance.now() - resultStart);
-    console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'markdown_received', length: markdown.length, timeMsByStage }));
+    console.log(
+      JSON.stringify({
+        scope: 'parse-pdf-llamaparse',
+        message: 'markdown_received',
+        length: markdown.length,
+        timeMsByStage,
+      })
+    );
+
+    if (!markdown) {
+      return new Response(
+        JSON.stringify({
+          error:
+            'LlamaParse returned an empty result. The PDF may be image-only, protected, or unsupported. Try again or use a different PDF.',
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
 
     // Convert markdown to pages (split by page markers or by ~3000 chars)
     const convertStart = performance.now();
     const pages = convertMarkdownToPages(markdown);
     timeMsByStage.splitPages = Math.round(performance.now() - convertStart);
 
+    if (!pages.length) {
+      return new Response(
+        JSON.stringify({
+          error:
+            'LlamaParse produced no pages after conversion. Try re-uploading the PDF or using a different file.',
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     // If sourceId provided, save pages to database
     if (sourceId) {
       console.log(JSON.stringify({ scope: 'parse-pdf-llamaparse', message: 'save_pages', count: pages.length }));
       const saveStart = performance.now();
-      
+
       // Delete existing pages
       await supabase.from('rules_pages').delete().eq('source_id', sourceId);
-      
-      // Insert new pages
-      const pagesToInsert = pages.map(p => ({
+
+      // Insert new pages (in batches to avoid request size limits)
+      const pagesToInsert = pages.map((p) => ({
         source_id: sourceId,
         page_number: p.pageNumber,
         text: p.text,
         char_count: p.charCount,
       }));
 
-      const { error: insertError } = await supabase.from('rules_pages').insert(pagesToInsert);
-      if (insertError) {
-        console.error('Page insert error:', insertError);
+      for (let i = 0; i < pagesToInsert.length; i += 200) {
+        const batch = pagesToInsert.slice(i, i + 200);
+        const { error: insertError } = await supabase.from('rules_pages').insert(batch);
+        if (insertError) {
+          console.error('Page insert error:', insertError);
+          throw insertError;
+        }
       }
+
       timeMsByStage.savePages = Math.round(performance.now() - saveStart);
     }
 

@@ -58,6 +58,10 @@ vi.mock('@/hooks/useRulesSources', () => ({
     mutateAsync: vi.fn().mockResolvedValue({ id: 'new-github-source' }),
     isPending: false,
   }),
+  useReindexFromPages: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useDeleteSource: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -184,6 +188,10 @@ describe('RulesLibrary - Empty State', () => {
       }),
       useCreateGitHubSource: () => ({
         mutateAsync: vi.fn().mockResolvedValue({ id: 'new-github-source' }),
+        isPending: false,
+      }),
+      useReindexFromPages: () => ({
+        mutate: vi.fn(),
         isPending: false,
       }),
       useDeleteSource: () => ({ mutate: vi.fn(), isPending: false }),
