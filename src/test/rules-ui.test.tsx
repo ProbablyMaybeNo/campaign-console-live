@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@/test/utils';
+import { render, screen, waitFor } from '@/test/utils';
+import userEvent from '@testing-library/user-event';
 import { AddSourceModal } from '@/components/rules/AddSourceModal';
 
 // Mock the hooks
@@ -67,8 +68,9 @@ describe('AddSourceModal', () => {
       render(<AddSourceModal {...defaultProps} />);
       
       // Switch to paste tab
+      const user = userEvent.setup();
       const pasteTab = screen.getByRole('tab', { name: /paste/i });
-      fireEvent.click(pasteTab);
+      await user.click(pasteTab);
       
       await waitFor(() => {
         expect(screen.getByTestId('paste-tab')).toBeInTheDocument();
@@ -77,8 +79,8 @@ describe('AddSourceModal', () => {
       const titleInput = screen.getByTestId('paste-title-input');
       const textInput = screen.getByTestId('paste-text-input');
       
-      fireEvent.change(titleInput, { target: { value: 'House Rules' } });
-      fireEvent.change(textInput, { target: { value: 'These are my custom rules...' } });
+      await user.type(titleInput, 'House Rules');
+      await user.type(textInput, 'These are my custom rules...');
       
       expect(titleInput).toHaveValue('House Rules');
       expect(textInput).toHaveValue('These are my custom rules...');
@@ -88,14 +90,15 @@ describe('AddSourceModal', () => {
       render(<AddSourceModal {...defaultProps} />);
       
       // Switch to paste tab and fill form
-      fireEvent.click(screen.getByRole('tab', { name: /paste/i }));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('tab', { name: /paste/i }));
       
       await waitFor(() => {
         expect(screen.getByTestId('paste-title-input')).toBeInTheDocument();
       });
       
-      fireEvent.change(screen.getByTestId('paste-title-input'), { target: { value: 'Test Title' } });
-      fireEvent.change(screen.getByTestId('paste-text-input'), { target: { value: 'Test content' } });
+      await user.type(screen.getByTestId('paste-title-input'), 'Test Title');
+      await user.type(screen.getByTestId('paste-text-input'), 'Test content');
       
       const submitButton = screen.getByTestId('paste-submit');
       expect(submitButton).not.toBeDisabled();
@@ -107,8 +110,9 @@ describe('AddSourceModal', () => {
       render(<AddSourceModal {...defaultProps} />);
       
       // Switch to GitHub tab
+      const user = userEvent.setup();
       const githubTab = screen.getByRole('tab', { name: /github/i });
-      fireEvent.click(githubTab);
+      await user.click(githubTab);
       
       await waitFor(() => {
         expect(screen.getByTestId('github-tab')).toBeInTheDocument();
@@ -124,15 +128,17 @@ describe('AddSourceModal', () => {
       render(<AddSourceModal {...defaultProps} />);
       
       // Switch to GitHub tab
-      fireEvent.click(screen.getByRole('tab', { name: /github/i }));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('tab', { name: /github/i }));
       
       await waitFor(() => {
         expect(screen.getByTestId('github-url-input')).toBeInTheDocument();
       });
       
-      fireEvent.change(screen.getByTestId('github-title-input'), { target: { value: 'Community Rules' } });
-      fireEvent.change(screen.getByTestId('github-url-input'), { target: { value: 'https://github.com/example/rules' } });
-      fireEvent.change(screen.getByTestId('github-path-input'), { target: { value: 'data/rules.json' } });
+      await user.type(screen.getByTestId('github-title-input'), 'Community Rules');
+      await user.type(screen.getByTestId('github-url-input'), 'https://github.com/example/rules');
+      await user.clear(screen.getByTestId('github-path-input'));
+      await user.type(screen.getByTestId('github-path-input'), 'data/rules.json');
       
       expect(screen.getByTestId('github-url-input')).toHaveValue('https://github.com/example/rules');
       expect(screen.getByTestId('github-path-input')).toHaveValue('data/rules.json');

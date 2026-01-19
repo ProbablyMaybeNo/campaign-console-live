@@ -17,6 +17,7 @@ const RequestSchema = z.object({
   prompt: z.string().trim().min(1).max(2000),
   conversationHistory: z.array(ConversationMessageSchema).optional().default([]),
   sourceContent: z.string().max(30000).optional(),
+  sourceUrl: z.string().url().optional(),
   campaignId: z.string().uuid().optional(),
 });
 
@@ -63,6 +64,39 @@ Deno.serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    const { prompt, conversationHistory, campaignId, sourceContent } = parsedReq.data;
+
+    // If no campaignId, we can't access indexed rules
+    if (!campaignId) {
+      return new Response(JSON.stringify({
+        message: "I need a campaign context to search your indexed rules.",
+        components: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Get indexed sources for this campaign
+    const { data: sources, error: sourcesError } = await supabase
+      .from("rules_sources")
+      .select("id")
+      .eq("campaign_id", campaignId)
+      .eq("index_status", "indexed");
+
+    if (sourcesError) throw sourcesError;
+
+    const sourceIds = (sources || []).map((s: any) => s.id).filter(Boolean);
+    if (sourceIds.length === 0) {
+      return new Response(JSON.stringify({
+        message: "No indexed rules sources found for this campaign. Index a rules source first.",
+        components: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Extract query terms from the user's prompt (optionally supplement with local notes)
+    const baseTerms = extractQueryTerms(prompt);
+    const supplementalTerms = sourceContent ? extractQueryTerms(sourceContent.slice(0, 2000)) : [];
+    const terms = Array.from(new Set([...baseTerms, ...supplementalTerms])).slice(0, 12);
     }
 
     const { prompt, conversationHistory, campaignId } = parsedReq.data;
@@ -129,6 +163,7 @@ Deno.serve(async (req) => {
       })
       .sort((a, b) => b.score - a.score);
 
+    const tableScores = new Map<string, number>(rankedTables.map(({ t, score }) => [t.id, score]));
     const topMeta = rankedTables.slice(0, 30).map((x) => x.t);
     const topIds = topMeta.map((t) => t.id);
 
@@ -147,6 +182,9 @@ Deno.serve(async (req) => {
     const candidateList = topMeta
       .map((t, idx) => {
         const kw = (t.keywords || []).slice(0, 6).join(", ");
+        const header = (t.header_context || "").slice(0, 120);
+        const score = tableScores.get(t.id) ?? 0;
+        return `${idx + 1}. id=${t.id} | ${t.title_guess || "Untitled"} | page=${t.page_number ?? "?"} | confidence=${t.confidence} | score=${score} | keywords=${kw} | header=${header}`;
         return `${idx + 1}. id=${t.id} | ${t.title_guess || "Untitled"} | page=${t.page_number ?? "?"} | confidence=${t.confidence} | keywords=${kw}`;
       })
       .join("\n");
@@ -154,9 +192,9 @@ Deno.serve(async (req) => {
     // Use tool calling so the model selects IDs; we then populate rows/columns deterministically from DB
     const selectionSystemPrompt = `You are selecting which indexed RULE TABLES to use to satisfy the user's request.
 
-Choose ONLY from the candidates list below. Return your answer via the select_components tool.
+Use ONLY the candidates list below. If there is no clear match, return an empty list via select_components.
 
-CANDIDATE TABLES:\n${candidateList || "(none)"}\n\nRules:\n- Prefer candidates whose title/keywords match the request terms (${terms.join(", ") || "none"}).\n- If the user asked for N tables, return N table components.\n- Do not invent table IDs.\n- Keep titles short and specific (e.g. 'Common Exploration Table', 'Rare Exploration Table').`;
+CANDIDATE TABLES:\n${candidateList || "(none)"}\n\nRules:\n- Prefer candidates whose titles/keywords/header context match the request terms (${terms.join(", ") || "none"}).\n- If the user asked for N tables, return N components ONLY when the match is clear.\n- Do not invent table IDs or rules content.\n- If nothing fits, return: { "components": [] }.\n- Keep titles short and specific (e.g. 'Common Exploration Table').`;
 
     const toolBody: any = {
       model: "google/gemini-3-flash-preview",
@@ -233,8 +271,10 @@ CANDIDATE TABLES:\n${candidateList || "(none)"}\n\nRules:\n- Prefer candidates w
       }));
     }
 
+    const minScore = terms.length > 0 ? 10 : 6;
     const builtComponents = selected
       .filter((c) => c.type === "table" && typeof c.tableId === "string" && tablesById.has(c.tableId))
+      .filter((c) => (tableScores.get(c.tableId!) ?? 0) >= minScore)
       .slice(0, 5)
       .map((c) => {
         const table = tablesById.get(c.tableId!)!;
@@ -254,6 +294,7 @@ CANDIDATE TABLES:\n${candidateList || "(none)"}\n\nRules:\n- Prefer candidates w
 
         return {
           type: "table",
+          tableId: c.tableId,
           data: {
             title: c.title || table.title_guess || "Table",
             columns,
@@ -268,8 +309,16 @@ CANDIDATE TABLES:\n${candidateList || "(none)"}\n\nRules:\n- Prefer candidates w
       .map((c) => `- ${c.section_path?.join(" > ") || "Unknown"}: ${c.text?.substring(0, 200) || ""}`)
       .join("\n");
 
+    const tableMetaById = new Map<string, CandidateTableMeta>((topMeta || []).map((t) => [t.id, t]));
+    const usedTables = builtComponents.map((component: any) => {
+      const meta = tableMetaById.get(component.tableId ?? "");
+      if (!meta) return component.data?.title || "Table";
+      const pageLabel = meta.page_number ? `p.${meta.page_number}` : "page ?";
+      return `${component.data?.title || meta.title_guess || "Table"} (${pageLabel})`;
+    });
+
     const message = builtComponents.length
-      ? "Created table components from the best-matching indexed rules tables."
+      ? `Created table components from indexed rules tables: ${usedTables.join(", ")}.`
       : `I couldn't confidently match your request to any indexed tables. Try using more specific terms (e.g. 'exploration', 'rare exploration', 'legendary exploration').\n\nNearby content:\n${fallbackChunks || "(none)"}`;
 
     return new Response(JSON.stringify({ message, components: builtComponents }), {
