@@ -9,6 +9,7 @@ import { MarkerPalette } from './MarkerPalette';
 import { TerminalButton } from '@/components/ui/TerminalButton';
 import {
   useCampaignMap,
+  useMapRealtime,
   useCreateMap,
   useUpdateMap,
   useDeleteMap,
@@ -53,6 +54,9 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
   const createFogRegion = useCreateFogRegion();
   const updateFogRegion = useUpdateFogRegion();
   const deleteFogRegion = useDeleteFogRegion();
+
+  // Enable real-time updates
+  useMapRealtime(campaignId, data?.map?.id);
 
   const [placementMode, setPlacementMode] = useState<'select' | 'place' | 'fog'>('select');
   const [selectedLegendItemId, setSelectedLegendItemId] = useState<string | null>(null);
