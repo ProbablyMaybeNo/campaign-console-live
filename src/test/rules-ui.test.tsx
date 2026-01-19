@@ -18,6 +18,7 @@ vi.mock('@/hooks/useRulesSources', () => ({
   }),
   useIndexSource: () => ({
     mutate: vi.fn(),
+    mutateAsync: vi.fn(),
     isPending: false,
   }),
 }));
@@ -68,6 +69,7 @@ describe('AddSourceModal', () => {
       
       // Switch to paste tab
       const pasteTab = screen.getByRole('tab', { name: /paste/i });
+      fireEvent.mouseDown(pasteTab);
       fireEvent.click(pasteTab);
       
       await waitFor(() => {
@@ -88,7 +90,9 @@ describe('AddSourceModal', () => {
       render(<AddSourceModal {...defaultProps} />);
       
       // Switch to paste tab and fill form
-      fireEvent.click(screen.getByRole('tab', { name: /paste/i }));
+      const pasteTab = screen.getByRole('tab', { name: /paste/i });
+      fireEvent.mouseDown(pasteTab);
+      fireEvent.click(pasteTab);
       
       await waitFor(() => {
         expect(screen.getByTestId('paste-title-input')).toBeInTheDocument();
@@ -108,6 +112,7 @@ describe('AddSourceModal', () => {
       
       // Switch to GitHub tab
       const githubTab = screen.getByRole('tab', { name: /github/i });
+      fireEvent.mouseDown(githubTab);
       fireEvent.click(githubTab);
       
       await waitFor(() => {
@@ -124,7 +129,9 @@ describe('AddSourceModal', () => {
       render(<AddSourceModal {...defaultProps} />);
       
       // Switch to GitHub tab
-      fireEvent.click(screen.getByRole('tab', { name: /github/i }));
+      const githubTab = screen.getByRole('tab', { name: /github/i });
+      fireEvent.mouseDown(githubTab);
+      fireEvent.click(githubTab);
       
       await waitFor(() => {
         expect(screen.getByTestId('github-url-input')).toBeInTheDocument();

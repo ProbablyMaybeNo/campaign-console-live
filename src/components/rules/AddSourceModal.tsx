@@ -107,7 +107,8 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
               result = await pdfIndexer.indexPdf(source.id, campaignId, filePath);
             }
             if (result.success) {
-              toast.success(`Indexed ${result.stats?.pages} pages, ${result.stats?.chunks} chunks`);
+              const pages = result.stats?.pagesExtracted ?? result.stats?.pages ?? 0;
+              toast.success(`Indexed ${pages} pages, ${result.stats?.chunks ?? 0} chunks`);
             } else {
               toast.error(`Indexing failed: ${result.error}`);
             }
@@ -171,7 +172,7 @@ export function AddSourceModal({ open, onOpenChange, campaignId }: AddSourceModa
               githubPath.trim() || "rules.json"
             );
             if (result.success) {
-              toast.success(`Indexed ${result.stats?.sections} sections, ${result.stats?.chunks} chunks`);
+              toast.success(`Indexed ${result.stats?.sections ?? 0} sections, ${result.stats?.chunks ?? 0} chunks`);
             } else {
               toast.error(`Indexing failed: ${result.error}`);
             }

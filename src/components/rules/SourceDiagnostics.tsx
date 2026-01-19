@@ -11,22 +11,27 @@ interface SourceDiagnosticsProps {
 }
 
 const errorSuggestions: Record<string, { title: string; description: string; action?: string }> = {
-  extraction: {
-    title: "Text Extraction Failed",
-    description: "The PDF might be scanned (image-based) or password-protected. Try uploading a different version or use the Paste option to manually enter the text.",
-    action: "Try pasting text manually",
-  },
   fetch: {
     title: "Failed to Fetch Content",
     description: "Could not download the file. Check if the storage path is valid or if there are permission issues.",
     action: "Re-upload the file",
   },
-  parse: {
-    title: "JSON Parse Error",
-    description: "The GitHub JSON file has invalid syntax. Verify the file is valid JSON and follows the expected structure.",
-    action: "Check JSON format",
+  extraction: {
+    title: "Text Extraction Failed",
+    description: "The PDF might be scanned (image-based) or password-protected. Try uploading a different version or use the Paste option to manually enter the text.",
+    action: "Try pasting text manually",
   },
-  github: {
+  clean: {
+    title: "Text Cleanup Failed",
+    description: "The PDF was downloaded but could not be cleaned. Try re-uploading the file or using the advanced parser.",
+    action: "Try advanced parsing",
+  },
+  save: {
+    title: "Failed to Save Pages",
+    description: "Extracted pages could not be saved. Try re-indexing or splitting the PDF into smaller files.",
+    action: "Retry indexing",
+  },
+  github_fetch: {
     title: "GitHub API Error",
     description: "Could not access the repository. Check that the URL is correct and the repository is public.",
     action: "Verify repository URL",
@@ -51,11 +56,22 @@ const errorSuggestions: Record<string, { title: string; description: string; act
     description: "The OCR fallback could not process this PDF. Verify the file is readable or try again later.",
     action: "Try another PDF or use OCR",
   },
+  indexing: {
+    title: "Indexing Failed",
+    description: "The source was extracted but could not be indexed. Retry indexing or reduce the size of the source.",
+    action: "Retry indexing",
+  },
+  unknown: {
+    title: "Indexing Error",
+    description: "An unknown error occurred during indexing.",
+  },
 };
 
 export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: SourceDiagnosticsProps) {
   const error = source.index_error;
   const stage = error?.stage || "unknown";
+  const debugEnabled = typeof window !== "undefined" && window.localStorage.getItem("rules_index_debug") === "true";
+  const showDiagnostics = source.index_status === "failed" || debugEnabled;
   const suggestion = errorSuggestions[stage] || {
     title: "Indexing Error",
     description: error?.message || "An unknown error occurred during indexing.",
@@ -99,7 +115,7 @@ export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: Sou
             </div>
           )}
 
-          {source.index_stats && (
+          {showDiagnostics && source.index_stats && (
             <div className="space-y-2 text-xs">
               <p className="uppercase tracking-wider text-muted-foreground">Index Stats</p>
               <div className="grid grid-cols-2 gap-2 text-muted-foreground">
@@ -107,6 +123,8 @@ export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: Sou
                 <span>Empty Pages: {source.index_stats.emptyPages ?? 0}</span>
                 <span>Chunks: {source.index_stats.chunks ?? 0}</span>
                 <span>Tables: {(source.index_stats.tablesHigh ?? 0) + (source.index_stats.tablesLow ?? 0)}</span>
+                <span>Sections: {source.index_stats.sections ?? 0}</span>
+                <span>OCR: {source.index_stats.ocrAttempted ? (source.index_stats.ocrSucceeded ? "Succeeded" : "Failed") : "Not used"}</span>
               </div>
               {source.index_stats.timeMsByStage && (
                 <div className="space-y-1">

@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 type IndexStats = {
+  pages?: number;
   pagesExtracted: number;
   emptyPages: number;
   avgCharsPerPage: number;
@@ -17,6 +18,8 @@ type IndexStats = {
   tablesLow: number;
   datasets: number;
   timeMsByStage: Record<string, number>;
+  ocrAttempted: boolean;
+  ocrSucceeded: boolean;
   pageHashes: { pageNumber: number; hash: string }[];
 };
 
@@ -45,7 +48,7 @@ type IndexRequest = {
   githubData?: GitHubRulesJson;
   preDetectedTables?: PreDetectedTable[];
   preDetectedSections?: PreDetectedSection[];
-  clientStats?: Record<string, unknown>;
+  clientStats?: Partial<IndexStats>;
   clientTimings?: Record<string, number>;
 };
 
@@ -88,14 +91,18 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let supabase: SupabaseClient | null = null;
+  let requestSourceId: string | undefined;
+
   try {
     const requestStart = performance.now();
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { sourceId, githubData, preDetectedTables, preDetectedSections, clientStats, clientTimings } =
       (await req.json()) as IndexRequest;
+    requestSourceId = sourceId;
     if (!sourceId) {
       return new Response(JSON.stringify({ error: 'sourceId required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -119,10 +126,11 @@ Deno.serve(async (req) => {
     };
 
     log('indexing_started', { sourceId, type: source.type });
-    await supabase.from('rules_sources').update({ index_status: 'indexing' }).eq('id', sourceId);
+    await supabase.from('rules_sources').update({ index_status: 'indexing', index_error: null }).eq('id', sourceId);
 
     let indexResult: { stats: IndexStats; failed: boolean; errorMessage?: string; errorStage?: string } = {
       stats: {
+        pages: 0,
         pagesExtracted: 0,
         emptyPages: 0,
         avgCharsPerPage: 0,
@@ -132,6 +140,8 @@ Deno.serve(async (req) => {
         tablesLow: 0,
         datasets: 0,
         timeMsByStage: {},
+        ocrAttempted: false,
+        ocrSucceeded: false,
         pageHashes: [],
       },
       failed: false,
@@ -152,6 +162,8 @@ Deno.serve(async (req) => {
     }
     const stats = indexResult.stats;
     stats.timeMsByStage.total = Math.round(performance.now() - requestStart);
+    stats.timeMsByStage.indexing = stats.timeMsByStage.total;
+    stats.pages = stats.pages ?? stats.pagesExtracted;
 
     if (indexResult.failed) {
       await supabase.from('rules_sources').update({
@@ -183,6 +195,29 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Indexing error:', error);
+    if (supabase && requestSourceId) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await supabase.from('rules_sources').update({
+        index_status: 'failed',
+        index_error: { stage: 'indexing', message },
+        index_stats: {
+          pages: 0,
+          pagesExtracted: 0,
+          emptyPages: 0,
+          avgCharsPerPage: 0,
+          sections: 0,
+          chunks: 0,
+          tablesHigh: 0,
+          tablesLow: 0,
+          datasets: 0,
+          timeMsByStage: { total: 0, indexing: 0 },
+          ocrAttempted: false,
+          ocrSucceeded: false,
+          pageHashes: [],
+        },
+        last_indexed_at: new Date().toISOString(),
+      }).eq('id', requestSourceId);
+    }
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -197,7 +232,7 @@ async function processFromPages(
   preDetectedTables?: PreDetectedTable[],
   preDetectedSections?: PreDetectedSection[],
   previousStats: Record<string, unknown> = {},
-  clientStats: Record<string, unknown> = {},
+  clientStats: Partial<IndexStats> = {},
   clientTimings: Record<string, number> = {},
 ): Promise<IndexResult> {
   const loadStart = performance.now();
@@ -213,6 +248,7 @@ async function processFromPages(
   if (!pages?.length) {
     return {
       stats: {
+        pages: 0,
         pagesExtracted: 0,
         emptyPages: 0,
         avgCharsPerPage: 0,
@@ -222,6 +258,8 @@ async function processFromPages(
         tablesLow: 0,
         datasets: 0,
         timeMsByStage,
+        ocrAttempted: false,
+        ocrSucceeded: false,
         pageHashes: [],
       },
       failed: true,
@@ -235,22 +273,6 @@ async function processFromPages(
   timeMsByStage.hashPages = pageHashes.timeMs;
 
   if (shouldSkipReindex(previousStats, pageHashes.hashes)) {
-    await supabase.from('rules_sources').update({
-      index_status: 'indexed',
-      index_stats: {
-        ...pageStats,
-        sections: previousStats.sections ?? 0,
-        chunks: previousStats.chunks ?? 0,
-        tablesHigh: previousStats.tablesHigh ?? 0,
-        tablesLow: previousStats.tablesLow ?? 0,
-        datasets: previousStats.datasets ?? 0,
-        timeMsByStage,
-        pageHashes: pageHashes.hashes,
-      },
-      index_error: null,
-      last_indexed_at: new Date().toISOString(),
-    }).eq('id', sourceId);
-
     return {
       stats: {
         ...pageStats,
@@ -281,6 +303,8 @@ async function processFromPages(
         tablesLow: 0,
         datasets: 0,
         timeMsByStage,
+        ocrAttempted: pageStats.ocrAttempted,
+        ocrSucceeded: pageStats.ocrSucceeded,
         pageHashes: pageHashes.hashes,
       },
       failed: true,
@@ -465,38 +489,57 @@ async function processGitHubJson(supabase: SupabaseClient, sourceId: string, jso
   let sectionsCount = 0, chunksCount = 0, tablesHigh = 0, datasetsCount = 0, pseudoPage = 1;
   const timeMsByStage: Record<string, number> = {};
   const start = performance.now();
+  const sectionRows: Record<string, unknown>[] = [];
+  const chunkRows: Record<string, unknown>[] = [];
+  const tableRows: Record<string, unknown>[] = [];
 
   if (json.groups) {
     for (const group of json.groups) {
-      await supabase.from('rules_sections').insert({
-        source_id: sourceId, title: group.name, text: group.description || null,
-        section_path: [group.name], page_start: pseudoPage, page_end: pseudoPage
+      sectionRows.push({
+        source_id: sourceId,
+        title: group.name,
+        text: group.description || null,
+        section_path: [group.name],
+        page_start: pseudoPage,
+        page_end: pseudoPage,
       });
       sectionsCount++;
 
       if (group.sections) {
         for (const section of group.sections) {
-          await supabase.from('rules_sections').insert({
-            source_id: sourceId, title: section.title, text: section.text?.substring(0, 50000) || null,
-            section_path: [group.name, section.title], page_start: pseudoPage, page_end: pseudoPage
+          sectionRows.push({
+            source_id: sourceId,
+            title: section.title,
+            text: section.text?.substring(0, 50000) || null,
+            section_path: [group.name, section.title],
+            page_start: pseudoPage,
+            page_end: pseudoPage,
           });
           sectionsCount++;
 
           if (section.text) {
-            await supabase.from('rules_chunks').insert({
-              source_id: sourceId, text: section.text.substring(0, 1800),
-              section_path: [group.name, section.title], page_start: pseudoPage, page_end: pseudoPage,
-              order_index: chunksCount, score_hints: { hasRollRanges: false, hasTablePattern: false }
+            chunkRows.push({
+              source_id: sourceId,
+              text: section.text.substring(0, 1800),
+              section_path: [group.name, section.title],
+              page_start: pseudoPage,
+              page_end: pseudoPage,
+              order_index: chunksCount,
+              score_hints: { hasRollRanges: false, hasTablePattern: false },
             });
             chunksCount++;
           }
 
           if (section.tables) {
             for (const table of section.tables) {
-              await supabase.from('rules_tables').insert({
-                source_id: sourceId, title_guess: table.name, page_number: pseudoPage,
-                raw_text: JSON.stringify(table).substring(0, 5000), confidence: 'high',
-                parsed_rows: table.rows || [], keywords: ['table']
+              tableRows.push({
+                source_id: sourceId,
+                title_guess: table.name,
+                page_number: pseudoPage,
+                raw_text: JSON.stringify(table).substring(0, 5000),
+                confidence: 'high',
+                parsed_rows: table.rows || [],
+                keywords: ['table'],
               });
               tablesHigh++;
             }
@@ -515,17 +558,21 @@ async function processGitHubJson(supabase: SupabaseClient, sourceId: string, jso
       }).select().single();
       const datasetId = rec && typeof rec.id !== 'undefined' ? rec.id : null;
       if (datasetId && ds.rows) {
-        for (const row of ds.rows) {
-          await supabase.from('rules_dataset_rows').insert({ dataset_id: datasetId, data: row });
-        }
+        const datasetRows = ds.rows.map((row) => ({ dataset_id: datasetId, data: row }));
+        await insertInBatches(supabase, 'rules_dataset_rows', datasetRows);
       }
       datasetsCount++;
     }
   }
 
+  await insertInBatches(supabase, 'rules_sections', sectionRows);
+  await insertInBatches(supabase, 'rules_chunks', chunkRows);
+  await insertInBatches(supabase, 'rules_tables', tableRows);
+
   timeMsByStage.total = Math.round(performance.now() - start);
 
   return {
+    pages: pseudoPage,
     pagesExtracted: pseudoPage,
     emptyPages: 0,
     avgCharsPerPage: 0,
@@ -535,6 +582,8 @@ async function processGitHubJson(supabase: SupabaseClient, sourceId: string, jso
     tablesLow: 0,
     datasets: datasetsCount,
     timeMsByStage,
+    ocrAttempted: false,
+    ocrSucceeded: false,
     pageHashes: [],
   };
 }
@@ -553,19 +602,40 @@ async function insertInBatches(
   }
 }
 
-function buildPageStats(pages: RulesPage[], clientStats: Record<string, unknown>) {
+function buildPageStats(pages: RulesPage[], clientStats: Partial<IndexStats>) {
   const totalChars = pages.reduce((acc, page) => acc + page.text.trim().length, 0);
   const emptyPages = pages.filter((page) => page.text.trim().length < 20).length;
   const avgCharsPerPage = pages.length ? Math.round(totalChars / pages.length) : 0;
   const emptyRatio = pages.length ? emptyPages / pages.length : 0;
   const shouldFail = emptyRatio >= 0.6 || avgCharsPerPage < 40;
+  const defaultStats: IndexStats = {
+    pages: pages.length,
+    pagesExtracted: pages.length,
+    emptyPages,
+    avgCharsPerPage,
+    sections: 0,
+    chunks: 0,
+    tablesHigh: 0,
+    tablesLow: 0,
+    datasets: 0,
+    timeMsByStage: {},
+    ocrAttempted: false,
+    ocrSucceeded: false,
+    pageHashes: [],
+  };
 
   return {
     stats: {
-      pagesExtracted: pages.length,
+      ...defaultStats,
+      ...clientStats,
+      pages: clientStats.pages ?? clientStats.pagesExtracted ?? pages.length,
+      pagesExtracted: clientStats.pagesExtracted ?? pages.length,
       emptyPages,
       avgCharsPerPage,
-      ...clientStats,
+      timeMsByStage: {
+        ...defaultStats.timeMsByStage,
+        ...(clientStats.timeMsByStage ?? {}),
+      },
     },
     shouldFail,
   };

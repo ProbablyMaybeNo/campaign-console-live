@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { RulesSource, SourceType, IndexStats, IndexError, ParseMethod } from "@/types/rules";
+import { normalizeIndexStats } from "@/types/rules";
 
 // Fetch all rules sources for a campaign
 export function useRulesSources(campaignId: string | undefined) {
@@ -30,7 +31,7 @@ export function useRulesSources(campaignId: string | undefined) {
         github_json_path: row.github_json_path,
         github_imported_at: row.github_imported_at,
         index_status: (row.index_status || 'not_indexed') as RulesSource['index_status'],
-        index_stats: row.index_stats as unknown as IndexStats | null,
+        index_stats: normalizeIndexStats(row.index_stats as unknown as Partial<IndexStats> | null),
         index_error: row.index_error as unknown as IndexError | null,
         last_indexed_at: row.last_indexed_at,
         created_at: row.created_at,
@@ -264,6 +265,11 @@ export function useIndexSource() {
 
   return useMutation({
     mutationFn: async ({ sourceId, campaignId }: { sourceId: string; campaignId: string }) => {
+      await supabase.from("rules_sources").update({
+        index_status: "indexing",
+        index_error: null,
+      }).eq("id", sourceId);
+
       const { data, error } = await supabase.functions.invoke("index-rules-source", {
         body: { sourceId },
       });

@@ -37,7 +37,38 @@ export interface IndexStats {
   tablesLow: number;
   datasets: number;
   timeMsByStage: Record<string, number>;
+  ocrAttempted: boolean;
+  ocrSucceeded: boolean;
   pageHashes?: { pageNumber: number; hash: string }[];
+}
+
+export const DEFAULT_INDEX_STATS: IndexStats = {
+  pages: 0,
+  pagesExtracted: 0,
+  emptyPages: 0,
+  avgCharsPerPage: 0,
+  sections: 0,
+  chunks: 0,
+  tablesHigh: 0,
+  tablesLow: 0,
+  datasets: 0,
+  timeMsByStage: {},
+  ocrAttempted: false,
+  ocrSucceeded: false,
+  pageHashes: [],
+};
+
+export function normalizeIndexStats(stats?: Partial<IndexStats> | null): IndexStats | null {
+  if (!stats) return null;
+  return {
+    ...DEFAULT_INDEX_STATS,
+    ...stats,
+    timeMsByStage: {
+      ...DEFAULT_INDEX_STATS.timeMsByStage,
+      ...(stats.timeMsByStage ?? {}),
+    },
+    pageHashes: stats.pageHashes ?? DEFAULT_INDEX_STATS.pageHashes,
+  };
 }
 
 export interface IndexError {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectDiceRollTables, removeHeadersFooters, shouldFlagScannedPdf } from "@/lib/pdfExtractor";
+import { detectDiceRollTables, removeHeadersFooters, shouldFlagScannedPdf, shouldUseOcrFallback } from "@/lib/pdfExtractor";
 
 describe("pdfExtractor helpers", () => {
   it("removes repeated headers and footers", () => {
@@ -42,5 +42,15 @@ describe("pdfExtractor helpers", () => {
     ];
 
     expect(shouldFlagScannedPdf(pages)).toBe(true);
+  });
+
+  it("does not flag text-heavy PDFs for OCR fallback", () => {
+    const pages = [
+      { pageNumber: 1, text: "This is a detailed rules section with enough content to parse.", charCount: 60 },
+      { pageNumber: 2, text: "More text content that should prevent OCR fallback from triggering.", charCount: 70 },
+      { pageNumber: 3, text: "Additional content for density.", charCount: 40 },
+    ];
+
+    expect(shouldUseOcrFallback(pages)).toBe(false);
   });
 });

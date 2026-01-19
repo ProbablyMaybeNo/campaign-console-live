@@ -436,7 +436,7 @@ function findTableHeaderContext(lines: string[], tableStartLine: number): string
   return lines
     .slice(Math.max(0, tableStartLine - 3), tableStartLine)
     .map((line) => line.trim())
-    .filter(Boolean)
+    .filter((line) => line.length > 0 && !line.match(/^\d+\s*[-–—]\s*\d+/))
     .join(" | ");
 }
 
@@ -801,10 +801,18 @@ export function getExtractionStats(pages: PDFPage[]) {
 }
 
 export function shouldFlagScannedPdf(pages: PDFPage[]) {
+  return shouldUseOcrFallback(pages);
+}
+
+export function shouldUseOcrFallback(pages: PDFPage[]) {
   if (!pages.length) return false;
-  const { emptyPages, avgCharsPerPage } = getExtractionStats(pages);
+  const { emptyPages, avgCharsPerPage, totalChars } = getExtractionStats(pages);
   const emptyRatio = emptyPages / pages.length;
-  return emptyRatio >= 0.6 || avgCharsPerPage < 40;
+  const isShortDoc = pages.length <= 2;
+  const lowTextAverage = avgCharsPerPage < (isShortDoc ? 25 : 45);
+  const highEmptyRatio = emptyRatio >= (isShortDoc ? 0.8 : 0.55);
+  const lowTotal = totalChars < pages.length * (isShortDoc ? 40 : 50);
+  return highEmptyRatio || lowTextAverage || lowTotal;
 }
 
 /**
@@ -818,8 +826,8 @@ export function removeHeadersFooters(pages: PDFPage[]): PDFPage[] {
 
   pages.forEach((page) => {
     const lines = page.text.split("\n");
-    headerLines.push(...lines.slice(0, 3).map(line => line.trim()).filter(Boolean));
-    footerLines.push(...lines.slice(-3).map(line => line.trim()).filter(Boolean));
+    headerLines.push(...lines.slice(0, 3).map(line => line.trim()).filter(isHeaderFooterCandidate));
+    footerLines.push(...lines.slice(-3).map(line => line.trim()).filter(isHeaderFooterCandidate));
   });
   
   // Count occurrences
@@ -838,13 +846,13 @@ export function removeHeadersFooters(pages: PDFPage[]): PDFPage[] {
   const repeatedFooters = new Set<string>();
   
   headerCounts.forEach((count, line) => {
-    if (count > threshold && line.length < 100) {
+    if (count > threshold && line.length < 100 && isHeaderFooterCandidate(line)) {
       repeatedHeaders.add(line);
     }
   });
   
   footerCounts.forEach((count, line) => {
-    if (count > threshold && line.length < 100) {
+    if (count > threshold && line.length < 100 && isHeaderFooterCandidate(line)) {
       repeatedFooters.add(line);
     }
   });
@@ -856,6 +864,7 @@ export function removeHeadersFooters(pages: PDFPage[]): PDFPage[] {
     const cleanedLines = lines.filter((line, index) => {
       const trimmed = line.trim();
       if (!trimmed) return true;
+      if (!isHeaderFooterCandidate(trimmed)) return true;
 
       const isHeaderZone = index <= 2;
       const isFooterZone = index >= lines.length - 3;
@@ -873,4 +882,13 @@ export function removeHeadersFooters(pages: PDFPage[]): PDFPage[] {
       charCount: newText.length,
     };
   });
+}
+
+function isHeaderFooterCandidate(line: string) {
+  if (!line) return false;
+  if (line.length > 120) return false;
+  if (/\|/.test(line)) return false;
+  if (/\S\s{2,}\S/.test(line)) return false;
+  if (/^\d+\s*$/.test(line)) return false;
+  return true;
 }

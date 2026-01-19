@@ -20,6 +20,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { useRulesSources, useDeleteSource, useIndexSource } from "@/hooks/useRulesSources";
+import { useGitHubIndexer, useLlamaParseIndexer, usePdfIndexer } from "@/hooks/useRulesIndexer";
 import { AddSourceModal } from "./AddSourceModal";
 import { SourceDiagnostics } from "./SourceDiagnostics";
 import type { RulesSource } from "@/types/rules";
@@ -47,14 +48,50 @@ const typeConfig: Record<string, { icon: React.ElementType; label: string }> = {
 export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibraryProps) {
   const [addSourceOpen, setAddSourceOpen] = useState(false);
   const [diagnosticsSource, setDiagnosticsSource] = useState<RulesSource | null>(null);
+  const [localIndexingSourceId, setLocalIndexingSourceId] = useState<string | null>(null);
   const debugEnabled = typeof window !== "undefined" && window.localStorage.getItem("rules_index_debug") === "true";
   
   const { data: sources = [], isLoading } = useRulesSources(campaignId);
   const deleteSource = useDeleteSource();
   const indexSource = useIndexSource();
+  const pdfIndexer = usePdfIndexer();
+  const githubIndexer = useGitHubIndexer();
+  const llamaParseIndexer = useLlamaParseIndexer();
 
-  const handleIndex = (source: RulesSource) => {
-    indexSource.mutate({ sourceId: source.id, campaignId });
+  const handleIndex = async (source: RulesSource) => {
+    setLocalIndexingSourceId(source.id);
+    try {
+      if (source.type === "pdf") {
+        if (!source.storage_path) {
+          throw new Error("Missing PDF storage path.");
+        }
+        if (source.type_source === "llamaparse") {
+          await llamaParseIndexer.indexWithLlamaParse(source.id, campaignId, source.storage_path);
+        } else {
+          await pdfIndexer.indexPdf(source.id, campaignId, source.storage_path);
+        }
+        return;
+      }
+
+      if (source.type === "github_json") {
+        if (!source.github_repo_url) {
+          throw new Error("Missing GitHub repository URL.");
+        }
+        await githubIndexer.indexGitHub(
+          source.id,
+          campaignId,
+          source.github_repo_url,
+          source.github_json_path || "rules.json"
+        );
+        return;
+      }
+
+      await indexSource.mutateAsync({ sourceId: source.id, campaignId });
+    } catch (error) {
+      console.error("Indexing error:", error);
+    } finally {
+      setLocalIndexingSourceId(null);
+    }
   };
 
   const handleDelete = (source: RulesSource) => {
@@ -66,7 +103,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
   const indexedCount = sources.filter(s => s.index_status === "indexed").length;
   const totalChunks = sources.reduce((acc, s) => acc + (s.index_stats?.chunks || 0), 0);
   const totalTables = sources.reduce((acc, s) => acc + (s.index_stats?.tablesHigh || 0) + (s.index_stats?.tablesLow || 0), 0);
-  const totalPages = sources.reduce((acc, s) => acc + (s.index_stats?.pagesExtracted || s.index_stats?.pages || 0), 0);
+  const totalPages = sources.reduce((acc, s) => acc + (s.index_stats?.pagesExtracted ?? s.index_stats?.pages ?? 0), 0);
 
   return (
     <>
@@ -126,7 +163,11 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                 <div className="space-y-2" data-testid="sources-list">
                   {sources.map((source) => {
                     const TypeIcon = typeConfig[source.type]?.icon || FileText;
-                    const status = statusConfig[source.index_status] || statusConfig.not_indexed;
+                    const isLocalIndexing = localIndexingSourceId === source.id;
+                    const isIndexing = source.index_status === "indexing" || isLocalIndexing || (indexSource.isPending && indexSource.variables?.sourceId === source.id);
+                    const status = isLocalIndexing
+                      ? statusConfig.indexing
+                      : statusConfig[source.index_status] || statusConfig.not_indexed;
                     const StatusIcon = status.icon;
 
                     return (
@@ -176,7 +217,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                               
                               {source.index_stats && source.index_status === "indexed" && (
                                 <span className="text-muted-foreground">
-                                  {(source.index_stats.pagesExtracted || source.index_stats.pages || 0)} pages, {source.index_stats.chunks} chunks, {source.index_stats.tablesHigh + source.index_stats.tablesLow} tables
+                                  {(source.index_stats.pagesExtracted ?? source.index_stats.pages ?? 0)} pages, {source.index_stats.chunks ?? 0} chunks, {(source.index_stats.tablesHigh ?? 0) + (source.index_stats.tablesLow ?? 0)} tables
                                 </span>
                               )}
                             </div>
@@ -200,10 +241,10 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleIndex(source)}
-                                disabled={source.index_status === "indexing" || indexSource.isPending}
+                                disabled={isIndexing}
                                 title="Index this source"
                               >
-                                <RefreshCw className={`w-3 h-3 ${source.index_status === 'indexing' ? 'animate-spin' : ''}`} />
+                                <RefreshCw className={`w-3 h-3 ${isIndexing ? 'animate-spin' : ''}`} />
                               </TerminalButton>
 
                               <TerminalButton
