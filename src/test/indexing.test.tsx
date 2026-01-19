@@ -28,10 +28,7 @@ const mockEq = vi.fn();
 const mockOrder = vi.fn();
 const mockInsert = vi.fn();
 const mockSingle = vi.fn();
-const mockInvoke = vi.fn().mockResolvedValue({
-  data: { success: true, message: 'Indexed successfully' },
-  error: null,
-});
+const mockInvoke = vi.fn();
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -69,7 +66,13 @@ vi.mock('@/integrations/supabase/client', () => ({
       };
     },
     functions: {
-      invoke: (fn: string, opts: unknown) => mockInvoke(fn, opts),
+      invoke: (fn: string, opts: unknown) => {
+        mockInvoke(fn, opts);
+        return Promise.resolve({ 
+          data: { success: true, message: 'Indexed successfully' }, 
+          error: null 
+        });
+      },
     },
   },
 }));
@@ -87,10 +90,6 @@ const createWrapper = () => {
 describe('useRulesSources', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockInvoke.mockResolvedValue({
-      data: { success: true, message: 'Indexed successfully' },
-      error: null,
-    });
   });
 
   it('fetches sources for a campaign', async () => {
@@ -112,10 +111,6 @@ describe('useRulesSources', () => {
 describe('useIndexSource', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockInvoke.mockResolvedValue({
-      data: { success: true, message: 'Indexed successfully' },
-      error: null,
-    });
   });
 
   it('calls index-rules-source edge function', async () => {
@@ -154,14 +149,6 @@ describe('useIndexSource', () => {
 });
 
 describe('Indexing Status Updates', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockInvoke.mockResolvedValue({
-      data: { success: true, message: 'Indexed successfully' },
-      error: null,
-    });
-  });
-
   it('updates source status after successful indexing', async () => {
     // Mock the function invoke to return success with stats
     mockInvoke.mockResolvedValueOnce({

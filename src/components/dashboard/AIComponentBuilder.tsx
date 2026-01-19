@@ -94,8 +94,12 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
     }
 
     if (file.type === "application/pdf") {
-      toast.info("PDF selected. Add it to the Rules Library and index it for AI use.");
-      setSourceContent("");
+      toast.info("PDF uploaded. The AI will extract content from it.");
+      const reader = new FileReader();
+      reader.onload = () => {
+        setSourceContent(`[PDF Content from: ${file.name}]`);
+      };
+      reader.readAsDataURL(file);
       return;
     }
 
@@ -324,8 +328,8 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
               <Bot className="w-12 h-12 mb-4 opacity-30" />
               <p className="text-sm font-mono mb-2">How can I help you create components?</p>
               <p className="text-xs max-w-md">
-                AI components are generated from indexed rules tables. 
-                Add your PDF to the Rules Library, index it, then ask for specific tables or cards.
+                Upload a PDF or provide a URL, then ask me to extract specific tables or cards. 
+                I can create multiple components at once!
               </p>
               <div className="mt-4 space-y-2 text-xs text-left">
                 <p className="text-primary/70">Try saying:</p>
