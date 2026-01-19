@@ -55,6 +55,41 @@ export type Database = {
           },
         ]
       }
+      campaign_maps: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_maps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_players: {
         Row: {
           campaign_id: string
@@ -376,6 +411,133 @@ export type Database = {
           version?: string | null
         }
         Relationships: []
+      }
+      map_fog_regions: {
+        Row: {
+          created_at: string
+          height: number
+          id: string
+          map_id: string
+          position_x: number
+          position_y: number
+          revealed: boolean
+          width: number
+        }
+        Insert: {
+          created_at?: string
+          height?: number
+          id?: string
+          map_id: string
+          position_x?: number
+          position_y?: number
+          revealed?: boolean
+          width?: number
+        }
+        Update: {
+          created_at?: string
+          height?: number
+          id?: string
+          map_id?: string
+          position_x?: number
+          position_y?: number
+          revealed?: boolean
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_fog_regions_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      map_legend_items: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          map_id: string
+          name: string
+          order_index: number
+          shape: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          map_id: string
+          name: string
+          order_index?: number
+          shape?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          map_id?: string
+          name?: string
+          order_index?: number
+          shape?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_legend_items_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      map_markers: {
+        Row: {
+          created_at: string
+          id: string
+          label: string | null
+          legend_item_id: string | null
+          map_id: string
+          position_x: number
+          position_y: number
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          legend_item_id?: string | null
+          map_id: string
+          position_x?: number
+          position_y?: number
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string | null
+          legend_item_id?: string | null
+          map_id?: string
+          position_x?: number
+          position_y?: number
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_markers_legend_item_id_fkey"
+            columns: ["legend_item_id"]
+            isOneToOne: false
+            referencedRelation: "map_legend_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "map_markers_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_maps"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       master_factions: {
         Row: {

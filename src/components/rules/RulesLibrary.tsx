@@ -16,7 +16,8 @@ import {
   Clock,
   Loader2,
   Plus,
-  Settings
+  Settings,
+  Sparkles
 } from "lucide-react";
 import { useRulesSources, useDeleteSource, useIndexSource } from "@/hooks/useRulesSources";
 import { AddSourceModal } from "./AddSourceModal";
@@ -46,6 +47,7 @@ const typeConfig: Record<string, { icon: React.ElementType; label: string }> = {
 export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibraryProps) {
   const [addSourceOpen, setAddSourceOpen] = useState(false);
   const [diagnosticsSource, setDiagnosticsSource] = useState<RulesSource | null>(null);
+  const debugEnabled = typeof window !== "undefined" && window.localStorage.getItem("rules_index_debug") === "true";
   
   const { data: sources = [], isLoading } = useRulesSources(campaignId);
   const deleteSource = useDeleteSource();
@@ -64,6 +66,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
   const indexedCount = sources.filter(s => s.index_status === "indexed").length;
   const totalChunks = sources.reduce((acc, s) => acc + (s.index_stats?.chunks || 0), 0);
   const totalTables = sources.reduce((acc, s) => acc + (s.index_stats?.tablesHigh || 0) + (s.index_stats?.tablesLow || 0), 0);
+  const totalPages = sources.reduce((acc, s) => acc + (s.index_stats?.pagesExtracted || s.index_stats?.pages || 0), 0);
 
   return (
     <>
@@ -87,6 +90,9 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
               </span>
               <span className="text-muted-foreground">
                 <span className="text-primary font-medium">{totalChunks}</span> chunks
+              </span>
+              <span className="text-muted-foreground">
+                <span className="text-primary font-medium">{totalPages}</span> pages
               </span>
               <span className="text-muted-foreground">
                 <span className="text-primary font-medium">{totalTables}</span> tables
@@ -142,6 +148,12 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                               <Badge variant="outline" className="text-[10px] shrink-0">
                                 {typeConfig[source.type]?.label || source.type}
                               </Badge>
+                              {source.type === 'pdf' && source.type_source === 'llamaparse' && (
+                                <Badge variant="secondary" className="text-[10px] shrink-0 bg-primary/20 text-primary border-primary/30">
+                                  <Sparkles className="w-2.5 h-2.5 mr-1" />
+                                  AI Parsed
+                                </Badge>
+                              )}
                             </div>
 
                             {/* Tags */}
@@ -164,7 +176,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                               
                               {source.index_stats && source.index_status === "indexed" && (
                                 <span className="text-muted-foreground">
-                                  {source.index_stats.pages} pages, {source.index_stats.chunks} chunks, {source.index_stats.tablesHigh + source.index_stats.tablesLow} tables
+                                  {(source.index_stats.pagesExtracted || source.index_stats.pages || 0)} pages, {source.index_stats.chunks} chunks, {source.index_stats.tablesHigh + source.index_stats.tablesLow} tables
                                 </span>
                               )}
                             </div>
@@ -173,12 +185,12 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                           {/* Actions */}
                           {isGM && (
                             <div className="flex items-center gap-1 shrink-0">
-                              {source.index_status === "failed" && (
+                              {(source.index_status === "failed" || debugEnabled) && (
                                 <TerminalButton
                                   size="sm"
                                   variant="outline"
                                   onClick={() => setDiagnosticsSource(source)}
-                                  className="text-destructive"
+                                  className={source.index_status === "failed" ? "text-destructive" : undefined}
                                 >
                                   <AlertCircle className="w-3 h-3" />
                                 </TerminalButton>
