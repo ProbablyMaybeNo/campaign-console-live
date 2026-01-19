@@ -21,7 +21,7 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
-import { useRulesSources, useDeleteSource, useIndexSource } from "@/hooks/useRulesSources";
+import { useRulesSources, useDeleteSource, useIndexSource, useReindexFromPages } from "@/hooks/useRulesSources";
 import { usePdfIndexer, useGitHubIndexer, useLlamaParseIndexer } from "@/hooks/useRulesIndexer";
 import { AddSourceModal } from "./AddSourceModal";
 import { SourceDiagnostics } from "./SourceDiagnostics";
@@ -55,6 +55,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
   const { data: sources = [], isLoading } = useRulesSources(campaignId);
   const deleteSource = useDeleteSource();
   const indexSource = useIndexSource();
+  const reindexFromPages = useReindexFromPages();
 
   const pdfIndexer = usePdfIndexer();
   const githubIndexer = useGitHubIndexer();
@@ -62,6 +63,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
 
   const isIndexing =
     indexSource.isPending ||
+    reindexFromPages.isPending ||
     pdfIndexer.progress !== null ||
     githubIndexer.progress !== null ||
     llamaParseIndexer.progress !== null;
@@ -311,6 +313,11 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
             handleIndex(diagnosticsSource);
             setDiagnosticsSource(null);
           }}
+          onReindexFromPages={() => {
+            reindexFromPages.mutate({ sourceId: diagnosticsSource.id, campaignId });
+            setDiagnosticsSource(null);
+          }}
+          isReindexingFromPages={reindexFromPages.isPending}
         />
       )}
     </>
