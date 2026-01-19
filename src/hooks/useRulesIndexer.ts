@@ -130,6 +130,37 @@ export function usePdfIndexer() {
         const fallbackStart = performance.now();
         const parseResult = await invokeLlamaParse();
         markStage("llamaParse", fallbackStart);
+      const cleanedStats = buildClientStats(cleanedPages);
+      if (shouldFlagScannedPdf(cleanedPages)) {
+        setProgress({ stage: "extracting", progress: 55, message: "Scanned PDF detected. Trying OCR..." });
+
+        const fallbackStart = performance.now();
+        const { data: parseResult, error: parseError } = await supabase.functions.invoke(
+          "parse-pdf-llamaparse",
+          { body: { storagePath, sourceId } }
+        );
+        markStage("llamaParse", fallbackStart);
+
+        if (parseError || parseResult?.error) {
+          const message = parseError?.message || parseResult?.error || "Scanned PDF detected. Use OCR / alternate method.";
+          setProgress({ stage: "failed", progress: 0, message });
+          await supabase.from("rules_sources").update({
+            index_status: "failed",
+            index_error: { stage: "llamaparse", message },
+            index_stats: {
+              ...cleanedStats,
+              sections: 0,
+              chunks: 0,
+              tablesHigh: 0,
+              tablesLow: 0,
+              datasets: 0,
+              timeMsByStage,
+            },
+          }).eq("id", sourceId);
+
+          return { success: false, error: message };
+        }
+
         const parsedPages: PageLike[] = (parseResult?.pages ?? []).map((page: PageLike) => ({
           pageNumber: page.pageNumber,
           text: page.text,

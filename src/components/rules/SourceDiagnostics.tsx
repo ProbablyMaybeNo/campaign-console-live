@@ -51,11 +51,6 @@ const errorSuggestions: Record<string, { title: string; description: string; act
     description: "The OCR fallback could not process this PDF. Verify the file is readable or try again later.",
     action: "Try another PDF or use OCR",
   },
-  indexing: {
-    title: "Indexing Failed",
-    description: "The server could not complete indexing. Try re-running the index or reduce the file size.",
-    action: "Retry indexing",
-  },
 };
 
 export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: SourceDiagnosticsProps) {
@@ -110,12 +105,8 @@ export function SourceDiagnostics({ open, onOpenChange, source, onReindex }: Sou
               <div className="grid grid-cols-2 gap-2 text-muted-foreground">
                 <span>Pages: {source.index_stats.pagesExtracted ?? source.index_stats.pages ?? 0}</span>
                 <span>Empty Pages: {source.index_stats.emptyPages ?? 0}</span>
-                <span>Avg chars/page: {source.index_stats.avgCharsPerPage ?? 0}</span>
                 <span>Chunks: {source.index_stats.chunks ?? 0}</span>
                 <span>Tables: {(source.index_stats.tablesHigh ?? 0) + (source.index_stats.tablesLow ?? 0)}</span>
-                {source.index_stats.ocrAttempted !== undefined && (
-                  <span>OCR: {source.index_stats.ocrSucceeded ? "Succeeded" : "Attempted"}</span>
-                )}
               </div>
               {source.index_stats.timeMsByStage && (
                 <div className="space-y-1">

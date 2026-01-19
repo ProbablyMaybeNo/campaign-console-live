@@ -90,7 +90,6 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
   const totalChunks = sources.reduce((acc, s) => acc + (s.index_stats?.chunks || 0), 0);
   const totalTables = sources.reduce((acc, s) => acc + (s.index_stats?.tablesHigh || 0) + (s.index_stats?.tablesLow || 0), 0);
   const totalPages = sources.reduce((acc, s) => acc + (s.index_stats?.pagesExtracted || s.index_stats?.pages || 0), 0);
-  const isLocalIndexing = pdfIndexer.progress !== null || llamaParseIndexer.progress !== null;
 
   return (
     <>
