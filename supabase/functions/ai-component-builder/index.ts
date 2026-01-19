@@ -97,6 +97,37 @@ Deno.serve(async (req) => {
     const baseTerms = extractQueryTerms(prompt);
     const supplementalTerms = sourceContent ? extractQueryTerms(sourceContent.slice(0, 2000)) : [];
     const terms = Array.from(new Set([...baseTerms, ...supplementalTerms])).slice(0, 12);
+    }
+
+    const { prompt, conversationHistory, campaignId } = parsedReq.data;
+
+    // If no campaignId, we can't access indexed rules
+    if (!campaignId) {
+      return new Response(JSON.stringify({
+        message: "I need a campaign context to search your indexed rules.",
+        components: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Get indexed sources for this campaign
+    const { data: sources, error: sourcesError } = await supabase
+      .from("rules_sources")
+      .select("id")
+      .eq("campaign_id", campaignId)
+      .eq("index_status", "indexed");
+
+    if (sourcesError) throw sourcesError;
+
+    const sourceIds = (sources || []).map((s: any) => s.id).filter(Boolean);
+    if (sourceIds.length === 0) {
+      return new Response(JSON.stringify({
+        message: "No indexed rules sources found for this campaign. Index a rules source first.",
+        components: [],
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Extract query terms from the user's prompt
+    const terms = extractQueryTerms(prompt);
 
     // Fetch candidate tables metadata (no big payload yet)
     const { data: tableMeta, error: tableMetaError } = await supabase
@@ -154,6 +185,7 @@ Deno.serve(async (req) => {
         const header = (t.header_context || "").slice(0, 120);
         const score = tableScores.get(t.id) ?? 0;
         return `${idx + 1}. id=${t.id} | ${t.title_guess || "Untitled"} | page=${t.page_number ?? "?"} | confidence=${t.confidence} | score=${score} | keywords=${kw} | header=${header}`;
+        return `${idx + 1}. id=${t.id} | ${t.title_guess || "Untitled"} | page=${t.page_number ?? "?"} | confidence=${t.confidence} | keywords=${kw}`;
       })
       .join("\n");
 
