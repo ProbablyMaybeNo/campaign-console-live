@@ -46,6 +46,22 @@ vi.mock('@/hooks/useRulesSources', () => ({
     data: mockSources,
     isLoading: false,
   }),
+  useCreatePdfSource: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: 'new-pdf-source' }),
+    isPending: false,
+  }),
+  useCreatePasteSource: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: 'new-paste-source' }),
+    isPending: false,
+  }),
+  useCreateGitHubSource: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: 'new-github-source' }),
+    isPending: false,
+  }),
+  useReindexFromPages: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
   useDeleteSource: () => ({
     mutate: vi.fn(),
     isPending: false,
@@ -161,6 +177,22 @@ describe('RulesLibrary - Empty State', () => {
       useRulesSources: () => ({
         data: [],
         isLoading: false,
+      }),
+      useCreatePdfSource: () => ({
+        mutateAsync: vi.fn().mockResolvedValue({ id: 'new-pdf-source' }),
+        isPending: false,
+      }),
+      useCreatePasteSource: () => ({
+        mutateAsync: vi.fn().mockResolvedValue({ id: 'new-paste-source' }),
+        isPending: false,
+      }),
+      useCreateGitHubSource: () => ({
+        mutateAsync: vi.fn().mockResolvedValue({ id: 'new-github-source' }),
+        isPending: false,
+      }),
+      useReindexFromPages: () => ({
+        mutate: vi.fn(),
+        isPending: false,
       }),
       useDeleteSource: () => ({ mutate: vi.fn(), isPending: false }),
       useIndexSource: () => ({ mutate: vi.fn(), isPending: false }),
