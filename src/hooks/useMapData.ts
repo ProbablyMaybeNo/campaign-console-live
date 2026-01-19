@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { CampaignMap, MapLegendItem, MapMarker, MarkerShape, MarkerVisibility, MapFogRegion } from '@/components/map/types';
 import { toast } from 'sonner';
@@ -63,6 +64,80 @@ export function useCampaignMap(campaignId: string) {
     },
     enabled: !!campaignId,
   });
+}
+
+// ============ Real-time Subscription ============
+export function useMapRealtime(campaignId: string, mapId: string | null | undefined) {
+  const queryClient = useQueryClient();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    if (!campaignId || !mapId) return;
+
+    const channelName = `map-realtime-${mapId}`;
+    
+    // Create channel with subscriptions to all map-related tables
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'campaign_maps',
+          filter: `id=eq.${mapId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['campaign-map', campaignId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'map_legend_items',
+          filter: `map_id=eq.${mapId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['campaign-map', campaignId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'map_markers',
+          filter: `map_id=eq.${mapId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['campaign-map', campaignId] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'map_fog_regions',
+          filter: `map_id=eq.${mapId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['campaign-map', campaignId] });
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [campaignId, mapId, queryClient]);
 }
 
 // ============ Map CRUD ============

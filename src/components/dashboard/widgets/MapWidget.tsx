@@ -1,7 +1,7 @@
 import { Map as MapIcon, ZoomIn, ZoomOut } from "lucide-react";
 import { useState } from "react";
 import { DashboardComponent } from "@/hooks/useDashboardComponents";
-import { useCampaignMap } from "@/hooks/useMapData";
+import { useCampaignMap, useMapRealtime } from "@/hooks/useMapData";
 import { MarkerIcon } from "@/components/map/MarkerIcon";
 
 interface MapWidgetProps {
@@ -13,6 +13,9 @@ export function MapWidget({ component, isGM }: MapWidgetProps) {
   const campaignId = component.campaign_id;
   const { data, isLoading } = useCampaignMap(campaignId);
   const [zoom, setZoom] = useState(1);
+
+  // Enable real-time updates
+  useMapRealtime(campaignId, data?.map?.id);
 
   // Loading state
   if (isLoading) {
