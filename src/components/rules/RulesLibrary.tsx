@@ -4,13 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
-import {
-  Database,
-  FileText,
-  Github,
-  ClipboardPaste,
+import { 
+  Database, 
+  FileText, 
+  Github, 
+  ClipboardPaste, 
   RefreshCw,
   Trash2,
   AlertCircle,
@@ -19,10 +17,9 @@ import {
   Loader2,
   Plus,
   Settings,
-  Sparkles,
+  Sparkles
 } from "lucide-react";
-import { useRulesSources, useDeleteSource, useIndexSource, useReindexFromPages } from "@/hooks/useRulesSources";
-import { usePdfIndexer, useGitHubIndexer, useLlamaParseIndexer } from "@/hooks/useRulesIndexer";
+import { useRulesSources, useDeleteSource, useIndexSource } from "@/hooks/useRulesSources";
 import { AddSourceModal } from "./AddSourceModal";
 import { SourceDiagnostics } from "./SourceDiagnostics";
 import type { RulesSource } from "@/types/rules";
@@ -55,62 +52,9 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
   const { data: sources = [], isLoading } = useRulesSources(campaignId);
   const deleteSource = useDeleteSource();
   const indexSource = useIndexSource();
-  const reindexFromPages = useReindexFromPages();
 
-  const pdfIndexer = usePdfIndexer();
-  const githubIndexer = useGitHubIndexer();
-  const llamaParseIndexer = useLlamaParseIndexer();
-
-  const isIndexing =
-    indexSource.isPending ||
-    reindexFromPages.isPending ||
-    pdfIndexer.progress !== null ||
-    githubIndexer.progress !== null ||
-    llamaParseIndexer.progress !== null;
-
-  const currentProgress =
-    pdfIndexer.progress || githubIndexer.progress || llamaParseIndexer.progress;
-
-  const handleIndex = async (source: RulesSource) => {
-    try {
-      if (source.type === "pdf") {
-        if (!source.storage_path) throw new Error("Missing storage path for PDF.");
-
-        const result =
-          source.type_source === "llamaparse"
-            ? await llamaParseIndexer.indexWithLlamaParse(source.id, campaignId, source.storage_path)
-            : await pdfIndexer.indexPdf(source.id, campaignId, source.storage_path);
-
-        if (!result.success) throw new Error(result.error || "Indexing failed");
-        toast.success(
-          `Indexed ${result.stats?.pages ?? 0} pages, ${result.stats?.chunks ?? 0} chunks`
-        );
-        return;
-      }
-
-      if (source.type === "github_json") {
-        if (!source.github_repo_url) throw new Error("Missing repository URL.");
-
-        const result = await githubIndexer.indexGitHub(
-          source.id,
-          campaignId,
-          source.github_repo_url,
-          source.github_json_path || "rules.json"
-        );
-
-        if (!result.success) throw new Error(result.error || "Indexing failed");
-        toast.success(
-          `Indexed ${result.stats?.sections ?? 0} sections, ${result.stats?.chunks ?? 0} chunks`
-        );
-        return;
-      }
-
-      // For paste sources, pages already exist; server-side indexing is enough.
-      indexSource.mutate({ sourceId: source.id, campaignId });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Indexing failed";
-      toast.error(message);
-    }
+  const handleIndex = (source: RulesSource) => {
+    indexSource.mutate({ sourceId: source.id, campaignId });
   };
 
   const handleDelete = (source: RulesSource) => {
@@ -161,17 +105,6 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                 </TerminalButton>
               )}
             </div>
-
-            {/* Indexing Progress */}
-            {currentProgress && (
-              <div className="px-4 py-2 border-b border-border bg-primary/5">
-                <div className="flex items-center gap-2 mb-1">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                  <span className="text-xs font-mono text-primary">{currentProgress.message}</span>
-                </div>
-                <Progress value={currentProgress.progress} className="h-2" />
-              </div>
-            )}
 
             {/* Sources List */}
             <ScrollArea className="flex-1 p-4">
@@ -267,7 +200,7 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleIndex(source)}
-                                disabled={source.index_status === "indexing" || isIndexing}
+                                disabled={source.index_status === "indexing" || indexSource.isPending}
                                 title="Index this source"
                               >
                                 <RefreshCw className={`w-3 h-3 ${source.index_status === 'indexing' ? 'animate-spin' : ''}`} />
@@ -313,11 +246,6 @@ export function RulesLibrary({ open, onOpenChange, campaignId, isGM }: RulesLibr
             handleIndex(diagnosticsSource);
             setDiagnosticsSource(null);
           }}
-          onReindexFromPages={() => {
-            reindexFromPages.mutate({ sourceId: diagnosticsSource.id, campaignId });
-            setDiagnosticsSource(null);
-          }}
-          isReindexingFromPages={reindexFromPages.isPending}
         />
       )}
     </>

@@ -108,15 +108,15 @@ export function WarbandHeader({
             Faction
           </label>
           <Select
-            value={faction || "__none__"}
-            onValueChange={(v) => onFactionChange(v === "__none__" ? null : v)}
+            value={faction || ""}
+            onValueChange={(v) => onFactionChange(v || null)}
           >
             <SelectTrigger className="bg-input border-border">
               <SelectValue placeholder="Select faction..." />
             </SelectTrigger>
             <SelectContent>
               {factions.length === 0 ? (
-                <SelectItem value="__none__" disabled>
+                <SelectItem value="" disabled>
                   No factions available
                 </SelectItem>
               ) : (
@@ -137,14 +137,14 @@ export function WarbandHeader({
               Sub-Faction
             </label>
             <Select
-              value={subFaction || "__any__"}
-              onValueChange={(v) => onSubFactionChange(v === "__any__" ? null : v)}
+              value={subFaction || ""}
+              onValueChange={(v) => onSubFactionChange(v || null)}
             >
               <SelectTrigger className="bg-input border-border">
                 <SelectValue placeholder="Optional..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__any__">Any</SelectItem>
+                <SelectItem value="">Any</SelectItem>
                 {subFactions.map((sf) => (
                   <SelectItem key={sf} value={sf}>
                     {sf}

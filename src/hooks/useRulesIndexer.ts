@@ -232,48 +232,22 @@ export function useLlamaParseIndexer() {
     storagePath: string
   ): Promise<IndexingResult> => {
     try {
-      const timeMsByStage: Record<string, number> = {};
-
       setProgress({ stage: "extracting", progress: 10, message: "Sending to LlamaParse..." });
 
-      const parseStart = performance.now();
       const { data: parseResult, error: parseError } = await supabase.functions.invoke(
         "parse-pdf-llamaparse",
         { body: { storagePath, sourceId } }
       );
-      timeMsByStage.llamaParse = Math.round(performance.now() - parseStart);
 
       if (parseError) throw parseError;
-      if (parseResult?.error) throw new Error(parseResult.error);
-
-      const parsedPages: PageLike[] = (parseResult?.pages ?? []).map((p: any) => ({
-        pageNumber: p.pageNumber,
-        text: p.text ?? "",
-        charCount: typeof p.charCount === "number" ? p.charCount : (p.text ?? "").length,
-      }));
-
-      if (!parsedPages.length) {
-        throw new Error(
-          "No pages were produced from the PDF. Try Advanced PDF Parsing again or upload a different PDF."
-        );
-      }
-
-      const clientStats = buildClientStats(parsedPages);
+      if (parseResult.error) throw new Error(parseResult.error);
 
       setProgress({ stage: "indexing", progress: 60, message: "Building index..." });
 
-      const indexStart = performance.now();
       const { data: indexResult, error: indexError } = await supabase.functions.invoke(
         "index-rules-source",
-        {
-          body: {
-            sourceId,
-            clientStats,
-            clientTimings: timeMsByStage,
-          },
-        }
+        { body: { sourceId } }
       );
-      timeMsByStage.indexSource = Math.round(performance.now() - indexStart);
 
       if (indexError) throw indexError;
       if (indexResult.error) throw new Error(indexResult.error);

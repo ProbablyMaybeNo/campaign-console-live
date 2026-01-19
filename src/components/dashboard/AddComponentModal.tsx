@@ -211,7 +211,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                           Rule Category
                         </label>
                         <Select 
-                          value={selectedCategory || undefined}
+                          value={selectedCategory} 
                           onValueChange={(val) => {
                             setSelectedCategory(val);
                             setSelectedRuleKey("");
@@ -235,7 +235,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                           Rule Set
                         </label>
                         <Select 
-                          value={selectedRuleKey || undefined}
+                          value={selectedRuleKey} 
                           onValueChange={setSelectedRuleKey}
                           disabled={!selectedCategory || !categoryRules?.length}
                         >

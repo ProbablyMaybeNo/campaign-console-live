@@ -47,7 +47,6 @@ type IndexRequest = {
   preDetectedSections?: PreDetectedSection[];
   clientStats?: Record<string, unknown>;
   clientTimings?: Record<string, number>;
-  forceReindex?: boolean; // Skip hash check and rebuild sections/chunks/tables from existing pages
 };
 
 type RulesPage = { page_number: number; text: string };
@@ -95,7 +94,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { sourceId, githubData, preDetectedTables, preDetectedSections, clientStats, clientTimings, forceReindex } =
+    const { sourceId, githubData, preDetectedTables, preDetectedSections, clientStats, clientTimings } =
       (await req.json()) as IndexRequest;
     if (!sourceId) {
       return new Response(JSON.stringify({ error: 'sourceId required' }), {
@@ -148,8 +147,7 @@ Deno.serve(async (req) => {
         preDetectedSections,
         source.index_stats || {},
         clientStats,
-        clientTimings,
-        forceReindex
+        clientTimings
       );
     }
     const stats = indexResult.stats;
@@ -201,7 +199,6 @@ async function processFromPages(
   previousStats: Record<string, unknown> = {},
   clientStats: Record<string, unknown> = {},
   clientTimings: Record<string, number> = {},
-  forceReindex = false,
 ): Promise<IndexResult> {
   const loadStart = performance.now();
   const { data: pages } = await supabase
@@ -237,8 +234,7 @@ async function processFromPages(
   const pageHashes = await buildPageHashes(pages);
   timeMsByStage.hashPages = pageHashes.timeMs;
 
-  // Skip hash check only if NOT force reindexing
-  if (!forceReindex && shouldSkipReindex(previousStats, pageHashes.hashes)) {
+  if (shouldSkipReindex(previousStats, pageHashes.hashes)) {
     await supabase.from('rules_sources').update({
       index_status: 'indexed',
       index_stats: {
