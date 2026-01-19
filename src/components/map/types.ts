@@ -33,8 +33,20 @@ export interface MapMarker {
   legend_item?: MapLegendItem;
 }
 
+export interface MapFogRegion {
+  id: string;
+  map_id: string;
+  position_x: number;
+  position_y: number;
+  width: number;
+  height: number;
+  revealed: boolean;
+  created_at: string;
+}
+
 export interface MapData {
   map: CampaignMap | null;
   legendItems: MapLegendItem[];
   markers: MapMarker[];
+  fogRegions: MapFogRegion[];
 }

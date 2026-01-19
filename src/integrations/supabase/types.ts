@@ -412,6 +412,47 @@ export type Database = {
         }
         Relationships: []
       }
+      map_fog_regions: {
+        Row: {
+          created_at: string
+          height: number
+          id: string
+          map_id: string
+          position_x: number
+          position_y: number
+          revealed: boolean
+          width: number
+        }
+        Insert: {
+          created_at?: string
+          height?: number
+          id?: string
+          map_id: string
+          position_x?: number
+          position_y?: number
+          revealed?: boolean
+          width?: number
+        }
+        Update: {
+          created_at?: string
+          height?: number
+          id?: string
+          map_id?: string
+          position_x?: number
+          position_y?: number
+          revealed?: boolean
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "map_fog_regions_map_id_fkey"
+            columns: ["map_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_maps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       map_legend_items: {
         Row: {
           color: string
