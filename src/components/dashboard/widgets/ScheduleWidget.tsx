@@ -75,11 +75,11 @@ export function ScheduleWidget({ campaignId, isGM }: ScheduleWidgetProps) {
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case "completed":
-        return "text-green-400";
+        return "text-accent";
       case "in_progress":
-        return "text-yellow-400";
+        return "text-primary";
       case "upcoming":
-        return "text-blue-400";
+        return "text-muted-foreground";
       default:
         return "text-muted-foreground";
     }

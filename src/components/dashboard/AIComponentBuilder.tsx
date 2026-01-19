@@ -45,6 +45,10 @@ interface ComponentData {
   type: "table" | "card";
   data: ParsedTableData | ParsedCardData;
   created?: boolean;
+  // Provenance tracking
+  sourceTableId?: string;
+  sourceId?: string;
+  sourceChunkIds?: string[];
 }
 
 interface ChatMessage {
@@ -53,6 +57,7 @@ interface ChatMessage {
   content: string;
   components?: ComponentData[];
   isLoading?: boolean;
+  error?: boolean;
 }
 
 export function AIComponentBuilder({ open, onOpenChange, campaignId }: AIComponentBuilderProps) {
@@ -151,19 +156,22 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
       if (data.error) {
         setMessages(prev => prev.map(m => 
           m.id === assistantPlaceholder.id 
-            ? { ...m, content: `Sorry, I encountered an error: ${data.error}`, isLoading: false }
+            ? { ...m, content: `Sorry, I encountered an error: ${data.error}`, isLoading: false, error: true }
             : m
         ));
         return;
       }
 
-      // Update the assistant message with response
+      // Update the assistant message with response, including provenance data
       setMessages(prev => prev.map(m => 
         m.id === assistantPlaceholder.id 
           ? { 
               ...m, 
               content: data.message || "Here's what I found:",
-              components: data.components,
+              components: data.components?.map((c: ComponentData) => ({
+                ...c,
+                created: false,
+              })),
               isLoading: false 
             }
           : m
@@ -208,6 +216,18 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
         };
       }
 
+      // Build provenance links
+      const provenanceData: Record<string, unknown> = {};
+      if (component.sourceId) {
+        provenanceData.source_id = component.sourceId;
+      }
+      if (component.sourceTableId) {
+        provenanceData.linked_table_id = component.sourceTableId;
+      }
+      if (component.sourceChunkIds && component.sourceChunkIds.length > 0) {
+        provenanceData.linked_chunk_ids = component.sourceChunkIds;
+      }
+
       await createComponent.mutateAsync({
         campaign_id: campaignId,
         name: componentData.title,
@@ -217,6 +237,7 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
         position_y: Math.round(100 + Math.random() * 200 + componentIndex * 50),
         width: 400,
         height: 350,
+        ...provenanceData,
       });
 
       // Mark component as created
@@ -326,16 +347,20 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground">
               <Bot className="w-12 h-12 mb-4 opacity-30" />
-              <p className="text-sm font-mono mb-2">How can I help you create components?</p>
+              <p className="text-sm font-mono mb-2">AI Component Builder</p>
               <p className="text-xs max-w-md">
-                Upload a PDF or provide a URL, then ask me to extract specific tables or cards. 
-                I can create multiple components at once!
+                I can create dashboard components from your indexed campaign rules. 
+                Just describe what you need - tables, cards, or reference widgets.
               </p>
               <div className="mt-4 space-y-2 text-xs text-left">
-                <p className="text-primary/70">Try saying:</p>
-                <p className="italic">"List all the tables found in the post-battle sequence"</p>
-                <p className="italic">"Create table components for Injury, Exploration, and Advancement"</p>
+                <p className="text-primary/70">Example prompts:</p>
+                <p className="italic">"Create a table for the injury roll results"</p>
+                <p className="italic">"Show me exploration tables"</p>
+                <p className="italic">"Make cards for available skills"</p>
               </div>
+              <p className="mt-4 text-[10px] text-muted-foreground/50">
+                Tip: Make sure you've indexed rules in the Rules Library first
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -375,7 +400,7 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
                           <div
                             key={index}
                             className={`border rounded-lg p-3 bg-card ${
-                              component.created ? "border-green-500/50 bg-green-500/5" : "border-primary/30"
+                              component.created ? "border-accent/50 bg-accent/5" : "border-primary/30"
                             }`}
                           >
                             <div className="flex items-start justify-between gap-2 mb-2">
@@ -389,7 +414,7 @@ export function AIComponentBuilder({ open, onOpenChange, campaignId }: AICompone
                                   {component.data.title}
                                 </span>
                                 {component.created && (
-                                  <CheckCircle className="w-4 h-4 text-green-500" />
+                                  <CheckCircle className="w-4 h-4 text-accent" />
                                 )}
                               </div>
                               
