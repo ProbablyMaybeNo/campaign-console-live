@@ -148,7 +148,6 @@ export function usePdfIndexer() {
             body: {
               sourceId,
               clientStats: ocrStats,
-              clientStats: ocrStats,
               clientTimings: timeMsByStage,
             },
           }

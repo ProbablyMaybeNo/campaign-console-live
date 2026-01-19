@@ -189,6 +189,8 @@ Deno.serve(async (req) => {
   }
 });
 
+type IndexResult = { stats: IndexStats; failed: boolean; errorMessage?: string; errorStage?: string };
+
 async function processFromPages(
   supabase: SupabaseClient,
   sourceId: string,
@@ -197,7 +199,7 @@ async function processFromPages(
   previousStats: Record<string, unknown> = {},
   clientStats: Record<string, unknown> = {},
   clientTimings: Record<string, number> = {},
-) {
+): Promise<IndexResult> {
   const loadStart = performance.now();
   const { data: pages } = await supabase
     .from('rules_pages')
@@ -252,11 +254,11 @@ async function processFromPages(
     return {
       stats: {
         ...pageStats,
-        sections: previousStats.sections ?? 0,
-        chunks: previousStats.chunks ?? 0,
-        tablesHigh: previousStats.tablesHigh ?? 0,
-        tablesLow: previousStats.tablesLow ?? 0,
-        datasets: previousStats.datasets ?? 0,
+        sections: (previousStats.sections as number) ?? 0,
+        chunks: (previousStats.chunks as number) ?? 0,
+        tablesHigh: (previousStats.tablesHigh as number) ?? 0,
+        tablesLow: (previousStats.tablesLow as number) ?? 0,
+        datasets: (previousStats.datasets as number) ?? 0,
         timeMsByStage,
         pageHashes: pageHashes.hashes,
       },
