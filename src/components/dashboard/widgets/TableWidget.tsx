@@ -26,7 +26,19 @@ interface TableConfig {
 export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   const updateComponent = useUpdateComponent();
   const config = (component.config as TableConfig) || {};
-  const columns = config.columns || ["Name", "Value"];
+  
+  // Normalize columns - handle both string[] and {key, header}[] formats
+  const rawColumns = config.columns || ["Name", "Value"];
+  const columns: string[] = rawColumns.map((col: unknown) => {
+    if (typeof col === 'string') return col;
+    if (col && typeof col === 'object') {
+      // Handle {key, header} or {header} structures
+      const obj = col as Record<string, unknown>;
+      return String(obj.header || obj.key || obj.name || 'Column');
+    }
+    return String(col);
+  });
+  
   const rows = config.rows || [];
   const ruleCategory = config.rule_category;
   const ruleKey = config.rule_key;
@@ -301,28 +313,38 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
             ) : (
               rows.map((row) => (
                 <tr key={row.id} className="border-b border-border/50 hover:bg-accent/30">
-                  {columns.map((col) => (
-                    <td key={col} className="p-2">
-                      {isGM && editingCell?.rowId === row.id && editingCell?.col === col ? (
-                        <input
-                          autoFocus
-                          className="w-full bg-input border border-primary rounded px-1 py-0.5 text-xs"
-                          value={row[col] || ""}
-                          onChange={(e) => handleCellChange(row.id, col, e.target.value)}
-                          onBlur={() => setEditingCell(null)}
-                          onKeyDown={(e) => e.key === "Enter" && setEditingCell(null)}
-                        />
-                      ) : (
-                        <span
-                          className={isGM ? "cursor-pointer hover:text-primary block min-h-[1.25rem]" : ""}
-                          onClick={() => isGM && setEditingCell({ rowId: row.id, col })}
-                          title={isGM ? "Click to edit" : undefined}
-                        >
-                          {row[col] || <span className="text-muted-foreground/50 italic">Click to edit</span>}
-                        </span>
-                      )}
-                    </td>
-                  ))}
+                  {columns.map((col, colIndex) => {
+                    // Safely get cell value as string
+                    const cellValue = row[col];
+                    const displayValue = typeof cellValue === 'string' || typeof cellValue === 'number' 
+                      ? String(cellValue) 
+                      : cellValue && typeof cellValue === 'object'
+                        ? JSON.stringify(cellValue)
+                        : '';
+                    
+                    return (
+                      <td key={`${row.id}-${colIndex}`} className="p-2">
+                        {isGM && editingCell?.rowId === row.id && editingCell?.col === col ? (
+                          <input
+                            autoFocus
+                            className="w-full bg-input border border-primary rounded px-1 py-0.5 text-xs"
+                            value={displayValue}
+                            onChange={(e) => handleCellChange(row.id, col, e.target.value)}
+                            onBlur={() => setEditingCell(null)}
+                            onKeyDown={(e) => e.key === "Enter" && setEditingCell(null)}
+                          />
+                        ) : (
+                          <span
+                            className={isGM ? "cursor-pointer hover:text-primary block min-h-[1.25rem]" : ""}
+                            onClick={() => isGM && setEditingCell({ rowId: row.id, col })}
+                            title={isGM ? "Click to edit" : undefined}
+                          >
+                            {displayValue || <span className="text-muted-foreground/50 italic">Click to edit</span>}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                   {isGM && (
                     <td className="p-1">
                       <button
