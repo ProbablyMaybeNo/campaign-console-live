@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Swords, Users, Shield, Loader2 } from "lucide-react";
+import { Swords, Users, Shield, Plus, Edit2 } from "lucide-react";
 import { OverlayLoading, OverlayEmpty } from "@/components/ui/OverlayPanel";
 import { Badge } from "@/components/ui/badge";
 import { TerminalCard } from "@/components/ui/TerminalCard";
+import { TerminalButton } from "@/components/ui/TerminalButton";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Warband {
@@ -77,11 +79,21 @@ export function WarbandsWidget({ campaignId, isGM }: WarbandsWidgetProps) {
 
   if (!warbands || warbands.length === 0) {
     return (
-      <OverlayEmpty
-        icon={<Swords className="w-8 h-8" />}
-        title="No Warbands Yet"
-        description="Players can create warbands using the Warband Builder."
-      />
+      <div className="space-y-4">
+        <OverlayEmpty
+          icon={<Swords className="w-8 h-8" />}
+          title="No Warbands Yet"
+          description="Players can create warbands using the Warband Builder."
+        />
+        <div className="flex justify-center">
+          <Link to={`/campaign/${campaignId}/warband-builder`}>
+            <TerminalButton size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Create Warband
+            </TerminalButton>
+          </Link>
+        </div>
+      </div>
     );
   }
 
@@ -90,29 +102,53 @@ export function WarbandsWidget({ campaignId, isGM }: WarbandsWidgetProps) {
     ? warbands 
     : warbands.filter(w => w.owner_id === user?.id);
 
+  // Check if current user already has a warband
+  const userHasWarband = warbands.some(w => w.owner_id === user?.id);
+
   if (visibleWarbands.length === 0) {
     return (
-      <OverlayEmpty
-        icon={<Swords className="w-8 h-8" />}
-        title="No Warband Created"
-        description="Use the Warband Builder to create your warband."
-      />
+      <div className="space-y-4">
+        <OverlayEmpty
+          icon={<Swords className="w-8 h-8" />}
+          title="No Warband Created"
+          description="Use the Warband Builder to create your warband."
+        />
+        <div className="flex justify-center">
+          <Link to={`/campaign/${campaignId}/warband-builder`}>
+            <TerminalButton size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Create Warband
+            </TerminalButton>
+          </Link>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      {isGM && (
-        <div className="text-xs text-muted-foreground">
-          Showing all {warbands.length} warbands in this campaign.
-        </div>
-      )}
+      <div className="flex items-center justify-between">
+        {isGM && (
+          <div className="text-xs text-muted-foreground">
+            Showing all {warbands.length} warbands in this campaign.
+          </div>
+        )}
+        {!userHasWarband && (
+          <Link to={`/campaign/${campaignId}/warband-builder`} className="ml-auto">
+            <TerminalButton size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Create Warband
+            </TerminalButton>
+          </Link>
+        )}
+      </div>
 
       <div className="grid gap-3">
         {visibleWarbands.map((warband) => (
           <WarbandCard 
             key={warband.id} 
             warband={warband} 
+            campaignId={campaignId}
             isOwner={warband.owner_id === user?.id}
           />
         ))}
@@ -121,7 +157,7 @@ export function WarbandsWidget({ campaignId, isGM }: WarbandsWidgetProps) {
   );
 }
 
-function WarbandCard({ warband, isOwner }: { warband: WarbandWithOwner; isOwner: boolean }) {
+function WarbandCard({ warband, campaignId, isOwner }: { warband: WarbandWithOwner; campaignId: string; isOwner: boolean }) {
   const unitCount = Array.isArray(warband.roster) ? warband.roster.length : 0;
 
   return (
@@ -155,15 +191,26 @@ function WarbandCard({ warband, isOwner }: { warband: WarbandWithOwner; isOwner:
           )}
         </div>
 
-        {/* Stats */}
-        <div className="text-right shrink-0">
-          <div className="text-lg font-bold text-primary">
-            {warband.points_total || 0}
-            <span className="text-xs font-normal text-muted-foreground ml-1">pts</span>
+        {/* Stats + Edit */}
+        <div className="text-right shrink-0 flex flex-col items-end gap-2">
+          <div>
+            <div className="text-lg font-bold text-primary">
+              {warband.points_total || 0}
+              <span className="text-xs font-normal text-muted-foreground ml-1">pts</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {unitCount} {unitCount === 1 ? "unit" : "units"}
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {unitCount} {unitCount === 1 ? "unit" : "units"}
-          </div>
+          
+          {isOwner && (
+            <Link to={`/campaign/${campaignId}/warband-builder?warband=${warband.id}`}>
+              <TerminalButton size="sm" variant="ghost">
+                <Edit2 className="w-3 h-3 mr-1" />
+                Edit
+              </TerminalButton>
+            </Link>
+          )}
         </div>
       </div>
     </TerminalCard>
