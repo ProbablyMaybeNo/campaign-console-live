@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Campaigns from "./pages/Campaigns";
 import CampaignDashboard from "./pages/CampaignDashboard";
+import WarbandBuilder from "./pages/WarbandBuilder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/auth" element={<AuthRoute><Auth /></AuthRoute>} />
           <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
           <Route path="/campaign/:campaignId" element={<ProtectedRoute><CampaignDashboard /></ProtectedRoute>} />
+          <Route path="/campaign/:campaignId/warband-builder" element={<ProtectedRoute><WarbandBuilder /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
