@@ -109,12 +109,22 @@ export default function CampaignDashboard() {
                 {campaign.name}
               </h1>
               <p className="text-xs text-muted-foreground">
-                {isGM ? "[ GM Mode ]" : "[ Player Mode ]"} • {campaign.points_limit} pts
+                {campaign.points_limit} pts
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Role Indicator Badge */}
+            <div 
+              className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider ${
+                isGM 
+                  ? "bg-[hsl(200,100%,50%)] text-black" 
+                  : "bg-[hsl(142,76%,36%)] text-black"
+              }`}
+            >
+              {isGM ? "Games Master" : "Player"}
+            </div>
             <span className="text-xs text-muted-foreground hidden md:block">
               {user?.email}
             </span>
