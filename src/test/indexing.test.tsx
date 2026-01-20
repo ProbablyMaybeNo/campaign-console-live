@@ -28,7 +28,11 @@ const mockEq = vi.fn();
 const mockOrder = vi.fn();
 const mockInsert = vi.fn();
 const mockSingle = vi.fn();
-const mockInvoke = vi.fn();
+const mockUpdate = vi.fn();
+const mockInvoke = vi.fn().mockResolvedValue({
+  data: { success: true, message: 'Indexed successfully' },
+  error: null,
+});
 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
@@ -63,16 +67,16 @@ vi.mock('@/integrations/supabase/client', () => ({
             }),
           };
         },
+        update: (data: unknown) => {
+          mockUpdate(data);
+          return {
+            eq: () => Promise.resolve({ data: null, error: null }),
+          };
+        },
       };
     },
     functions: {
-      invoke: (fn: string, opts: unknown) => {
-        mockInvoke(fn, opts);
-        return Promise.resolve({ 
-          data: { success: true, message: 'Indexed successfully' }, 
-          error: null 
-        });
-      },
+      invoke: mockInvoke,
     },
   },
 }));
@@ -142,9 +146,8 @@ describe('useIndexSource', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate({ sourceId: 'source-1', campaignId: 'campaign-1' });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await expect(result.current.mutateAsync({ sourceId: 'source-1', campaignId: 'campaign-1' }))
+      .rejects.toThrow('Indexing failed');
   });
 });
 
@@ -184,8 +187,7 @@ describe('Indexing Status Updates', () => {
       wrapper: createWrapper(),
     });
 
-    result.current.mutate({ sourceId: 'source-1', campaignId: 'campaign-1' });
-
-    await waitFor(() => expect(result.current.isError).toBe(true));
+    await expect(result.current.mutateAsync({ sourceId: 'source-1', campaignId: 'campaign-1' }))
+      .rejects.toThrow('PDF extraction failed');
   });
 });

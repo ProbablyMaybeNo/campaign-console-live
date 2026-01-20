@@ -11,6 +11,8 @@ interface LlamaParseResult {
   markdown?: string;
   pages?: { pageNumber: number; text: string; charCount: number }[];
   error?: string;
+  stage?: string;
+  timeMsByStage?: Record<string, number>;
 }
 
 type LlamaParseUploadResponse = { id: string };
@@ -23,13 +25,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestStart = performance.now();
+  const timeMsByStage: Record<string, number> = {};
+
   try {
-    const requestStart = performance.now();
-    const timeMsByStage: Record<string, number> = {};
     const LLAMAPARSE_API_KEY = Deno.env.get('LLAMAPARSE_API_KEY');
     if (!LLAMAPARSE_API_KEY) {
-      return new Response(JSON.stringify({ 
-        error: 'LlamaParse API key not configured' 
+      return new Response(JSON.stringify({
+        error: 'LlamaParse API key not configured',
+        stage: 'llamaparse',
+        timeMsByStage,
       }), {
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -43,7 +48,7 @@ Deno.serve(async (req) => {
     const { storagePath, sourceId } = (await req.json()) as LlamaParseRequest;
     
     if (!storagePath) {
-      return new Response(JSON.stringify({ error: 'storagePath required' }), {
+      return new Response(JSON.stringify({ error: 'storagePath required', stage: 'fetch', timeMsByStage }), {
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -59,8 +64,10 @@ Deno.serve(async (req) => {
 
     if (downloadError || !fileData) {
       console.error('Download error:', downloadError);
-      return new Response(JSON.stringify({ 
-        error: `Failed to download PDF: ${downloadError?.message}` 
+      return new Response(JSON.stringify({
+        error: `Failed to download PDF: ${downloadError?.message}`,
+        stage: 'fetch',
+        timeMsByStage,
       }), {
         status: 400, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -90,8 +97,10 @@ Deno.serve(async (req) => {
       console.error('LlamaParse upload error:', uploadResponse.status, errorText);
       
       if (uploadResponse.status === 429) {
-        return new Response(JSON.stringify({ 
-          error: 'Rate limit exceeded. Please try again later.' 
+        return new Response(JSON.stringify({
+          error: 'Rate limit exceeded. Please try again later.',
+          stage: 'llamaparse',
+          timeMsByStage,
         }), {
           status: 429, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -99,16 +108,20 @@ Deno.serve(async (req) => {
       }
       
       if (uploadResponse.status === 402) {
-        return new Response(JSON.stringify({ 
-          error: 'LlamaParse credits exhausted. Please add credits.' 
+        return new Response(JSON.stringify({
+          error: 'LlamaParse credits exhausted. Please add credits.',
+          stage: 'llamaparse',
+          timeMsByStage,
         }), {
           status: 402, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
-      return new Response(JSON.stringify({ 
-        error: `LlamaParse upload failed: ${errorText}` 
+      return new Response(JSON.stringify({
+        error: `LlamaParse upload failed: ${errorText}`,
+        stage: 'llamaparse',
+        timeMsByStage,
       }), {
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -148,8 +161,10 @@ Deno.serve(async (req) => {
       if (jobResult.status === 'SUCCESS') {
         break;
       } else if (jobResult.status === 'ERROR') {
-        return new Response(JSON.stringify({ 
-          error: `LlamaParse parsing failed: ${jobResult.error || 'Unknown error'}` 
+        return new Response(JSON.stringify({
+          error: `LlamaParse parsing failed: ${jobResult.error || 'Unknown error'}`,
+          stage: 'llamaparse',
+          timeMsByStage,
         }), {
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -158,8 +173,10 @@ Deno.serve(async (req) => {
     }
 
     if (!jobResult || jobResult.status !== 'SUCCESS') {
-      return new Response(JSON.stringify({ 
-        error: 'LlamaParse job timed out' 
+      return new Response(JSON.stringify({
+        error: 'LlamaParse job timed out',
+        stage: 'timeout',
+        timeMsByStage,
       }), {
         status: 504, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -184,8 +201,10 @@ Deno.serve(async (req) => {
     if (!resultResponse.ok) {
       const errorText = await resultResponse.text();
       console.error('Result fetch error:', resultResponse.status, errorText);
-      return new Response(JSON.stringify({ 
-        error: `Failed to fetch result: ${errorText}` 
+      return new Response(JSON.stringify({
+        error: `Failed to fetch result: ${errorText}`,
+        stage: 'llamaparse',
+        timeMsByStage,
       }), {
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -222,6 +241,14 @@ Deno.serve(async (req) => {
       const { error: insertError } = await supabase.from('rules_pages').insert(pagesToInsert);
       if (insertError) {
         console.error('Page insert error:', insertError);
+        return new Response(JSON.stringify({
+          error: `Failed to save pages: ${insertError.message}`,
+          stage: 'save',
+          timeMsByStage,
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
       timeMsByStage.savePages = Math.round(performance.now() - saveStart);
     }
@@ -233,6 +260,7 @@ Deno.serve(async (req) => {
       success: true,
       markdown,
       pages,
+      timeMsByStage,
     };
 
     return new Response(JSON.stringify(result), {
@@ -241,8 +269,10 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('LlamaParse error:', error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stage: 'llamaparse',
+      timeMsByStage: { total: Math.round(performance.now() - requestStart) },
     }), {
       status: 500, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
