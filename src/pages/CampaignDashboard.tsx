@@ -122,7 +122,10 @@ export default function CampaignDashboard() {
             {/* Role Indicator Badge - Clickable for GMs to toggle view */}
             {isGM ? (
               <button
-                onClick={() => setPreviewAsPlayer(!previewAsPlayer)}
+                onClick={() => {
+                  setPreviewAsPlayer(!previewAsPlayer);
+                  toast.info(previewAsPlayer ? "Returning to GM view" : "Previewing as Player");
+                }}
                 className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-90 ${
                   previewAsPlayer 
                     ? "bg-[hsl(142,76%,36%)] text-black ring-2 ring-[hsl(200,100%,50%)] ring-offset-2 ring-offset-background" 
