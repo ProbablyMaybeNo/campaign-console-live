@@ -59,6 +59,10 @@ export default function CampaignDashboard() {
   const [selectedComponent, setSelectedComponent] = useState<DashboardComponent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAIBuilder, setShowAIBuilder] = useState(false);
+  
+  // GM can toggle to preview player view
+  const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
+  const effectiveIsGM = isGM && !previewAsPlayer;
 
   const isLoading = campaignLoading || componentsLoading;
 
@@ -115,16 +119,24 @@ export default function CampaignDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Role Indicator Badge */}
-            <div 
-              className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider ${
-                isGM 
-                  ? "bg-[hsl(200,100%,50%)] text-black" 
-                  : "bg-[hsl(142,76%,36%)] text-black"
-              }`}
-            >
-              {isGM ? "Games Master" : "Player"}
-            </div>
+            {/* Role Indicator Badge - Clickable for GMs to toggle view */}
+            {isGM ? (
+              <button
+                onClick={() => setPreviewAsPlayer(!previewAsPlayer)}
+                className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-90 ${
+                  previewAsPlayer 
+                    ? "bg-[hsl(142,76%,36%)] text-black ring-2 ring-[hsl(200,100%,50%)] ring-offset-2 ring-offset-background" 
+                    : "bg-[hsl(200,100%,50%)] text-black"
+                }`}
+                title={previewAsPlayer ? "Click to return to GM view" : "Click to preview as Player"}
+              >
+                {previewAsPlayer ? "Player (Preview)" : "Games Master"}
+              </button>
+            ) : (
+              <div className="px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[hsl(142,76%,36%)] text-black">
+                Player
+              </div>
+            )}
             <span className="text-xs text-muted-foreground hidden md:block">
               {user?.email}
             </span>
@@ -142,8 +154,8 @@ export default function CampaignDashboard() {
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">Campaign Control</p>
           <nav className="space-y-1 flex-1">
             {sidebarItems.map((item) => {
-              // Hide GM-only items for players
-              if (item.gmOnly && !isGM) return null;
+              // Hide GM-only items for players (or GMs previewing as player)
+              if (item.gmOnly && !effectiveIsGM) return null;
               
               const isActive = item.id === "home" 
                 ? !activeOverlay 
@@ -160,7 +172,7 @@ export default function CampaignDashboard() {
               );
             })}
 
-            {isGM && (
+            {effectiveIsGM && (
               <>
                 <div className="h-px bg-border my-3" />
                 <NavItem 
@@ -178,14 +190,14 @@ export default function CampaignDashboard() {
         <main className="flex-1 p-4 overflow-auto relative">
           <InfiniteCanvas
             components={components}
-            isGM={isGM}
+            isGM={effectiveIsGM}
             campaignId={campaignId!}
             selectedComponentId={selectedComponent?.id || null}
             onComponentSelect={setSelectedComponent}
           />
 
-          {/* Floating Add Buttons (GM only) */}
-          {isGM && (
+          {/* Floating Add Buttons (GM only, hidden in preview mode) */}
+          {effectiveIsGM && (
             <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3">
               <TerminalButton
                 variant="outline"
@@ -212,7 +224,7 @@ export default function CampaignDashboard() {
         activeOverlay={activeOverlay}
         onClose={closeOverlay}
         campaignId={campaignId!}
-        isGM={isGM}
+        isGM={effectiveIsGM}
       />
 
       {/* Transient Modals (not URL-based) */}
