@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { extractPdfTextEnhanced, getExtractionStats, removeHeadersFooters, shouldFlagScannedPdf } from "@/lib/pdfExtractor";
 import type { IndexingProgress, IndexStats } from "@/types/rules";
 import { DEFAULT_INDEX_STATS } from "@/types/rules";
+import type { Json } from "@/integrations/supabase/types";
 
 type PageLike = { pageNumber: number; text: string; charCount: number };
 
@@ -46,9 +47,24 @@ async function updateSourceIndexingState(
     index_stats?: IndexStats | null;
   }
 ) {
+  const updatePayload: {
+    index_status: "indexing" | "failed" | "indexed";
+    index_error?: Json | null;
+    index_stats?: Json | null;
+  } = {
+    index_status: payload.index_status,
+  };
+
+  if (payload.index_error !== undefined) {
+    updatePayload.index_error = payload.index_error as unknown as Json;
+  }
+  if (payload.index_stats !== undefined) {
+    updatePayload.index_stats = payload.index_stats as unknown as Json;
+  }
+
   await supabase
     .from("rules_sources")
-    .update(payload)
+    .update(updatePayload)
     .eq("id", sourceId);
 }
 
