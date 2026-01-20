@@ -176,11 +176,12 @@ Deno.serve(async (req) => {
         rulesContext += `\n--- TABLE: "${table.title}" (id: ${table.id}, sourceId: ${table.source_id}) ---\n`;
         if (table.parsed_rows && Array.isArray(table.parsed_rows) && table.parsed_rows.length > 0) {
           rulesContext += `Columns: ${Object.keys(table.parsed_rows[0]).join(', ')}\n`;
-          rulesContext += `Sample rows (first 5):\n`;
-          rulesContext += JSON.stringify(table.parsed_rows.slice(0, 5), null, 2) + "\n";
-          rulesContext += `Total rows: ${table.parsed_rows.length}\n`;
+          // Include ALL rows for complete data - wargame tables need full content
+          rulesContext += `ALL ROWS (${table.parsed_rows.length} total):\n`;
+          rulesContext += JSON.stringify(table.parsed_rows, null, 2) + "\n";
         } else if (table.raw_text) {
-          rulesContext += `Raw content:\n${table.raw_text.slice(0, 1500)}\n`;
+          // Include full raw text for tables without parsed rows
+          rulesContext += `Raw content:\n${table.raw_text.slice(0, 8000)}\n`;
         }
       }
     }
