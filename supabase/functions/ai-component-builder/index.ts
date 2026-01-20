@@ -175,10 +175,19 @@ Deno.serve(async (req) => {
       for (const table of relevantTables) {
         rulesContext += `\n--- TABLE: "${table.title}" (id: ${table.id}, sourceId: ${table.source_id}) ---\n`;
         if (table.parsed_rows && Array.isArray(table.parsed_rows) && table.parsed_rows.length > 0) {
-          rulesContext += `Columns: ${Object.keys(table.parsed_rows[0]).join(', ')}\n`;
-          // Include ALL rows for complete data - wargame tables need full content
-          rulesContext += `ALL ROWS (${table.parsed_rows.length} total):\n`;
-          rulesContext += JSON.stringify(table.parsed_rows, null, 2) + "\n";
+          // Filter out separator rows (rows where all values are just dashes)
+          const cleanRows = table.parsed_rows.filter((row: any) => {
+            const values = Object.values(row);
+            return !values.every(v => typeof v === 'string' && /^[-–—]+$/.test(v.trim()));
+          });
+          
+          if (cleanRows.length > 0) {
+            rulesContext += `Columns: ${Object.keys(cleanRows[0]).join(', ')}\n`;
+            rulesContext += `ALL ROWS (${cleanRows.length} total):\n`;
+            rulesContext += JSON.stringify(cleanRows, null, 2) + "\n";
+          } else if (table.raw_text) {
+            rulesContext += `Raw content:\n${table.raw_text.slice(0, 8000)}\n`;
+          }
         } else if (table.raw_text) {
           // Include full raw text for tables without parsed rows
           rulesContext += `Raw content:\n${table.raw_text.slice(0, 8000)}\n`;
