@@ -611,7 +611,7 @@ export function extractTableStructure(
 /**
  * Detect pipe-delimited tables (Markdown style)
  */
-function detectPipeTables(text: string, pageNumber: number): DetectedTable[] {
+export function detectPipeTables(text: string, pageNumber: number): DetectedTable[] {
   const tables: DetectedTable[] = [];
   const lines = text.split("\n");
 

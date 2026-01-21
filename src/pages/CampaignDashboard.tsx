@@ -8,7 +8,6 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
 import { AddComponentModal } from "@/components/dashboard/AddComponentModal";
-import { AIComponentBuilder } from "@/components/dashboard/AIComponentBuilder";
 import { CampaignOverlays } from "@/components/dashboard/CampaignOverlays";
 import { 
   ArrowLeft, 
@@ -22,12 +21,10 @@ import {
   Plus,
   LayoutGrid,
   Database,
-  BookOpen,
-  Bot
+  BookOpen
 } from "lucide-react";
 import { toast } from "sonner";
 
-// Sidebar nav item configuration
 const sidebarItems: { 
   id: OverlayType | "home"; 
   label: string; 
@@ -52,15 +49,11 @@ export default function CampaignDashboard() {
   const { user, signOut } = useAuth();
   const isGM = useIsGM(campaignId);
 
-  // URL-based overlay state
   const { activeOverlay, openOverlay, closeOverlay } = useOverlayState();
 
-  // Local modal state (not URL-based as they're transient)
   const [selectedComponent, setSelectedComponent] = useState<DashboardComponent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showAIBuilder, setShowAIBuilder] = useState(false);
   
-  // GM can toggle to preview player view
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
   const effectiveIsGM = isGM && !previewAsPlayer;
 
@@ -87,17 +80,14 @@ export default function CampaignDashboard() {
 
   const handleNavClick = (itemId: OverlayType | "home") => {
     if (itemId === "home") {
-      // Close any open overlay and go to dashboard
       closeOverlay();
     } else {
-      // Open the overlay
       openOverlay(itemId);
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Header Bar */}
       <header className="border-b border-primary/20 bg-card/50 px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -119,7 +109,6 @@ export default function CampaignDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Role Indicator Badge - Clickable for GMs to toggle view */}
             {isGM ? (
               <button
                 onClick={() => {
@@ -150,14 +139,11 @@ export default function CampaignDashboard() {
         </div>
       </header>
 
-      {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar Navigation */}
         <aside className="w-56 border-r border-primary/20 bg-sidebar flex-shrink-0 p-4 hidden md:flex flex-col">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">Campaign Control</p>
           <nav className="space-y-1 flex-1">
             {sidebarItems.map((item) => {
-              // Hide GM-only items for players (or GMs previewing as player)
               if (item.gmOnly && !effectiveIsGM) return null;
               
               const isActive = item.id === "home" 
@@ -189,7 +175,6 @@ export default function CampaignDashboard() {
           </nav>
         </aside>
 
-        {/* Main View - Always show dashboard/canvas */}
         <main className="flex-1 p-4 overflow-auto relative">
           <InfiniteCanvas
             components={components}
@@ -199,17 +184,8 @@ export default function CampaignDashboard() {
             onComponentSelect={setSelectedComponent}
           />
 
-          {/* Floating Add Buttons (GM only, hidden in preview mode) */}
           {effectiveIsGM && (
             <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3">
-              <TerminalButton
-                variant="outline"
-                className="h-12 w-12 rounded-full border-primary/50 hover:border-primary"
-                onClick={() => setShowAIBuilder(true)}
-                title="AI Component Builder"
-              >
-                <Bot className="w-5 h-5" />
-              </TerminalButton>
               <TerminalButton
                 className="h-14 w-14 rounded-full glow-primary text-xl"
                 onClick={() => setShowAddModal(true)}
@@ -222,7 +198,6 @@ export default function CampaignDashboard() {
         </main>
       </div>
 
-      {/* URL-based Overlays */}
       <CampaignOverlays
         activeOverlay={activeOverlay}
         onClose={closeOverlay}
@@ -230,16 +205,9 @@ export default function CampaignDashboard() {
         isGM={effectiveIsGM}
       />
 
-      {/* Transient Modals (not URL-based) */}
       <AddComponentModal
         open={showAddModal}
         onOpenChange={setShowAddModal}
-        campaignId={campaignId!}
-      />
-
-      <AIComponentBuilder
-        open={showAIBuilder}
-        onOpenChange={setShowAIBuilder}
         campaignId={campaignId!}
       />
     </div>

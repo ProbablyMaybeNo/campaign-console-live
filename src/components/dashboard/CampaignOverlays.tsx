@@ -1,10 +1,9 @@
 import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database } from "lucide-react";
-import { OverlayPanel, OverlayLoading, OverlayEmpty } from "@/components/ui/OverlayPanel";
+import { OverlayPanel, OverlayEmpty } from "@/components/ui/OverlayPanel";
 import { PlayersWidget } from "./widgets/PlayersWidget";
 import { MessagesWidget } from "./widgets/MessagesWidget";
 import { NarrativeWidget } from "./widgets/NarrativeWidget";
 import { ScheduleWidget } from "./widgets/ScheduleWidget";
-import { RulesLibrary } from "@/components/rules/RulesLibrary";
 import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
 import { MapManager } from "@/components/map/MapManager";
 import { ComponentsManager } from "./ComponentsManager";
@@ -12,6 +11,7 @@ import { WarbandsWidget } from "./WarbandsWidget";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Link } from "react-router-dom";
+
 interface OverlayConfig {
   title: string;
   subtitle: string;
@@ -41,10 +41,10 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     size: "md",
   },
   rules: {
-    title: "Rules Library",
-    subtitle: "Upload and manage campaign rules sources",
+    title: "Rules",
+    subtitle: "Rules functionality moved to component creation",
     icon: <Scroll className="w-4 h-4" />,
-    size: "xl",
+    size: "md",
   },
   map: {
     title: "Campaign Map",
@@ -86,16 +86,11 @@ interface CampaignOverlaysProps {
   isGM: boolean;
 }
 
-/**
- * Renders the appropriate overlay based on activeOverlay state
- * All overlays follow the standardized OverlayPanel pattern
- */
 export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: CampaignOverlaysProps) {
   if (!activeOverlay) return null;
 
   const config = overlayConfigs[activeOverlay];
   
-  // Check GM-only access
   if (config.gmOnly && !isGM) {
     return (
       <OverlayPanel
@@ -115,32 +110,17 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
     );
   }
 
-  // Render specific overlay content
   switch (activeOverlay) {
     case "players":
       return (
-        <OverlayPanel
-          open={true}
-          onClose={onClose}
-          title={config.title}
-          subtitle={config.subtitle}
-          icon={config.icon}
-          size={config.size}
-        >
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <PlayersWidget campaignId={campaignId} />
         </OverlayPanel>
       );
 
     case "messages":
       return (
-        <OverlayPanel
-          open={true}
-          onClose={onClose}
-          title={config.title}
-          subtitle={config.subtitle}
-          icon={config.icon}
-          size={config.size}
-        >
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <div className="h-[400px]">
             <MessagesWidget campaignId={campaignId} />
           </div>
@@ -149,14 +129,7 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
 
     case "narrative":
       return (
-        <OverlayPanel
-          open={true}
-          onClose={onClose}
-          title={config.title}
-          subtitle={config.subtitle}
-          icon={config.icon}
-          size={config.size}
-        >
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <div className="min-h-[300px]">
             <NarrativeWidget campaignId={campaignId} isGM={isGM} />
           </div>
@@ -165,14 +138,7 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
 
     case "schedule":
       return (
-        <OverlayPanel
-          open={true}
-          onClose={onClose}
-          title={config.title}
-          subtitle={config.subtitle}
-          icon={config.icon}
-          size={config.size}
-        >
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <div className="min-h-[300px]">
             <ScheduleWidget campaignId={campaignId} isGM={isGM} />
           </div>
@@ -180,24 +146,20 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
       );
 
     case "rules":
-      // Rules Library uses its own Dialog - pass through props
+      // Rules overlay now just shows info - paste functionality is in Add Component
       return (
-        <RulesLibrary
-          open={true}
-          onOpenChange={(open) => !open && onClose()}
-          campaignId={campaignId}
-          isGM={isGM}
-        />
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+          <OverlayEmpty
+            icon={<Scroll className="w-8 h-8" />}
+            title="Paste Rules into Components"
+            description="To add rules, click the + button and select Table or Card. You can paste rules text directly and it will be formatted automatically."
+          />
+        </OverlayPanel>
       );
 
     case "settings":
-      // Settings uses its own Dialog - pass through props
       return (
-        <CampaignSettingsModal
-          open={true}
-          onClose={onClose}
-          campaignId={campaignId}
-        />
+        <CampaignSettingsModal open={true} onClose={onClose} campaignId={campaignId} />
       );
 
     case "warbands":
@@ -212,9 +174,7 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
           footer={
             <div className="flex justify-end">
               <Link to={`/campaign/${campaignId}/warband-builder`}>
-                <TerminalButton size="sm">
-                  Open Warband Builder
-                </TerminalButton>
+                <TerminalButton size="sm">Open Warband Builder</TerminalButton>
               </Link>
             </div>
           }
@@ -225,28 +185,14 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
 
     case "map":
       return (
-        <OverlayPanel
-          open={true}
-          onClose={onClose}
-          title={config.title}
-          subtitle={config.subtitle}
-          icon={config.icon}
-          size={config.size}
-        >
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <MapManager campaignId={campaignId} isGM={isGM} />
         </OverlayPanel>
       );
 
     case "components":
       return (
-        <OverlayPanel
-          open={true}
-          onClose={onClose}
-          title={config.title}
-          subtitle={config.subtitle}
-          icon={config.icon}
-          size={config.size}
-        >
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <ComponentsManager campaignId={campaignId} />
         </OverlayPanel>
       );
