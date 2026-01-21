@@ -25,11 +25,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 
-interface PasteWizardOverlayProps {
+export interface PasteWizardOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   campaignId: string;
   componentType: 'table' | 'card';
+  onComplete?: () => void;
 }
 
 type WizardStep = 'paste' | 'review';
@@ -43,7 +44,8 @@ export function PasteWizardOverlay({
   open, 
   onOpenChange, 
   campaignId, 
-  componentType 
+  componentType,
+  onComplete 
 }: PasteWizardOverlayProps) {
   const [step, setStep] = useState<WizardStep>('paste');
   const [rawText, setRawText] = useState('');
@@ -125,6 +127,7 @@ export function PasteWizardOverlay({
 
     toast.success(`${componentType === 'table' ? 'Table' : 'Card'} created!`);
     handleClose();
+    onComplete?.();
   };
 
   const handleClose = () => {

@@ -3,26 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
-import { useRuleCategories, useRulesByCategory } from "@/hooks/useWargameRules";
-import { useCampaign } from "@/hooks/useCampaigns";
+import { PasteWizardOverlay } from "./PasteWizardOverlay";
 import { 
   Table, 
   LayoutList, 
   Dices,
   Image,
   Hash,
-  Wrench,
-  CheckSquare,
-  GitBranch
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface AddComponentModalProps {
   open: boolean;
@@ -31,8 +19,8 @@ interface AddComponentModalProps {
 }
 
 const COMPONENT_TYPES = [
-  { type: "table", label: "Table", icon: Table, description: "Data table with rows and columns", supportsRules: true },
-  { type: "card", label: "Card", icon: LayoutList, description: "Card list with expandable items", supportsRules: true },
+  { type: "table", label: "Table", icon: Table, description: "Data table with rows and columns", usesPasteWizard: true },
+  { type: "card", label: "Card", icon: LayoutList, description: "Card list with expandable items", usesPasteWizard: true },
   { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
   { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
@@ -41,57 +29,37 @@ const COMPONENT_TYPES = [
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [name, setName] = useState("");
-  const [manualSetup, setManualSetup] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [selectedRuleKey, setSelectedRuleKey] = useState<string>("");
+  const [showPasteWizard, setShowPasteWizard] = useState(false);
   
   const createComponent = useCreateComponent();
-  const { data: campaign } = useCampaign(campaignId);
-  const ruleCategories = useRuleCategories(campaignId);
-  const { data: categoryRules } = useRulesByCategory(campaignId, selectedCategory);
 
-  const hasRulesRepo = !!campaign?.rules_repo_url;
-  const hasRulesData = ruleCategories.length > 0;
-  
   const selectedTypeData = useMemo(() => 
     COMPONENT_TYPES.find(v => v.type === selectedType), 
     [selectedType]
   );
 
-  const supportsRules = selectedTypeData?.supportsRules ?? false;
-
   const handleTypeSelect = (type: string) => {
-    setSelectedType(type);
     const typeData = COMPONENT_TYPES.find(v => v.type === type);
-    if (typeData) {
+    
+    // If type uses paste wizard, open it immediately
+    if (typeData?.usesPasteWizard) {
+      setSelectedType(type);
       setName(`New ${typeData.label}`);
+      setShowPasteWizard(true);
+    } else {
+      setSelectedType(type);
+      if (typeData) {
+        setName(`New ${typeData.label}`);
+      }
     }
-    // Reset rules selection when changing type
-    setManualSetup(false);
-    setSelectedCategory("");
-    setSelectedRuleKey("");
   };
 
   const handleCreate = async () => {
     if (!selectedType || !name.trim()) return;
 
-    // Build config based on selections
-    const config: Record<string, string | boolean | number | null> = {
-      manual_setup: manualSetup || !supportsRules,
-    };
+    // Build config based on type
+    const config: Record<string, string | boolean | number | null> = {};
 
-    // Add rules linking if applicable
-    if (supportsRules && !manualSetup && selectedCategory && selectedRuleKey) {
-      config.rule_category = selectedCategory;
-      config.rule_key = selectedRuleKey;
-      
-      const selectedRule = categoryRules?.find(r => r.rule_key === selectedRuleKey);
-      if (selectedRule) {
-        config.rule_title = selectedRule.title;
-      }
-    }
-
-    // Add default config based on type
     if (selectedType === "counter") {
       config.value = 0;
       config.min = 0;
@@ -122,11 +90,34 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
   const handleClose = () => {
     setSelectedType(null);
     setName("");
-    setManualSetup(false);
-    setSelectedCategory("");
-    setSelectedRuleKey("");
+    setShowPasteWizard(false);
     onOpenChange(false);
   };
+
+  const handlePasteWizardClose = () => {
+    setShowPasteWizard(false);
+    setSelectedType(null);
+    setName("");
+  };
+
+  const handlePasteWizardComplete = () => {
+    handleClose();
+  };
+
+  // Show paste wizard if selected type uses it
+  if (showPasteWizard && selectedType) {
+    return (
+      <PasteWizardOverlay
+        open={showPasteWizard}
+        onOpenChange={(open) => {
+          if (!open) handlePasteWizardClose();
+        }}
+        campaignId={campaignId}
+        componentType={selectedType as "table" | "card"}
+        onComplete={handlePasteWizardComplete}
+      />
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -162,8 +153,8 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
             </div>
           </div>
 
-          {/* Configuration Section */}
-          {selectedType && selectedTypeData && (
+          {/* Configuration Section - Only for non-paste-wizard types */}
+          {selectedType && selectedTypeData && !selectedTypeData.usesPasteWizard && (
             <div className="space-y-4 border-t border-border pt-4 animate-fade-in">
               {/* Component Name */}
               <TerminalInput
@@ -172,102 +163,6 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Enter component name..."
               />
-
-              {/* Rules Integration - Only for table and card */}
-              {supportsRules && hasRulesRepo && (
-                <div className="space-y-3 border border-primary/30 p-4 bg-primary/5 rounded">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs uppercase tracking-wider text-primary font-medium flex items-center gap-2">
-                      <GitBranch className="w-3 h-3" />
-                      Auto-Populate from Rules
-                    </label>
-                    
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        id="manual-setup"
-                        checked={manualSetup}
-                        onCheckedChange={(checked) => {
-                          setManualSetup(checked === true);
-                          if (checked) {
-                            setSelectedCategory("");
-                            setSelectedRuleKey("");
-                          }
-                        }}
-                      />
-                      <label 
-                        htmlFor="manual-setup" 
-                        className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1"
-                      >
-                        <Wrench className="w-3 h-3" />
-                        Manual Setup
-                      </label>
-                    </div>
-                  </div>
-
-                  {!manualSetup && hasRulesData && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          Rule Category
-                        </label>
-                        <Select 
-                          value={selectedCategory} 
-                          onValueChange={(val) => {
-                            setSelectedCategory(val);
-                            setSelectedRuleKey("");
-                          }}
-                        >
-                          <SelectTrigger className="w-full bg-input border-border">
-                            <SelectValue placeholder="Select category..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border">
-                            {ruleCategories.map(({ category }) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                          Rule Set
-                        </label>
-                        <Select 
-                          value={selectedRuleKey} 
-                          onValueChange={setSelectedRuleKey}
-                          disabled={!selectedCategory || !categoryRules?.length}
-                        >
-                          <SelectTrigger className="w-full bg-input border-border">
-                            <SelectValue placeholder="Select rule set..." />
-                          </SelectTrigger>
-                          <SelectContent className="bg-card border-border max-h-48">
-                            {categoryRules?.map((rule) => (
-                              <SelectItem key={rule.rule_key} value={rule.rule_key}>
-                                {rule.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-
-                  {!manualSetup && !hasRulesData && (
-                    <p className="text-xs text-yellow-400">
-                      No rules synced. Go to Campaign Settings to sync your rules repository.
-                    </p>
-                  )}
-
-                  {!manualSetup && selectedRuleKey && (
-                    <div className="flex items-center gap-2 text-xs text-green-400 mt-2">
-                      <CheckSquare className="w-4 h-4" />
-                      <span>Component will auto-populate with "{categoryRules?.find(r => r.rule_key === selectedRuleKey)?.title}"</span>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Type-specific hints */}
               {selectedType === "counter" && (
@@ -303,18 +198,20 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-border">
-          <TerminalButton variant="outline" onClick={handleClose}>
-            Cancel
-          </TerminalButton>
-          <TerminalButton
-            onClick={handleCreate}
-            disabled={!selectedType || !name.trim() || createComponent.isPending}
-          >
-            {createComponent.isPending ? "Adding..." : "[ Add Component ]"}
-          </TerminalButton>
-        </div>
+        {/* Actions - Only show for non-paste-wizard types */}
+        {selectedType && selectedTypeData && !selectedTypeData.usesPasteWizard && (
+          <div className="flex justify-end gap-3 pt-4 border-t border-border">
+            <TerminalButton variant="outline" onClick={handleClose}>
+              Cancel
+            </TerminalButton>
+            <TerminalButton
+              onClick={handleCreate}
+              disabled={!selectedType || !name.trim() || createComponent.isPending}
+            >
+              {createComponent.isPending ? "Adding..." : "[ Add Component ]"}
+            </TerminalButton>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

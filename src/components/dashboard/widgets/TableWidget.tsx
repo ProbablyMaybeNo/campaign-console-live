@@ -1,8 +1,12 @@
-import { useState, useEffect } from "react";
-import { Plus, Trash2, Pencil, X, Check, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, Pencil, X, Check, FileText } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
-import { useRulesByCategory } from "@/hooks/useWargameRules";
 import type { Json } from "@/integrations/supabase/types";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface TableWidgetProps {
   component: DashboardComponent;
@@ -18,115 +22,22 @@ interface TableRow {
 interface TableConfig {
   columns?: string[];
   rows?: TableRow[];
-  rule_category?: string;
-  rule_key?: string;
-  manual_setup?: boolean;
+  rawText?: string;
+  sourceLabel?: string;
 }
 
-export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
+export function TableWidget({ component, isGM }: TableWidgetProps) {
   const updateComponent = useUpdateComponent();
   const config = (component.config as TableConfig) || {};
   const columns = config.columns || ["Name", "Value"];
   const rows = config.rows || [];
-  const ruleCategory = config.rule_category;
-  const ruleKey = config.rule_key;
-  const isManual = config.manual_setup ?? true;
-
-  // Fetch linked rule data if not manual setup
-  const { data: categoryRules } = useRulesByCategory(campaignId, ruleCategory);
-  const linkedRule = categoryRules?.find(r => r.rule_key === ruleKey);
+  const rawText = config.rawText;
+  const sourceLabel = config.sourceLabel;
 
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [headerValue, setHeaderValue] = useState("");
-  const [isPopulated, setIsPopulated] = useState(false);
-
-  // Auto-populate from rule content when linked and not yet populated
-  useEffect(() => {
-    if (!isManual && linkedRule && !isPopulated && rows.length === 0) {
-      const content = linkedRule.content as Record<string, unknown>;
-      
-      // Try to extract table-like data from rule content
-      const tableData = extractTableData(content);
-      
-      if (tableData.columns.length > 0 && tableData.rows.length > 0) {
-        const newConfig = { 
-          ...config, 
-          columns: tableData.columns, 
-          rows: tableData.rows 
-        };
-        updateComponent.mutate({
-          id: component.id,
-          config: newConfig as unknown as Json,
-        });
-        setIsPopulated(true);
-      }
-    }
-  }, [linkedRule, isManual, isPopulated, rows.length]);
-
-  // Extract table data from various rule content structures
-  function extractTableData(content: Record<string, unknown>): { columns: string[]; rows: TableRow[] } {
-    // If content has arrays, try to use them as table rows
-    for (const [key, value] of Object.entries(content)) {
-      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object') {
-        // Found an array of objects - use as table
-        const firstItem = value[0] as Record<string, unknown>;
-        const cols = Object.keys(firstItem).filter(k => 
-          typeof firstItem[k] === 'string' || typeof firstItem[k] === 'number'
-        );
-        
-        if (cols.length > 0) {
-          const tableRows: TableRow[] = value.map((item, i) => {
-            const row: TableRow = { id: crypto.randomUUID() };
-            cols.forEach(col => {
-              const val = (item as Record<string, unknown>)[col];
-              row[col] = typeof val === 'string' || typeof val === 'number' ? String(val) : '';
-            });
-            return row;
-          });
-          
-          return { columns: cols.map(c => c.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())), rows: tableRows };
-        }
-      }
-    }
-    
-    // Fallback: create key-value pairs from content
-    const kvRows: TableRow[] = [];
-    for (const [key, value] of Object.entries(content)) {
-      if (typeof value === 'string' || typeof value === 'number') {
-        kvRows.push({
-          id: crypto.randomUUID(),
-          'Property': key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          'Value': String(value)
-        });
-      }
-    }
-    
-    if (kvRows.length > 0) {
-      return { columns: ['Property', 'Value'], rows: kvRows };
-    }
-    
-    return { columns: [], rows: [] };
-  }
-
-  const handleRefreshFromRules = () => {
-    if (linkedRule) {
-      const content = linkedRule.content as Record<string, unknown>;
-      const tableData = extractTableData(content);
-      
-      if (tableData.columns.length > 0) {
-        const newConfig = { 
-          ...config, 
-          columns: tableData.columns, 
-          rows: tableData.rows 
-        };
-        updateComponent.mutate({
-          id: component.id,
-          config: newConfig as unknown as Json,
-        });
-      }
-    }
-  };
+  const [showRawText, setShowRawText] = useState(false);
 
   const handleAddRow = () => {
     const newRow: TableRow = { id: crypto.randomUUID() };
@@ -212,9 +123,8 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
   };
 
   const handleDeleteColumn = (index: number) => {
-    if (columns.length <= 1) return; // Keep at least one column
+    if (columns.length <= 1) return;
 
-    const colToDelete = columns[index];
     const updatedColumns = columns.filter((_, i) => i !== index);
     const updatedRows = rows.map((row) => {
       const newRow: TableRow = { id: row.id };
@@ -233,6 +143,13 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
 
   return (
     <div className="h-full flex flex-col">
+      {/* Source label */}
+      {sourceLabel && (
+        <div className="text-[10px] text-muted-foreground mb-1 truncate">
+          Source: {sourceLabel}
+        </div>
+      )}
+
       <div className="overflow-auto flex-1">
         <table className="w-full text-xs border-collapse">
           <thead>
@@ -342,7 +259,7 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
       </div>
 
       {isGM && (
-        <div className="flex gap-2 pt-2 border-t border-border mt-auto">
+        <div className="flex gap-2 pt-2 border-t border-border mt-auto flex-wrap">
           <button
             onClick={handleAddRow}
             className="flex items-center gap-1 text-xs text-primary hover:underline"
@@ -355,14 +272,18 @@ export function TableWidget({ component, isGM, campaignId }: TableWidgetProps) {
           >
             <Plus className="w-3 h-3" /> Add Column
           </button>
-          {!isManual && linkedRule && (
-            <button
-              onClick={handleRefreshFromRules}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground ml-auto"
-              title="Refresh data from linked rules"
-            >
-              <RefreshCw className="w-3 h-3" /> Refresh from Rules
-            </button>
+          
+          {/* Raw text collapsible */}
+          {rawText && (
+            <Collapsible open={showRawText} onOpenChange={setShowRawText} className="ml-auto">
+              <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+                <FileText className="w-3 h-3" />
+                {showRawText ? "Hide" : "View"} Raw Text
+              </CollapsibleTrigger>
+              <CollapsibleContent className="absolute left-0 right-0 bottom-full mb-2 bg-card border border-border rounded p-2 max-h-32 overflow-auto text-[10px] whitespace-pre-wrap text-muted-foreground z-10">
+                {rawText}
+              </CollapsibleContent>
+            </Collapsible>
           )}
         </div>
       )}
