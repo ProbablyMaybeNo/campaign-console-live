@@ -3,6 +3,7 @@ import { useWargameRules, useDeleteRule, WargameRule, TableRuleContent, CardRule
 import { Plus, Search, Table, LayoutList, Trash2, Edit2, ChevronDown, ChevronUp, LayoutDashboard } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { PasteWizardOverlay } from "@/components/dashboard/PasteWizardOverlay";
+import { RuleEditorModal } from "./RuleEditorModal";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
@@ -23,6 +24,7 @@ export function RulesManager({ campaignId, isGM }: RulesManagerProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [createMode, setCreateMode] = useState<CreateMode>(null);
+  const [editingRule, setEditingRule] = useState<WargameRule | null>(null);
 
   // Get unique categories
   const categories = [...new Set(rules.map((r) => r.category))];
@@ -261,6 +263,15 @@ export function RulesManager({ campaignId, isGM }: RulesManagerProps) {
                             <TerminalButton
                               size="sm"
                               variant="outline"
+                              onClick={() => setEditingRule(rule)}
+                              className="flex items-center gap-1"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                              Edit
+                            </TerminalButton>
+                            <TerminalButton
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleDeleteRule(rule)}
                               className="text-destructive hover:bg-destructive/10"
                             >
@@ -293,6 +304,15 @@ export function RulesManager({ campaignId, isGM }: RulesManagerProps) {
           saveToRules={true}
           isCustom={createMode.startsWith("custom")}
           onComplete={() => setCreateMode(null)}
+        />
+      )}
+
+      {/* Rule Editor Modal */}
+      {editingRule && (
+        <RuleEditorModal
+          open={true}
+          onOpenChange={(open) => !open && setEditingRule(null)}
+          rule={editingRule}
         />
       )}
     </div>
