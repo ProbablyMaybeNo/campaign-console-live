@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Edit2, Check, X, ChevronDown, ChevronUp, Plus, Trash2, FileText } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
+import { useRuleSync } from "@/hooks/useRuleSync";
 import type { Json } from "@/integrations/supabase/types";
 import {
   Collapsible,
@@ -26,10 +27,12 @@ interface CardConfig {
   sections?: CardSection[];
   rawText?: string;
   sourceLabel?: string;
+  rule_id?: string;
 }
 
 export function CardWidget({ component, isGM }: CardWidgetProps) {
   const updateComponent = useUpdateComponent();
+  const { syncCardToRule } = useRuleSync();
   const [isEditing, setIsEditing] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [showRawText, setShowRawText] = useState(false);
@@ -38,6 +41,7 @@ export function CardWidget({ component, isGM }: CardWidgetProps) {
   const sections = config.sections || [];
   const rawText = config.rawText;
   const sourceLabel = config.sourceLabel;
+  const ruleId = config.rule_id;
 
   const [title, setTitle] = useState(config.title || "Card");
   const [content, setContent] = useState(config.content || "");
@@ -45,12 +49,33 @@ export function CardWidget({ component, isGM }: CardWidgetProps) {
   const [sectionHeader, setSectionHeader] = useState("");
   const [sectionContent, setSectionContent] = useState("");
 
+  // Helper to update component and sync to rule
+  const updateAndSync = useCallback((newSections: CardSection[], newTitle?: string) => {
+    const updatedTitle = newTitle || config.title || "Card";
+    const newConfig = { ...config, sections: newSections, title: updatedTitle };
+    updateComponent.mutate({
+      id: component.id,
+      config: newConfig as unknown as Json,
+    });
+    
+    // Sync to linked rule if exists
+    if (ruleId) {
+      syncCardToRule({ ruleId, title: updatedTitle, sections: newSections, rawText });
+    }
+  }, [config, component.id, ruleId, rawText, updateComponent, syncCardToRule]);
+
   const handleSave = () => {
     const newConfig = { ...config, title, content };
     updateComponent.mutate({
       id: component.id,
       config: newConfig as unknown as Json,
     });
+    
+    // Sync to linked rule if exists
+    if (ruleId) {
+      syncCardToRule({ ruleId, title, sections, rawText });
+    }
+    
     setIsEditing(false);
   };
 
@@ -66,19 +91,11 @@ export function CardWidget({ component, isGM }: CardWidgetProps) {
       header: "New Section",
       content: "",
     };
-    const newConfig = { ...config, sections: [...sections, newSection] };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync([...sections, newSection]);
   };
 
   const handleDeleteSection = (sectionId: string) => {
-    const newConfig = { ...config, sections: sections.filter(s => s.id !== sectionId) };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync(sections.filter(s => s.id !== sectionId));
   };
 
   const handleStartEditSection = (section: CardSection) => {
@@ -95,11 +112,7 @@ export function CardWidget({ component, isGM }: CardWidgetProps) {
         ? { ...s, header: sectionHeader, content: sectionContent }
         : s
     );
-    const newConfig = { ...config, sections: updatedSections };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync(updatedSections);
     setEditingSectionId(null);
   };
 
