@@ -257,8 +257,10 @@ export function detectDiceRollTables(text: string, pageNumber: number): Detected
   // Patterns for dice roll ranges
   const d6RangePattern = /^\s*([1-6])\s*[-–—]\s*([1-6])\s+(.+)/;
   const d66RangePattern = /^\s*([1-6][1-6])\s*[-–—]\s*([1-6][1-6])\s+(.+)/;
-  const singleD6Pattern = /^\s*([1-6])\s+(?![-–—])(.+)/;
-  const twoD6RangePattern = /^\s*(2|3|4|5|6|7|8|9|10|11|12)\s*[-–—]?\s*(.+)/;
+  // Single D6: "1 Something" or "1 - Something" (number 1-6 with optional separator)
+  const singleD6Pattern = /^\s*([1-6])\s*[-–—]?\s+(.+)/;
+  // 2D6: Only match numbers 2-12 (not 1, which would be D6)
+  const twoD6RangePattern = /^\s*(2|3|4|5|6|7|8|9|10|11|12)\s*[-–—]\s+(.+)/;
 
   let currentTable: { 
     startLine: number; 

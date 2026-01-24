@@ -48,15 +48,17 @@ export function analyzeText(rawText: string): ParseResult {
   // 1. Detect dice roll tables (D6, D66, 2D6)
   const diceRollTables = detectDiceRollTables(text, 1);
   for (const table of diceRollTables) {
+    const detectionWarnings = [...warnings];
+    const rows = enforceRowLimit(table.rows || [], detectionWarnings);
     detections.push({
       type: 'dice-table',
       title: table.title || 'Dice Roll Table',
       confidence: table.confidence,
       columns: table.columns || ['Roll', 'Result'],
-      rows: enforceRowLimit(table.rows || [], warnings),
+      rows,
       rawText: table.rawText,
       diceType: table.diceType,
-      warnings: [...warnings],
+      warnings: detectionWarnings,
     });
   }
 
@@ -68,14 +70,17 @@ export function analyzeText(rawText: string): ParseResult {
       dt => Math.abs(dt.startLine - table.startLine) < 3
     );
     if (!isDuplicate) {
+      const detectionWarnings = [...warnings];
+      const columns = enforceColLimit(table.columns || [], detectionWarnings);
+      const rows = enforceRowLimit(table.rows || [], detectionWarnings);
       detections.push({
         type: 'whitespace-table',
         title: table.title || 'Table',
         confidence: table.confidence,
-        columns: enforceColLimit(table.columns || [], warnings),
-        rows: enforceRowLimit(table.rows || [], warnings),
+        columns,
+        rows,
         rawText: table.rawText,
-        warnings: [...warnings],
+        warnings: detectionWarnings,
       });
     }
   }
@@ -87,14 +92,17 @@ export function analyzeText(rawText: string): ParseResult {
       t => Math.abs(t.rawText.length - table.rawText.length) < 50
     );
     if (!isDuplicate) {
+      const detectionWarnings = [...warnings];
+      const columns = enforceColLimit(table.columns || [], detectionWarnings);
+      const rows = enforceRowLimit(table.rows || [], detectionWarnings);
       detections.push({
         type: 'pipe-table',
         title: table.title || 'Table',
         confidence: table.confidence,
-        columns: enforceColLimit(table.columns || [], warnings),
-        rows: enforceRowLimit(table.rows || [], warnings),
+        columns,
+        rows,
         rawText: table.rawText,
-        warnings: [...warnings],
+        warnings: detectionWarnings,
       });
     }
   }
@@ -103,11 +111,14 @@ export function analyzeText(rawText: string): ParseResult {
   if (detections.length === 0) {
     const tsvResult = detectTSV(text);
     if (tsvResult) {
+      const detectionWarnings = [...warnings];
+      const columns = enforceColLimit(tsvResult.columns, detectionWarnings);
+      const rows = enforceRowLimit(tsvResult.rows, detectionWarnings);
       detections.push({
         ...tsvResult,
-        columns: enforceColLimit(tsvResult.columns, warnings),
-        rows: enforceRowLimit(tsvResult.rows, warnings),
-        warnings: [...warnings],
+        columns,
+        rows,
+        warnings: detectionWarnings,
       });
     }
   }
@@ -116,11 +127,14 @@ export function analyzeText(rawText: string): ParseResult {
   if (detections.length === 0) {
     const csvResult = detectCSV(text);
     if (csvResult) {
+      const detectionWarnings = [...warnings];
+      const columns = enforceColLimit(csvResult.columns, detectionWarnings);
+      const rows = enforceRowLimit(csvResult.rows, detectionWarnings);
       detections.push({
         ...csvResult,
-        columns: enforceColLimit(csvResult.columns, warnings),
-        rows: enforceRowLimit(csvResult.rows, warnings),
-        warnings: [...warnings],
+        columns,
+        rows,
+        warnings: detectionWarnings,
       });
     }
   }
@@ -129,10 +143,12 @@ export function analyzeText(rawText: string): ParseResult {
   if (detections.length === 0) {
     const kvResult = detectKeyValue(text);
     if (kvResult) {
+      const detectionWarnings = [...warnings];
+      const rows = enforceRowLimit(kvResult.rows, detectionWarnings);
       detections.push({
         ...kvResult,
-        rows: enforceRowLimit(kvResult.rows, warnings),
-        warnings: [...warnings],
+        rows,
+        warnings: detectionWarnings,
       });
     }
   }
@@ -141,14 +157,17 @@ export function analyzeText(rawText: string): ParseResult {
   if (detections.length === 0) {
     const lines = text.split('\n').filter(l => l.trim().length > 0);
     if (lines.length > 0) {
+      const detectionWarnings = [...warnings];
+      const rows = enforceRowLimit(lines.map(l => [l.trim()]), detectionWarnings);
+      detectionWarnings.push('No table structure detected. Treating each line as a row.');
       detections.push({
         type: 'lines',
         title: 'Content',
         confidence: 'low',
         columns: ['Content'],
-        rows: enforceRowLimit(lines.map(l => [l.trim()]), warnings),
+        rows,
         rawText: text,
-        warnings: [...warnings, 'No table structure detected. Treating each line as a row.'],
+        warnings: detectionWarnings,
       });
     }
   }
