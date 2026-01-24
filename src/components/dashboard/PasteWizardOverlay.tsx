@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { useAITextConvert } from "@/hooks/useAITextConvert";
 import { analyzeText, toTableConfig, toCardConfig, type DetectedContent } from "@/lib/textPatternDetector";
 import { 
   Table, 
@@ -19,7 +20,9 @@ import {
   Pencil,
   Check,
   X,
-  Sparkles
+  Sparkles,
+  Wand2,
+  Loader2
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -61,6 +64,57 @@ export function PasteWizardOverlay({
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
   
   const createComponent = useCreateComponent();
+  const { convertText, isConverting } = useAITextConvert();
+
+  const handleAIConvert = async () => {
+    if (!rawText.trim()) {
+      toast.error('No text to convert');
+      return;
+    }
+
+    const result = await convertText(rawText, componentType);
+    
+    if (!result.success) {
+      return; // Toast already shown by hook
+    }
+
+    if (result.type === 'table') {
+      setColumns(result.data.columns);
+      setRows(result.data.rows.map(row => ({
+        ...row,
+        id: row.id || crypto.randomUUID(),
+      })));
+      if (result.data.title && !name) {
+        setName(result.data.title);
+      }
+      // Update detection to show AI-converted
+      setDetection(prev => prev ? {
+        ...prev,
+        confidence: 'high',
+        type: 'whitespace-table',
+        warnings: [],
+      } : null);
+    } else if (result.type === 'card') {
+      // For card type, convert sections to table-like structure for display
+      setColumns(['Header', 'Content']);
+      setRows(result.data.sections.map(s => ({
+        id: crypto.randomUUID(),
+        Header: s.header,
+        Content: s.content,
+      })));
+      if (result.data.title && !name) {
+        setName(result.data.title);
+      }
+      setDetection(prev => prev ? {
+        ...prev,
+        confidence: 'high',
+        type: 'key-value',
+        warnings: [],
+      } : null);
+    }
+
+    toast.success('AI conversion applied - review the results');
+  };
 
   const handleGenerate = () => {
     if (!rawText.trim()) {
@@ -298,8 +352,40 @@ Example:
               )}
             </div>
 
-            {/* Warnings */}
-            {detection.warnings.length > 0 && (
+            {/* AI Convert button - show when confidence is not high */}
+            {detection.confidence !== 'high' && (
+              <div className="bg-accent/30 border border-accent rounded p-3 flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground">Detection confidence is {detection.confidence}</p>
+                    {detection.warnings.length > 0 && (
+                      <ul className="mt-1 space-y-0.5 text-yellow-400">
+                        {detection.warnings.map((w, i) => (
+                          <li key={i}>• {w}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+                <TerminalButton
+                  variant="outline"
+                  onClick={handleAIConvert}
+                  disabled={isConverting}
+                  className="flex-shrink-0"
+                >
+                  {isConverting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4 mr-2" />
+                  )}
+                  {isConverting ? 'Converting...' : 'Try AI Convert'}
+                </TerminalButton>
+              </div>
+            )}
+
+            {/* Warnings for high confidence */}
+            {detection.confidence === 'high' && detection.warnings.length > 0 && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3 flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-yellow-400 space-y-1">
