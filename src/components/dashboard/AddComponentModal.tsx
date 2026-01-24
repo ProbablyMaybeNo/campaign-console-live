@@ -10,6 +10,7 @@ import {
   Dices,
   Image,
   Hash,
+  Map,
 } from "lucide-react";
 
 interface AddComponentModalProps {
@@ -24,6 +25,7 @@ const COMPONENT_TYPES = [
   { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
   { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
+  { type: "map", label: "Map", icon: Map, description: "Live campaign map with markers" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -73,6 +75,17 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       config.count = 1;
     }
 
+    // Determine component size based on type
+    let width = 350;
+    let height = 300;
+    if (selectedType === "counter" || selectedType === "dice_roller") {
+      width = 200;
+      height = 200;
+    } else if (selectedType === "map") {
+      width = 450;
+      height = 400;
+    }
+
     await createComponent.mutateAsync({
       campaign_id: campaignId,
       name: name.trim(),
@@ -80,8 +93,8 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       config,
       position_x: Math.round(100 + Math.random() * 200),
       position_y: Math.round(100 + Math.random() * 200),
-      width: selectedType === "counter" || selectedType === "dice_roller" ? 200 : 350,
-      height: selectedType === "counter" || selectedType === "dice_roller" ? 200 : 300,
+      width,
+      height,
     });
 
     handleClose();
@@ -135,7 +148,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
             <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
               Select Component Type
             </label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {COMPONENT_TYPES.map(({ type, label, icon: Icon, description }) => (
                 <button
                   key={type}
@@ -180,6 +193,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "image" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   Upload an image or paste a URL after adding the component.
+                </p>
+              )}
+
+              {selectedType === "map" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Shows the campaign map with live updates. Configure the map via the Map overlay.
                 </p>
               )}
 
