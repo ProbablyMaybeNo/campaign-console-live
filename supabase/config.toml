@@ -1,13 +1,4 @@
 project_id = "vcnodroausotjqabjqcf"
 
-[functions.fetch-rules-repo]
-verify_jwt = false
-
-[functions.ai-component-builder]
-verify_jwt = false
-
-[functions.index-rules-source]
-verify_jwt = false
-
-[functions.parse-pdf-llamaparse]
+[functions.convert-text-to-table]
 verify_jwt = false
