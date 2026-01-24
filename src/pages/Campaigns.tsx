@@ -4,10 +4,13 @@ import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useAuth } from "@/hooks/useAuth";
 import { useCampaigns, Campaign } from "@/hooks/useCampaigns";
 import { CreateCampaignModal } from "@/components/campaigns/CreateCampaignModal";
+import { JoinCampaignModal } from "@/components/campaigns/JoinCampaignModal";
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, Crown, User, AlertCircle } from "lucide-react";
+import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Copy, Check } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 export default function Campaigns() {
   const { user, signOut } = useAuth();
@@ -17,11 +20,11 @@ export default function Campaigns() {
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [deletingCampaign, setDeletingCampaign] = useState<Campaign | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const getStatusColor = (campaign: Campaign) => {
-    // Simple status logic based on dates or we can add status field later
-    return "text-green-400"; // Active by default
+    return "text-green-400";
   };
 
   const getStatusLabel = () => {
@@ -35,6 +38,10 @@ export default function Campaigns() {
     return <User className="w-4 h-4 text-blue-400" />;
   };
 
+  const getRoleLabel = (campaign: Campaign) => {
+    return campaign.owner_id === user?.id ? "GM" : "Player";
+  };
+
   const handleRowClick = (campaignId: string) => {
     setSelectedCampaignId(campaignId);
   };
@@ -42,6 +49,18 @@ export default function Campaigns() {
   const handleOpenCampaign = () => {
     if (selectedCampaignId) {
       navigate(`/campaign/${selectedCampaignId}`);
+    }
+  };
+
+  const handleCopyId = async (e: React.MouseEvent, campaignId: string) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(campaignId);
+      setCopiedId(campaignId);
+      toast.success("Campaign ID copied to clipboard");
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error("Failed to copy ID");
     }
   };
 
@@ -88,8 +107,9 @@ export default function Campaigns() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-primary/30">
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Role</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Campaign Name</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Wargame</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Campaign ID</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Start Date</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Status</th>
                   </tr>
@@ -106,12 +126,42 @@ export default function Campaigns() {
                           : "hover:bg-accent/30"
                       }`}
                     >
-                      <td className="py-3 px-4 flex items-center gap-2">
-                        {getRoleIcon(campaign)}
-                        <span className="text-foreground">{campaign.name}</span>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          {getRoleIcon(campaign)}
+                          <span className={campaign.owner_id === user?.id ? "text-yellow-400" : "text-blue-400"}>
+                            {getRoleLabel(campaign)}
+                          </span>
+                        </div>
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground">
-                        {campaign.rules_repo_url ? "Custom Rules" : "Manual Setup"}
+                      <td className="py-3 px-4 text-foreground">
+                        {campaign.name}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded">
+                            {campaign.id.slice(0, 8)}...
+                          </code>
+                          {campaign.owner_id === user?.id && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={(e) => handleCopyId(e, campaign.id)}
+                                  className="p-1 hover:bg-primary/20 rounded transition-colors"
+                                >
+                                  {copiedId === campaign.id ? (
+                                    <Check className="w-3 h-3 text-green-400" />
+                                  ) : (
+                                    <Copy className="w-3 h-3 text-muted-foreground hover:text-primary" />
+                                  )}
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Copy ID to share with players</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">
                         {new Date(campaign.created_at).toISOString().split('T')[0]}
@@ -127,7 +177,7 @@ export default function Campaigns() {
           ) : (
             <div className="text-center py-12 text-muted-foreground">
               <p className="text-sm">No campaigns found</p>
-              <p className="text-xs mt-2">Create your first campaign to get started</p>
+              <p className="text-xs mt-2">Create a new campaign or join one using a Campaign ID</p>
             </div>
           )}
         </div>
@@ -136,6 +186,9 @@ export default function Campaigns() {
         <div className="flex justify-center gap-4">
           <TerminalButton onClick={() => setShowCreateModal(true)}>
             [ Create ]
+          </TerminalButton>
+          <TerminalButton variant="secondary" onClick={() => setShowJoinModal(true)}>
+            [ Join ]
           </TerminalButton>
           <TerminalButton variant="outline" onClick={handleOpenCampaign} disabled={!selectedCampaignId}>
             [ Open ]
@@ -166,6 +219,11 @@ export default function Campaigns() {
         <CreateCampaignModal 
           open={showCreateModal} 
           onClose={() => setShowCreateModal(false)} 
+        />
+
+        <JoinCampaignModal
+          open={showJoinModal}
+          onClose={() => setShowJoinModal(false)}
         />
         
         {editingCampaign && (
