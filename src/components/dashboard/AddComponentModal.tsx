@@ -11,6 +11,7 @@ import {
   Image,
   Hash,
   Map,
+  Users,
 } from "lucide-react";
 
 interface AddComponentModalProps {
@@ -26,6 +27,7 @@ const COMPONENT_TYPES = [
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
   { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
   { type: "map", label: "Map", icon: Map, description: "Live campaign map with markers" },
+  { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -60,7 +62,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     if (!selectedType || !name.trim()) return;
 
     // Build config based on type
-    const config: Record<string, string | boolean | number | null> = {};
+    const config: Record<string, string | boolean | number | string[] | null> = {};
 
     if (selectedType === "counter") {
       config.value = 0;
@@ -84,6 +86,10 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "map") {
       width = 450;
       height = 400;
+    } else if (selectedType === "player_list") {
+      width = 500;
+      height = 350;
+      config.columns = ["name", "faction", "current_points"];
     }
 
     await createComponent.mutateAsync({
@@ -199,6 +205,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "map" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   Shows the campaign map with live updates. Configure the map via the Map overlay.
+                </p>
+              )}
+
+              {selectedType === "player_list" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Shows a configurable table of all players. Choose which columns to display (name, faction, points, etc.) from the widget settings.
                 </p>
               )}
 

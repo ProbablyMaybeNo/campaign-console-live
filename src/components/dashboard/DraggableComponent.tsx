@@ -10,6 +10,7 @@ import { DiceRollerWidget } from "./widgets/DiceRollerWidget";
 import { CardWidget } from "./widgets/CardWidget";
 import { ImageWidget } from "./widgets/ImageWidget";
 import { MapWidget } from "./widgets/MapWidget";
+import { PlayerListWidget } from "./widgets/PlayerListWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -113,6 +114,8 @@ export function DraggableComponent({
         return "🎲";
       case "map":
         return "🗺️";
+      case "player_list":
+        return "👥";
       default:
         return "📦";
     }
@@ -132,6 +135,8 @@ export function DraggableComponent({
         return <ImageWidget component={component} isGM={isGM} />;
       case "map":
         return <MapWidget component={component} isGM={isGM} />;
+      case "player_list":
+        return <PlayerListWidget component={component} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">
