@@ -14,6 +14,7 @@ export interface DashboardComponent {
   position_y: number;
   width: number;
   height: number;
+  visibility: string;
   created_at: string;
   updated_at: string;
 }

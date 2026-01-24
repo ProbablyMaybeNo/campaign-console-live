@@ -60,6 +60,14 @@ export default function CampaignDashboard() {
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
   const effectiveIsGM = isGM && !previewAsPlayer;
 
+  // Filter components based on visibility for players
+  const visibleComponents = effectiveIsGM 
+    ? components 
+    : components.filter((c) => {
+        const visibility = (c.config as { visibility?: string })?.visibility;
+        return visibility !== "gm";
+      });
+
   const isLoading = campaignLoading || componentsLoading;
 
   if (isLoading) {
@@ -112,6 +120,19 @@ export default function CampaignDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Player-only "My Settings" button */}
+            {!effectiveIsGM && (
+              <TerminalButton 
+                variant="outline" 
+                size="sm"
+                onClick={() => openOverlay("player-settings")}
+                className="gap-2"
+              >
+                <UserCog className="w-4 h-4" />
+                My Settings
+              </TerminalButton>
+            )}
+            
             {isGM ? (
               <button
                 onClick={() => {
@@ -181,7 +202,7 @@ export default function CampaignDashboard() {
 
         <main className="flex-1 p-4 overflow-auto relative">
           <InfiniteCanvas
-            components={components}
+            components={visibleComponents}
             isGM={effectiveIsGM}
             campaignId={campaignId!}
             selectedComponentId={selectedComponent?.id || null}
