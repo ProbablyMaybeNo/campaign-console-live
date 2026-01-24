@@ -21,6 +21,24 @@ export interface RuleCategory {
   rules: Array<{ key: string; title: string }>;
 }
 
+export type RuleContentType = "table" | "card";
+
+export interface TableRuleContent {
+  type: "table";
+  columns: string[];
+  rows: Array<{ id: string; [key: string]: string }>;
+  rawText?: string;
+}
+
+export interface CardRuleContent {
+  type: "card";
+  title: string;
+  sections: Array<{ id: string; header: string; content: string }>;
+  rawText?: string;
+}
+
+export type RuleContent = TableRuleContent | CardRuleContent;
+
 export function useWargameRules(campaignId: string | undefined) {
   return useQuery({
     queryKey: ["wargame_rules", campaignId],
@@ -41,6 +59,25 @@ export function useWargameRules(campaignId: string | undefined) {
   });
 }
 
+export function useWargameRule(ruleId: string | undefined) {
+  return useQuery({
+    queryKey: ["wargame_rule", ruleId],
+    queryFn: async (): Promise<WargameRule | null> => {
+      if (!ruleId) return null;
+
+      const { data, error } = await supabase
+        .from("wargame_rules")
+        .select("*")
+        .eq("id", ruleId)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!ruleId,
+  });
+}
+
 export function useRuleCategories(campaignId: string | undefined) {
   const { data: rules } = useWargameRules(campaignId);
 
@@ -56,6 +93,111 @@ export function useRuleCategories(campaignId: string | undefined) {
     category,
     rules: categoryRules,
   }));
+}
+
+export function useCreateRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      campaignId,
+      title,
+      category,
+      content,
+    }: {
+      campaignId: string;
+      title: string;
+      category: string;
+      content: RuleContent;
+    }): Promise<WargameRule> => {
+      const ruleKey = `${category.toLowerCase().replace(/\s+/g, "_")}_${Date.now()}`;
+      
+      const { data, error } = await supabase
+        .from("wargame_rules")
+        .insert({
+          campaign_id: campaignId,
+          title,
+          category,
+          rule_key: ruleKey,
+          content: content as unknown as Json,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
+      toast.success("Rule created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create rule: ${error.message}`);
+    },
+  });
+}
+
+export function useUpdateRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      title,
+      category,
+      content,
+    }: {
+      id: string;
+      title?: string;
+      category?: string;
+      content?: RuleContent;
+    }): Promise<WargameRule> => {
+      const updates: Record<string, unknown> = {};
+      if (title !== undefined) updates.title = title;
+      if (category !== undefined) updates.category = category;
+      if (content !== undefined) updates.content = content as unknown as Json;
+
+      const { data, error } = await supabase
+        .from("wargame_rules")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", data.campaign_id] });
+      queryClient.invalidateQueries({ queryKey: ["wargame_rule", data.id] });
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update rule: ${error.message}`);
+    },
+  });
+}
+
+export function useDeleteRule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, campaignId }: { id: string; campaignId: string }) => {
+      const { error } = await supabase
+        .from("wargame_rules")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      return { id, campaignId };
+    },
+    onSuccess: (variables) => {
+      queryClient.invalidateQueries({ queryKey: ["wargame_rules", variables.campaignId] });
+      toast.success("Rule deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to delete rule: ${error.message}`);
+    },
+  });
 }
 
 export function useDiscoverRepoRules() {

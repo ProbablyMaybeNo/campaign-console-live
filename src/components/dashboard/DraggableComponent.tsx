@@ -11,6 +11,7 @@ import { CardWidget } from "./widgets/CardWidget";
 import { ImageWidget } from "./widgets/ImageWidget";
 import { MapWidget } from "./widgets/MapWidget";
 import { PlayerListWidget } from "./widgets/PlayerListWidget";
+import { NarrativeTableWidget } from "./widgets/NarrativeTableWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -103,8 +104,12 @@ export function DraggableComponent({
   const getComponentIcon = () => {
     switch (component.component_type) {
       case "table":
+      case "rules_table":
+      case "custom_table":
         return "📊";
       case "card":
+      case "rules_card":
+      case "custom_card":
         return "🃏";
       case "counter":
         return "🔢";
@@ -116,6 +121,8 @@ export function DraggableComponent({
         return "🗺️";
       case "player_list":
         return "👥";
+      case "narrative_table":
+        return "📖";
       default:
         return "📦";
     }
@@ -124,12 +131,16 @@ export function DraggableComponent({
   const renderComponentContent = () => {
     switch (component.component_type) {
       case "table":
+      case "rules_table":
+      case "custom_table":
         return <TableWidget component={component} isGM={isGM} campaignId={campaignId} />;
       case "counter":
         return <CounterWidget component={component} isGM={isGM} />;
       case "dice_roller":
         return <DiceRollerWidget component={component} isGM={isGM} />;
       case "card":
+      case "rules_card":
+      case "custom_card":
         return <CardWidget component={component} isGM={isGM} campaignId={campaignId} />;
       case "image":
         return <ImageWidget component={component} isGM={isGM} />;
@@ -137,6 +148,8 @@ export function DraggableComponent({
         return <MapWidget component={component} isGM={isGM} />;
       case "player_list":
         return <PlayerListWidget component={component} isGM={isGM} />;
+      case "narrative_table":
+        return <NarrativeTableWidget campaignId={campaignId} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">
