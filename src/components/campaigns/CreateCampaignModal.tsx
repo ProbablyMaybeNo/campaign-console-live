@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
@@ -14,13 +15,14 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pointsLimit, setPointsLimit] = useState("1000");
+  const navigate = useNavigate();
   
   const createCampaign = useCreateCampaign();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    await createCampaign.mutateAsync({
+    const campaign = await createCampaign.mutateAsync({
       name,
       description: description || undefined,
       points_limit: parseInt(pointsLimit) || 1000,
@@ -28,6 +30,8 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     
     resetForm();
     onClose();
+    // Navigate to the new campaign dashboard
+    navigate(`/campaign/${campaign.id}`);
   };
 
   const resetForm = () => {
