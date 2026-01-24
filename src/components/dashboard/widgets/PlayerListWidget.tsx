@@ -51,6 +51,7 @@ const ALL_COLUMNS: { key: string; label: string }[] = [
 type PlayerWithExtras = PlayerSettings & { 
   profile_display_name: string | null; 
   narrative_count: number;
+  latest_narrative_title: string | null;
 };
 
 // Narrative Modal Component
@@ -205,17 +206,21 @@ export function PlayerListWidget({ component, isGM }: PlayerListWidgetProps) {
           </span>
         );
       case "narrative":
-        if (player.narrative_count === 0) return "—";
+        if (!player.latest_narrative_title) return "—";
+        const titlePreview = player.latest_narrative_title.length > 25
+          ? player.latest_narrative_title.slice(0, 25) + "..."
+          : player.latest_narrative_title;
         return (
           <button
             onClick={(e) => {
               e.stopPropagation();
               setViewingNarrativePlayer(player);
             }}
-            className="inline-flex items-center gap-1 text-primary hover:text-primary/80 transition-colors"
+            className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 transition-colors text-left"
+            title={`${player.narrative_count} ${player.narrative_count === 1 ? "entry" : "entries"} - Click to view`}
           >
-            <BookOpen className="w-3 h-3" />
-            <span>{player.narrative_count} {player.narrative_count === 1 ? "entry" : "entries"}</span>
+            <BookOpen className="w-3 h-3 flex-shrink-0" />
+            <span className="truncate">{titlePreview}</span>
           </button>
         );
       default:

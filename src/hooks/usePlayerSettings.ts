@@ -118,7 +118,7 @@ export function useUpdatePlayerSettings(campaignId: string) {
 export function useAllPlayerSettings(campaignId: string | undefined) {
   return useQuery({
     queryKey: ["all-player-settings", campaignId],
-    queryFn: async (): Promise<(PlayerSettings & { profile_display_name: string | null; narrative_count: number })[]> => {
+    queryFn: async (): Promise<(PlayerSettings & { profile_display_name: string | null; narrative_count: number; latest_narrative_title: string | null })[]> => {
       if (!campaignId) return [];
 
       // Fetch all campaign players with their settings
@@ -154,23 +154,28 @@ export function useAllPlayerSettings(campaignId: string | undefined) {
         return acc;
       }, {} as Record<string, string | null>);
 
-      // Fetch narrative entry counts for each player
+      // Fetch narrative entries for each player (get latest title)
       const { data: narrativeEntries, error: narrativeError } = await supabase
         .from("player_narrative_entries")
-        .select("player_id")
-        .eq("campaign_id", campaignId);
+        .select("player_id, title, created_at")
+        .eq("campaign_id", campaignId)
+        .order("created_at", { ascending: false });
 
-      const narrativeCountMap: Record<string, number> = {};
+      const narrativeMap: Record<string, { count: number; latestTitle: string | null }> = {};
       if (!narrativeError && narrativeEntries) {
         narrativeEntries.forEach((entry) => {
-          narrativeCountMap[entry.player_id] = (narrativeCountMap[entry.player_id] || 0) + 1;
+          if (!narrativeMap[entry.player_id]) {
+            narrativeMap[entry.player_id] = { count: 0, latestTitle: entry.title };
+          }
+          narrativeMap[entry.player_id].count += 1;
         });
       }
 
       return players.map((player) => ({
         ...player,
         profile_display_name: profileMap[player.user_id] || null,
-        narrative_count: narrativeCountMap[player.user_id] || 0,
+        narrative_count: narrativeMap[player.user_id]?.count || 0,
+        latest_narrative_title: narrativeMap[player.user_id]?.latestTitle || null,
       }));
     },
     enabled: !!campaignId,
