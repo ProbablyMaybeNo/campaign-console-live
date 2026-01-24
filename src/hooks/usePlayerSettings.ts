@@ -264,3 +264,32 @@ export function useDeletePlayerNarrativeEntry(campaignId: string) {
     },
   });
 }
+
+export function useLeaveCampaign() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (campaignId: string) => {
+      if (!user?.id) throw new Error("Not authenticated");
+
+      const { error } = await supabase
+        .from("campaign_players")
+        .delete()
+        .eq("campaign_id", campaignId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["campaign-players"] });
+      toast.success("You have left the campaign");
+    },
+    onError: (error) => {
+      toast.error("Failed to leave campaign", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    },
+  });
+}
