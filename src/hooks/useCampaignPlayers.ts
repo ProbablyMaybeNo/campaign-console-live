@@ -7,6 +7,7 @@ export interface CampaignPlayer {
   campaign_id: string;
   role: string;
   joined_at: string;
+  warband_link: string | null;
   profile: {
     display_name: string | null;
     avatar_url: string | null;
@@ -28,7 +29,8 @@ export function useCampaignPlayers(campaignId: string | undefined) {
           user_id,
           campaign_id,
           role,
-          joined_at
+          joined_at,
+          warband_link
         `)
         .eq("campaign_id", campaignId)
         .order("joined_at", { ascending: true });
@@ -115,6 +117,7 @@ export function useCampaignOwner(campaignId: string | undefined) {
         campaign_id: campaignId,
         role: "gm",
         joined_at: "",
+        warband_link: null, // Owner uses campaign_players entry if they have one
         profile: profile ? { display_name: profile.display_name, avatar_url: profile.avatar_url } : null,
         warband_count: warbands?.length || 0,
       } as CampaignPlayer;

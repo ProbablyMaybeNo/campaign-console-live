@@ -97,6 +97,7 @@ export type Database = {
           joined_at: string
           role: string
           user_id: string
+          warband_link: string | null
         }
         Insert: {
           campaign_id: string
@@ -104,6 +105,7 @@ export type Database = {
           joined_at?: string
           role?: string
           user_id: string
+          warband_link?: string | null
         }
         Update: {
           campaign_id?: string
@@ -111,6 +113,7 @@ export type Database = {
           joined_at?: string
           role?: string
           user_id?: string
+          warband_link?: string | null
         }
         Relationships: [
           {
