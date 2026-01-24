@@ -108,24 +108,21 @@ export function WarbandHeader({
             Faction
           </label>
           <Select
-            value={faction || ""}
-            onValueChange={(v) => onFactionChange(v || null)}
+            value={faction || "__none__"}
+            onValueChange={(v) => onFactionChange(v === "__none__" ? null : v)}
           >
             <SelectTrigger className="bg-input border-border">
               <SelectValue placeholder="Select faction..." />
             </SelectTrigger>
             <SelectContent>
-              {factions.length === 0 ? (
-                <SelectItem value="" disabled>
-                  No factions available
+              <SelectItem value="__none__" disabled>
+                {factions.length === 0 ? "No factions available" : "Select faction..."}
+              </SelectItem>
+              {factions.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {f}
                 </SelectItem>
-              ) : (
-                factions.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {f}
-                  </SelectItem>
-                ))
-              )}
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -137,14 +134,14 @@ export function WarbandHeader({
               Sub-Faction
             </label>
             <Select
-              value={subFaction || ""}
-              onValueChange={(v) => onSubFactionChange(v || null)}
+              value={subFaction || "__any__"}
+              onValueChange={(v) => onSubFactionChange(v === "__any__" ? null : v)}
             >
               <SelectTrigger className="bg-input border-border">
                 <SelectValue placeholder="Optional..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any</SelectItem>
+                <SelectItem value="__any__">Any</SelectItem>
                 {subFactions.map((sf) => (
                   <SelectItem key={sf} value={sf}>
                     {sf}
