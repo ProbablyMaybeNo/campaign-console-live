@@ -12,6 +12,7 @@ import { ImageWidget } from "./widgets/ImageWidget";
 import { MapWidget } from "./widgets/MapWidget";
 import { PlayerListWidget } from "./widgets/PlayerListWidget";
 import { NarrativeTableWidget } from "./widgets/NarrativeTableWidget";
+import { CalendarWidget } from "./widgets/CalendarWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -123,6 +124,8 @@ export function DraggableComponent({
         return "👥";
       case "narrative_table":
         return "📖";
+      case "calendar":
+        return "📅";
       default:
         return "📦";
     }
@@ -150,6 +153,8 @@ export function DraggableComponent({
         return <PlayerListWidget component={component} isGM={isGM} />;
       case "narrative_table":
         return <NarrativeTableWidget campaignId={campaignId} isGM={isGM} />;
+      case "calendar":
+        return <CalendarWidget campaignId={campaignId} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">
