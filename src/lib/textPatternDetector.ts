@@ -112,7 +112,20 @@ export function analyzeText(rawText: string): ParseResult {
     }
   }
 
-  // 5. Try key-value detection
+  // 5. Try CSV detection
+  if (detections.length === 0) {
+    const csvResult = detectCSV(text);
+    if (csvResult) {
+      detections.push({
+        ...csvResult,
+        columns: enforceColLimit(csvResult.columns, warnings),
+        rows: enforceRowLimit(csvResult.rows, warnings),
+        warnings: [...warnings],
+      });
+    }
+  }
+
+  // 6. Try key-value detection
   if (detections.length === 0) {
     const kvResult = detectKeyValue(text);
     if (kvResult) {
@@ -124,7 +137,7 @@ export function analyzeText(rawText: string): ParseResult {
     }
   }
 
-  // 6. Fallback: treat each line as a row
+  // 7. Fallback: treat each line as a row
   if (detections.length === 0) {
     const lines = text.split('\n').filter(l => l.trim().length > 0);
     if (lines.length > 0) {
@@ -196,6 +209,90 @@ function detectTSV(text: string): DetectedContent | null {
     rawText: text,
     warnings: [],
   };
+}
+
+/**
+ * Detect comma-separated values (CSV)
+ * Handles quoted fields with commas inside
+ */
+function detectCSV(text: string): DetectedContent | null {
+  const lines = text.split('\n').filter(l => l.trim().length > 0);
+  if (lines.length < 2) return null;
+
+  // Check if most lines have commas (but not tabs, which would be TSV)
+  const linesWithCommas = lines.filter(l => l.includes(',') && !l.includes('\t'));
+  if (linesWithCommas.length < lines.length * 0.7) return null;
+
+  // Parse CSV rows, handling quoted fields
+  const rows = lines.map(line => parseCSVLine(line));
+  
+  // Verify consistent column count (within tolerance)
+  const columnCounts = rows.map(r => r.length);
+  const modeCount = columnCounts.sort((a, b) =>
+    columnCounts.filter(v => v === a).length - columnCounts.filter(v => v === b).length
+  ).pop() || 0;
+  
+  const consistentRows = rows.filter(r => Math.abs(r.length - modeCount) <= 1);
+  if (consistentRows.length < rows.length * 0.7) return null;
+
+  // Use first row as headers if it looks like headers
+  const firstRow = rows[0];
+  const isFirstRowHeader = firstRow.every(cell => 
+    cell.length < 50 && !cell.match(/^\d+\.?\d*$/)
+  );
+
+  const columns = isFirstRowHeader ? firstRow : firstRow.map((_, i) => `Column ${i + 1}`);
+  const dataRows = isFirstRowHeader ? rows.slice(1) : rows;
+
+  // Normalize row lengths
+  const normalizedRows = dataRows.map(row => {
+    const normalized = [...row];
+    while (normalized.length < columns.length) normalized.push('');
+    return normalized.slice(0, columns.length);
+  });
+
+  return {
+    type: 'csv',
+    title: 'CSV Data',
+    confidence: normalizedRows.length >= 5 ? 'high' : 'medium',
+    columns,
+    rows: normalizedRows,
+    rawText: text,
+    warnings: [],
+  };
+}
+
+/**
+ * Parse a single CSV line, handling quoted fields
+ */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+    
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++;
+      } else {
+        // Toggle quote mode
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim());
+  return result;
 }
 
 /**
