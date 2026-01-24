@@ -11,7 +11,9 @@ import {
   usePlayerNarrativeEntries,
   useCreatePlayerNarrativeEntry,
   useDeletePlayerNarrativeEntry,
+  useLeaveCampaign,
 } from "@/hooks/usePlayerSettings";
+import { useNavigate } from "react-router-dom";
 import { 
   User, 
   Swords, 
@@ -23,6 +25,7 @@ import {
   Trash2,
   Save,
   Loader2,
+  LogOut,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -42,11 +45,18 @@ interface PlayerSettingsOverlayProps {
 }
 
 export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps) {
+  const navigate = useNavigate();
   const { data: settings, isLoading } = usePlayerSettings(campaignId);
   const { data: narrativeEntries, isLoading: narrativeLoading } = usePlayerNarrativeEntries(campaignId);
   const updateSettings = useUpdatePlayerSettings(campaignId);
   const createNarrativeEntry = useCreatePlayerNarrativeEntry(campaignId);
   const deleteNarrativeEntry = useDeletePlayerNarrativeEntry(campaignId);
+  const leaveCampaign = useLeaveCampaign();
+
+  const handleLeaveCampaign = async () => {
+    await leaveCampaign.mutateAsync(campaignId);
+    navigate("/campaigns");
+  };
 
   // Form state
   const [playerName, setPlayerName] = useState("");
@@ -358,6 +368,41 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
             </div>
           )}
         </section>
+
+        {/* Leave Campaign - only for real players, not GM preview */}
+        {!isGMPreview && (
+          <section className="border-t border-destructive/30 pt-6">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <TerminalButton
+                  variant="destructive"
+                  className="w-full"
+                  disabled={leaveCampaign.isPending}
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  {leaveCampaign.isPending ? "Leaving..." : "Leave Campaign"}
+                </TerminalButton>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Leave Campaign?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to leave this campaign? Your player settings and narrative entries will be deleted. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleLeaveCampaign}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Leave Campaign
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </section>
+        )}
       </div>
     </ScrollArea>
   );
