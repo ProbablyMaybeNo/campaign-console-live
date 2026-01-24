@@ -118,7 +118,7 @@ export function useUpdatePlayerSettings(campaignId: string) {
 export function useAllPlayerSettings(campaignId: string | undefined) {
   return useQuery({
     queryKey: ["all-player-settings", campaignId],
-    queryFn: async (): Promise<(PlayerSettings & { profile_display_name: string | null })[]> => {
+    queryFn: async (): Promise<(PlayerSettings & { profile_display_name: string | null; narrative_count: number })[]> => {
       if (!campaignId) return [];
 
       // Fetch all campaign players with their settings
@@ -154,12 +154,47 @@ export function useAllPlayerSettings(campaignId: string | undefined) {
         return acc;
       }, {} as Record<string, string | null>);
 
+      // Fetch narrative entry counts for each player
+      const { data: narrativeEntries, error: narrativeError } = await supabase
+        .from("player_narrative_entries")
+        .select("player_id")
+        .eq("campaign_id", campaignId);
+
+      const narrativeCountMap: Record<string, number> = {};
+      if (!narrativeError && narrativeEntries) {
+        narrativeEntries.forEach((entry) => {
+          narrativeCountMap[entry.player_id] = (narrativeCountMap[entry.player_id] || 0) + 1;
+        });
+      }
+
       return players.map((player) => ({
         ...player,
         profile_display_name: profileMap[player.user_id] || null,
+        narrative_count: narrativeCountMap[player.user_id] || 0,
       }));
     },
     enabled: !!campaignId,
+  });
+}
+
+// Fetch narrative entries for a specific player (for viewing in modal)
+export function usePlayerNarrativeEntriesById(campaignId: string | undefined, playerId: string | undefined) {
+  return useQuery({
+    queryKey: ["player-narrative-entries-by-id", campaignId, playerId],
+    queryFn: async (): Promise<PlayerNarrativeEntry[]> => {
+      if (!campaignId || !playerId) return [];
+
+      const { data, error } = await supabase
+        .from("player_narrative_entries")
+        .select("*")
+        .eq("campaign_id", campaignId)
+        .eq("player_id", playerId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!campaignId && !!playerId,
   });
 }
 
