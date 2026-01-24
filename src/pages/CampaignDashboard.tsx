@@ -120,19 +120,6 @@ export default function CampaignDashboard() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Player-only "My Settings" button */}
-            {!effectiveIsGM && (
-              <TerminalButton 
-                variant="outline" 
-                size="sm"
-                onClick={() => openOverlay("player-settings")}
-                className="gap-2"
-              >
-                <UserCog className="w-4 h-4" />
-                My Settings
-              </TerminalButton>
-            )}
-            
             {isGM ? (
               <button
                 onClick={() => {
@@ -164,41 +151,40 @@ export default function CampaignDashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-56 border-r border-primary/20 bg-sidebar flex-shrink-0 p-4 hidden md:flex flex-col">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">Campaign Control</p>
-          <nav className="space-y-1 flex-1">
-            {sidebarItems.map((item) => {
-              if (item.gmOnly && !effectiveIsGM) return null;
-              if (item.playerOnly && effectiveIsGM) return null;
-              
-              const isActive = item.id === "home" 
-                ? !activeOverlay 
-                : activeOverlay === item.id;
-              
-              return (
-                <NavItem
-                  key={item.id}
-                  icon={<item.icon className="w-4 h-4" />}
-                  label={item.label}
-                  active={isActive}
-                  onClick={() => handleNavClick(item.id)}
-                />
-              );
-            })}
+        {/* Sidebar - GM only */}
+        {effectiveIsGM && (
+          <aside className="w-56 border-r border-primary/20 bg-sidebar flex-shrink-0 p-4 hidden md:flex flex-col">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">Campaign Control</p>
+            <nav className="space-y-1 flex-1">
+              {sidebarItems.map((item) => {
+                if (item.gmOnly && !effectiveIsGM) return null;
+                if (item.playerOnly && effectiveIsGM) return null;
+                
+                const isActive = item.id === "home" 
+                  ? !activeOverlay 
+                  : activeOverlay === item.id;
+                
+                return (
+                  <NavItem
+                    key={item.id}
+                    icon={<item.icon className="w-4 h-4" />}
+                    label={item.label}
+                    active={isActive}
+                    onClick={() => handleNavClick(item.id)}
+                  />
+                );
+              })}
 
-            {effectiveIsGM && (
-              <>
-                <div className="h-px bg-border my-3" />
-                <NavItem 
-                  icon={<Settings className="w-4 h-4" />} 
-                  label="Settings" 
-                  active={activeOverlay === "settings"}
-                  onClick={() => openOverlay("settings")}
-                />
-              </>
-            )}
-          </nav>
-        </aside>
+              <div className="h-px bg-border my-3" />
+              <NavItem 
+                icon={<Settings className="w-4 h-4" />} 
+                label="Settings" 
+                active={activeOverlay === "settings"}
+                onClick={() => openOverlay("settings")}
+              />
+            </nav>
+          </aside>
+        )}
 
         <main className="flex-1 p-4 overflow-auto relative">
           <InfiniteCanvas
@@ -209,6 +195,7 @@ export default function CampaignDashboard() {
             onComponentSelect={setSelectedComponent}
           />
 
+          {/* GM: Add component button */}
           {effectiveIsGM && (
             <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3">
               <TerminalButton
@@ -219,6 +206,17 @@ export default function CampaignDashboard() {
                 <Plus className="w-6 h-6" />
               </TerminalButton>
             </div>
+          )}
+
+          {/* Player: Settings button */}
+          {!effectiveIsGM && (
+            <button
+              onClick={() => openOverlay("player-settings")}
+              className="fixed bottom-8 right-8 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+              title="My Settings"
+            >
+              <UserCog className="w-6 h-6" />
+            </button>
           )}
         </main>
       </div>
