@@ -131,11 +131,11 @@ export function InfiniteCanvas({
           {components.length === 0 && (
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
               <div className="text-muted-foreground text-sm space-y-2">
-                <p className="text-lg font-mono">[ EMPTY DASHBOARD ]</p>
-                <p className="text-xs">
+                <p className="text-lg font-mono text-primary/70">[ EMPTY DASHBOARD ]</p>
+                <p className="text-xs max-w-xs">
                   {isGM
-                    ? "Click the + button to add components"
-                    : "The GM hasn't added any components yet"}
+                    ? "Click the + button to add components to your campaign dashboard"
+                    : "No dashboard components have been published for players yet. Check back later or contact your Games Master."}
                 </p>
               </div>
             </div>
