@@ -4,32 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RulesManager } from '@/components/rules/RulesManager';
 
-// Mock the hooks
-vi.mock('@/hooks/useWargameRules', () => ({
-  useWargameRules: vi.fn(() => ({
-    data: mockRules,
-    isLoading: false,
-  })),
-  useDeleteRule: vi.fn(() => ({
-    mutate: vi.fn(),
-  })),
-}));
-
-vi.mock('@/hooks/useDashboardComponents', () => ({
-  useCreateComponent: vi.fn(() => ({
-    mutateAsync: vi.fn(),
-    isPending: false,
-  })),
-}));
-
-// Mock toast
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
 const mockRules = [
   {
     id: 'rule-1',
@@ -63,6 +37,36 @@ const mockRules = [
   },
 ];
 
+// Mock the hooks with configurable returns
+const mockUseWargameRules = vi.fn(() => ({
+  data: mockRules,
+  isLoading: false,
+}));
+
+const mockUseDeleteRule = vi.fn(() => ({
+  mutate: vi.fn(),
+}));
+
+vi.mock('@/hooks/useWargameRules', () => ({
+  useWargameRules: () => mockUseWargameRules(),
+  useDeleteRule: () => mockUseDeleteRule(),
+}));
+
+vi.mock('@/hooks/useDashboardComponents', () => ({
+  useCreateComponent: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
+}));
+
+// Mock toast
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -78,6 +82,10 @@ function createWrapper() {
 describe('RulesManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseWargameRules.mockReturnValue({
+      data: mockRules,
+      isLoading: false,
+    });
   });
 
   it('renders rules list', () => {
@@ -94,8 +102,9 @@ describe('RulesManager', () => {
       wrapper: createWrapper(),
     });
 
-    expect(screen.getByText(/Combat/)).toBeInTheDocument();
-    expect(screen.getByText(/Movement/)).toBeInTheDocument();
+    // Use getAllByText since Combat and Movement appear in multiple places (dropdown + headers)
+    expect(screen.getAllByText(/Combat/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Movement/).length).toBeGreaterThan(0);
   });
 
   it('shows create buttons for GM', () => {
@@ -188,10 +197,7 @@ describe('RulesManager', () => {
 describe('RulesManager empty state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    // Override mock to return empty
-    const { useWargameRules } = require('@/hooks/useWargameRules');
-    useWargameRules.mockReturnValue({
+    mockUseWargameRules.mockReturnValue({
       data: [],
       isLoading: false,
     });
@@ -219,9 +225,7 @@ describe('RulesManager empty state', () => {
 describe('RulesManager loading state', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
-    const { useWargameRules } = require('@/hooks/useWargameRules');
-    useWargameRules.mockReturnValue({
+    mockUseWargameRules.mockReturnValue({
       data: [],
       isLoading: true,
     });
