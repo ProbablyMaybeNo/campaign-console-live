@@ -157,6 +157,7 @@ export function useUpdateRule() {
       if (category !== undefined) updates.category = category;
       if (content !== undefined) updates.content = content as unknown as Json;
 
+      // Update the rule
       const { data, error } = await supabase
         .from("wargame_rules")
         .update(updates)
@@ -165,11 +166,60 @@ export function useUpdateRule() {
         .single();
 
       if (error) throw error;
+
+      // Sync linked dashboard components (bidirectional sync)
+      if (content || title) {
+        // Find all dashboard components linked to this rule
+        const { data: linkedComponents } = await supabase
+          .from("dashboard_components")
+          .select("id, config")
+          .eq("campaign_id", data.campaign_id)
+          .or(`component_type.eq.rules_table,component_type.eq.rules_card`);
+
+        if (linkedComponents) {
+          // Filter to only components that reference this rule
+          const componentsToUpdate = linkedComponents.filter((comp) => {
+            const config = comp.config as Record<string, unknown>;
+            return config?.rule_id === id;
+          });
+
+          // Update each linked component's config with new content
+          for (const comp of componentsToUpdate) {
+            const existingConfig = comp.config as Record<string, unknown>;
+            const newConfig: Record<string, unknown> = {
+              ...existingConfig,
+              sourceLabel: title || existingConfig.sourceLabel,
+            };
+
+            // Sync content based on type
+            if (content?.type === "table") {
+              newConfig.columns = content.columns;
+              newConfig.rows = content.rows;
+              newConfig.rawText = content.rawText;
+            } else if (content?.type === "card") {
+              newConfig.title = content.title;
+              newConfig.sections = content.sections;
+              newConfig.rawText = content.rawText;
+            }
+
+            await supabase
+              .from("dashboard_components")
+              .update({ 
+                config: newConfig as unknown as Json,
+                name: title || (existingConfig.sourceLabel as string),
+              })
+              .eq("id", comp.id);
+          }
+        }
+      }
+
       return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["wargame_rules", data.campaign_id] });
       queryClient.invalidateQueries({ queryKey: ["wargame_rule", data.id] });
+      // Also invalidate dashboard components to reflect sync
+      queryClient.invalidateQueries({ queryKey: ["dashboard-components", data.campaign_id] });
     },
     onError: (error: Error) => {
       toast.error(`Failed to update rule: ${error.message}`);
