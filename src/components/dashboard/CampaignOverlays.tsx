@@ -1,6 +1,7 @@
 import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database, UserCog } from "lucide-react";
 import { OverlayPanel, OverlayEmpty } from "@/components/ui/OverlayPanel";
 import { PlayersWidget } from "./widgets/PlayersWidget";
+import { PlayersManagerWidget } from "./widgets/PlayersManagerWidget";
 import { MessagesWidget } from "./widgets/MessagesWidget";
 import { NarrativeWidget } from "./widgets/NarrativeWidget";
 import { ScheduleWidget } from "./widgets/ScheduleWidget";
@@ -38,9 +39,9 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
   },
   players: {
     title: "Players",
-    subtitle: "View campaign roster and manage participants",
+    subtitle: "View and manage campaign participants",
     icon: <Users className="w-4 h-4" />,
-    size: "md",
+    size: "lg",
   },
   "player-settings": {
     title: "Player Settings",
@@ -143,7 +144,11 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
     case "players":
       return (
         <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
-          <PlayersWidget campaignId={campaignId} />
+          {isGM ? (
+            <PlayersManagerWidget campaignId={campaignId} />
+          ) : (
+            <PlayersWidget campaignId={campaignId} />
+          )}
         </OverlayPanel>
       );
 
