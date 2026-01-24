@@ -36,7 +36,6 @@ const sidebarItems: {
   { id: "home", label: "Home", icon: LayoutGrid },
   { id: "components", label: "Components", icon: Database, gmOnly: true },
   { id: "player-settings", label: "My Settings", icon: UserCog, playerOnly: true },
-  { id: "warbands", label: "Warbands", icon: Swords },
   { id: "players", label: "Players", icon: Users },
   { id: "rules", label: "Rules", icon: Scroll },
   { id: "map", label: "Map", icon: Map },
