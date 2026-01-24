@@ -198,16 +198,49 @@ export function PasteWizardOverlay({
             rawText: detection?.rawText || rawText,
           };
 
-      await createRule.mutateAsync({
+      // Create the rule first
+      const createdRule = await createRule.mutateAsync({
         campaignId,
         title: name.trim(),
         category,
         content: ruleContent,
       });
 
-      toast.success(`${componentType === 'table' ? 'Rules Table' : 'Rules Card'} created!`);
+      // Also add to dashboard with linked rule_id
+      const dashboardConfig = componentType === 'table'
+        ? {
+            rule_id: createdRule.id,
+            sourceLabel: name.trim(),
+            columns,
+            rows,
+            rawText: detection?.rawText || rawText,
+          }
+        : {
+            rule_id: createdRule.id,
+            sourceLabel: name.trim(),
+            title: name.trim(),
+            sections: componentType === 'card' 
+              ? (rows.length > 0 
+                  ? rows.map(r => ({ id: r.id, header: r.Header || '', content: r.Content || '' }))
+                  : sections)
+              : [],
+            rawText: detection?.rawText || rawText,
+          };
+
+      await createComponent.mutateAsync({
+        campaign_id: campaignId,
+        name: name.trim(),
+        component_type: componentType === 'table' ? 'rules_table' : 'rules_card',
+        config: dashboardConfig as unknown as Json,
+        position_x: Math.round(100 + Math.random() * 200),
+        position_y: Math.round(100 + Math.random() * 200),
+        width: componentType === 'table' ? 400 : 350,
+        height: 300,
+      });
+
+      toast.success(`${componentType === 'table' ? 'Rules Table' : 'Rules Card'} added to dashboard!`);
     } else {
-      // Save to dashboard_components
+      // Save to dashboard_components only
       const config = componentType === 'table' 
         ? {
             columns,
