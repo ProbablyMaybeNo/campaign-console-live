@@ -176,6 +176,62 @@ export function useDeleteCampaign() {
   });
 }
 
+export function useJoinCampaign() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (campaignId: string): Promise<void> => {
+      if (!user) throw new Error("Not authenticated");
+
+      // First check if campaign exists
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .select("id, owner_id")
+        .eq("id", campaignId)
+        .maybeSingle();
+
+      if (campaignError) throw campaignError;
+      if (!campaign) throw new Error("Campaign not found. Please check the ID and try again.");
+
+      // Check if user is already the owner
+      if (campaign.owner_id === user.id) {
+        throw new Error("You are the Games Master of this campaign.");
+      }
+
+      // Check if user is already a member
+      const { data: existingMembership } = await supabase
+        .from("campaign_players")
+        .select("id")
+        .eq("campaign_id", campaignId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingMembership) {
+        throw new Error("You have already joined this campaign.");
+      }
+
+      // Join the campaign as a player
+      const { error: joinError } = await supabase
+        .from("campaign_players")
+        .insert({
+          campaign_id: campaignId,
+          user_id: user.id,
+          role: "player",
+        });
+
+      if (joinError) throw joinError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      toast.success("Successfully joined campaign!");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 export function useIsGM(campaignId: string | undefined) {
   const { user } = useAuth();
   const { data: campaign } = useCampaign(campaignId);
