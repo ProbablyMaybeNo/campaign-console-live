@@ -102,6 +102,74 @@ C\tD`;
       });
     });
 
+    describe('CSV detection', () => {
+      it('detects comma-separated values with headers', () => {
+        const text = `Name,Cost,Weight
+Sword,50gp,3lb
+Shield,25gp,5lb
+Helmet,15gp,2lb
+Chainmail,100gp,40lb
+Boots,10gp,1lb`;
+
+        const result = analyzeText(text);
+        
+        expect(result.bestMatch).not.toBeNull();
+        expect(result.bestMatch?.type).toBe('csv');
+        expect(result.bestMatch?.columns).toEqual(['Name', 'Cost', 'Weight']);
+        expect(result.bestMatch?.rows.length).toBe(5);
+        expect(result.bestMatch?.confidence).toBe('high');
+      });
+
+      it('handles quoted fields with commas inside', () => {
+        const text = `Name,Description,Price
+"Sword, Long","A long sword, very sharp",50gp
+"Shield, Round","A round shield, sturdy",25gp
+Helmet,A simple helmet,15gp`;
+
+        const result = analyzeText(text);
+        
+        expect(result.bestMatch).not.toBeNull();
+        expect(result.bestMatch?.type).toBe('csv');
+        expect(result.bestMatch?.rows[0][0]).toBe('Sword, Long');
+        expect(result.bestMatch?.rows[0][1]).toBe('A long sword, very sharp');
+      });
+
+      it('handles escaped quotes in CSV', () => {
+        const text = `Name,Quote
+Item1,"He said ""hello"""
+Item2,"Normal text"`;
+
+        const result = analyzeText(text);
+        
+        expect(result.bestMatch).not.toBeNull();
+        expect(result.bestMatch?.type).toBe('csv');
+        expect(result.bestMatch?.rows[0][1]).toBe('He said "hello"');
+      });
+
+      it('returns medium confidence for small CSV', () => {
+        const text = `Col1,Col2
+A,B
+C,D`;
+
+        const result = analyzeText(text);
+        
+        expect(result.bestMatch).not.toBeNull();
+        expect(result.bestMatch?.type).toBe('csv');
+        expect(result.bestMatch?.confidence).toBe('medium');
+      });
+
+      it('prefers TSV over CSV when tabs present', () => {
+        const text = `Name\tCost\tWeight
+Sword\t50gp\t3lb
+Shield\t25gp\t5lb`;
+
+        const result = analyzeText(text);
+        
+        expect(result.bestMatch).not.toBeNull();
+        expect(result.bestMatch?.type).toBe('tsv');
+      });
+    });
+
     describe('key-value detection', () => {
       it('detects key: value patterns', () => {
         const text = `Name: Iron Sword
