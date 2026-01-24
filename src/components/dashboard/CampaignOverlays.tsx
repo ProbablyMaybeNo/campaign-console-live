@@ -1,4 +1,4 @@
-import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database } from "lucide-react";
+import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database, UserCog } from "lucide-react";
 import { OverlayPanel, OverlayEmpty } from "@/components/ui/OverlayPanel";
 import { PlayersWidget } from "./widgets/PlayersWidget";
 import { MessagesWidget } from "./widgets/MessagesWidget";
@@ -8,6 +8,7 @@ import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsMo
 import { MapManager } from "@/components/map/MapManager";
 import { ComponentsManager } from "./ComponentsManager";
 import { WarbandsWidget } from "./WarbandsWidget";
+import { PlayerSettingsOverlay } from "@/components/players/PlayerSettingsOverlay";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Link } from "react-router-dom";
@@ -18,6 +19,7 @@ interface OverlayConfig {
   icon: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl" | "full";
   gmOnly?: boolean;
+  playerOnly?: boolean;
 }
 
 const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
@@ -39,6 +41,13 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     subtitle: "View campaign roster and manage participants",
     icon: <Users className="w-4 h-4" />,
     size: "md",
+  },
+  "player-settings": {
+    title: "Player Settings",
+    subtitle: "Configure your warband info for this campaign",
+    icon: <UserCog className="w-4 h-4" />,
+    size: "lg",
+    playerOnly: true,
   },
   rules: {
     title: "Rules",
@@ -105,6 +114,26 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
           icon={config.icon}
           title="GM Only"
           description="This feature is only available to Game Masters."
+        />
+      </OverlayPanel>
+    );
+  }
+
+  // Player-only overlays are hidden for GMs (they have their own settings)
+  if (config.playerOnly && isGM) {
+    return (
+      <OverlayPanel
+        open={true}
+        onClose={onClose}
+        title={config.title}
+        subtitle="Access Restricted"
+        icon={config.icon}
+        size="sm"
+      >
+        <OverlayEmpty
+          icon={config.icon}
+          title="Player Only"
+          description="This feature is only available to players. GMs can view player info via the Players overlay."
         />
       </OverlayPanel>
     );
@@ -194,6 +223,13 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
       return (
         <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <ComponentsManager campaignId={campaignId} />
+        </OverlayPanel>
+      );
+
+    case "player-settings":
+      return (
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+          <PlayerSettingsOverlay campaignId={campaignId} />
         </OverlayPanel>
       );
 

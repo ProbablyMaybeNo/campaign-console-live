@@ -92,26 +92,41 @@ export type Database = {
       }
       campaign_players: {
         Row: {
+          additional_info: string | null
           campaign_id: string
+          current_points: number | null
+          faction: string | null
           id: string
           joined_at: string
+          player_name: string | null
           role: string
+          sub_faction: string | null
           user_id: string
           warband_link: string | null
         }
         Insert: {
+          additional_info?: string | null
           campaign_id: string
+          current_points?: number | null
+          faction?: string | null
           id?: string
           joined_at?: string
+          player_name?: string | null
           role?: string
+          sub_faction?: string | null
           user_id: string
           warband_link?: string | null
         }
         Update: {
+          additional_info?: string | null
           campaign_id?: string
+          current_points?: number | null
+          faction?: string | null
           id?: string
           joined_at?: string
+          player_name?: string | null
           role?: string
+          sub_faction?: string | null
           user_id?: string
           warband_link?: string | null
         }
@@ -742,6 +757,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "narrative_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_narrative_entries: {
+        Row: {
+          campaign_id: string
+          content: string
+          created_at: string
+          id: string
+          player_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          content?: string
+          created_at?: string
+          id?: string
+          player_id: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_narrative_entries_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"

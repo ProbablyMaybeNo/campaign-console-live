@@ -21,7 +21,8 @@ import {
   Plus,
   LayoutGrid,
   Database,
-  BookOpen
+  BookOpen,
+  UserCog
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,9 +31,11 @@ const sidebarItems: {
   label: string; 
   icon: React.ElementType;
   gmOnly?: boolean;
+  playerOnly?: boolean;
 }[] = [
   { id: "home", label: "Home", icon: LayoutGrid },
   { id: "components", label: "Components", icon: Database, gmOnly: true },
+  { id: "player-settings", label: "My Settings", icon: UserCog, playerOnly: true },
   { id: "warbands", label: "Warbands", icon: Swords },
   { id: "players", label: "Players", icon: Users },
   { id: "rules", label: "Rules", icon: Scroll },
@@ -145,6 +148,7 @@ export default function CampaignDashboard() {
           <nav className="space-y-1 flex-1">
             {sidebarItems.map((item) => {
               if (item.gmOnly && !effectiveIsGM) return null;
+              if (item.playerOnly && effectiveIsGM) return null;
               
               const isActive = item.id === "home" 
                 ? !activeOverlay 
