@@ -10,6 +10,7 @@ import { MapManager } from "@/components/map/MapManager";
 import { ComponentsManager } from "./ComponentsManager";
 import { WarbandsWidget } from "./WarbandsWidget";
 import { PlayerSettingsOverlay } from "@/components/players/PlayerSettingsOverlay";
+import { RulesManager } from "@/components/rules/RulesManager";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Link } from "react-router-dom";
@@ -180,14 +181,9 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
       );
 
     case "rules":
-      // Rules overlay now just shows info - paste functionality is in Add Component
       return (
-        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
-          <OverlayEmpty
-            icon={<Scroll className="w-8 h-8" />}
-            title="Paste Rules into Components"
-            description="To add rules, click the + button and select Table or Card. You can paste rules text directly and it will be formatted automatically."
-          />
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle="Manage rules tables and cards" icon={config.icon} size="lg">
+          <RulesManager campaignId={campaignId} isGM={isGM} />
         </OverlayPanel>
       );
 

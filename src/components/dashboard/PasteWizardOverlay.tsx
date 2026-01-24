@@ -1,5 +1,9 @@
 /**
  * PasteWizardOverlay - Two-step paste and review UI for creating table/card components
+ * 
+ * Supports two modes:
+ * - Dashboard component creation (default)
+ * - Rules creation (saveToRules=true) - saves to wargame_rules table
  */
 
 import { useState } from "react";
@@ -7,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { useCreateRule, TableRuleContent, CardRuleContent } from "@/hooks/useWargameRules";
 import { useAITextConvert } from "@/hooks/useAITextConvert";
 import { analyzeText, toTableConfig, toCardConfig, type DetectedContent } from "@/lib/textPatternDetector";
 import { 
@@ -34,6 +39,10 @@ export interface PasteWizardOverlayProps {
   campaignId: string;
   componentType: 'table' | 'card';
   onComplete?: () => void;
+  /** If true, saves to wargame_rules table instead of dashboard_components */
+  saveToRules?: boolean;
+  /** If true, starts with empty table/card for manual entry (no paste required) */
+  isCustom?: boolean;
 }
 
 type WizardStep = 'paste' | 'review';
@@ -48,22 +57,32 @@ export function PasteWizardOverlay({
   onOpenChange, 
   campaignId, 
   componentType,
-  onComplete 
+  onComplete,
+  saveToRules = false,
+  isCustom = false,
 }: PasteWizardOverlayProps) {
-  const [step, setStep] = useState<WizardStep>('paste');
+  // For custom mode, start directly on review step with empty data
+  const [step, setStep] = useState<WizardStep>(isCustom ? 'review' : 'paste');
   const [rawText, setRawText] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(isCustom ? `New ${componentType === 'table' ? 'Table' : 'Card'}` : '');
+  const [category, setCategory] = useState('General');
   const [detection, setDetection] = useState<DetectedContent | null>(null);
   const [showRawText, setShowRawText] = useState(false);
   
   // Editable state for review step
-  const [columns, setColumns] = useState<string[]>([]);
+  const [columns, setColumns] = useState<string[]>(isCustom ? ['Column 1', 'Column 2'] : []);
   const [rows, setRows] = useState<TableRow[]>([]);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [headerValue, setHeaderValue] = useState('');
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
   
+  // Card-specific state
+  const [sections, setSections] = useState<Array<{ id: string; header: string; content: string }>>(
+    isCustom && componentType === 'card' ? [{ id: crypto.randomUUID(), header: 'Section 1', content: '' }] : []
+  );
+  
   const createComponent = useCreateComponent();
+  const createRule = useCreateRule();
   const { convertText, isConverting } = useAITextConvert();
 
   const handleAIConvert = async () => {
@@ -154,49 +173,88 @@ export function PasteWizardOverlay({
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error('Please enter a component name');
+      toast.error('Please enter a name');
       return;
     }
 
-    const config = componentType === 'table' 
-      ? {
-          columns,
-          rows,
-          rawText: detection?.rawText || rawText,
-          parsingMode: 'auto',
-          manual_setup: true,
-        }
-      : toCardConfig(detection!);
+    // Build content based on type
+    if (saveToRules) {
+      // Save to wargame_rules table
+      const ruleContent: TableRuleContent | CardRuleContent = componentType === 'table'
+        ? {
+            type: 'table',
+            columns,
+            rows,
+            rawText: detection?.rawText || rawText,
+          }
+        : {
+            type: 'card',
+            title: name.trim(),
+            sections: componentType === 'card' 
+              ? (rows.length > 0 
+                  ? rows.map(r => ({ id: r.id, header: r.Header || '', content: r.Content || '' }))
+                  : sections)
+              : [],
+            rawText: detection?.rawText || rawText,
+          };
 
-    await createComponent.mutateAsync({
-      campaign_id: campaignId,
-      name: name.trim(),
-      component_type: componentType,
-      config: config as unknown as Json,
-      position_x: Math.round(100 + Math.random() * 200),
-      position_y: Math.round(100 + Math.random() * 200),
-      width: 350,
-      height: 300,
-    });
+      await createRule.mutateAsync({
+        campaignId,
+        title: name.trim(),
+        category,
+        content: ruleContent,
+      });
 
-    toast.success(`${componentType === 'table' ? 'Table' : 'Card'} created!`);
+      toast.success(`${componentType === 'table' ? 'Rules Table' : 'Rules Card'} created!`);
+    } else {
+      // Save to dashboard_components
+      const config = componentType === 'table' 
+        ? {
+            columns,
+            rows,
+            rawText: detection?.rawText || rawText,
+            parsingMode: 'auto',
+            manual_setup: true,
+          }
+        : toCardConfig(detection!);
+
+      await createComponent.mutateAsync({
+        campaign_id: campaignId,
+        name: name.trim(),
+        component_type: componentType,
+        config: config as unknown as Json,
+        position_x: Math.round(100 + Math.random() * 200),
+        position_y: Math.round(100 + Math.random() * 200),
+        width: 350,
+        height: 300,
+      });
+
+      toast.success(`${componentType === 'table' ? 'Table' : 'Card'} created!`);
+    }
+
     handleClose();
     onComplete?.();
   };
 
   const handleClose = () => {
-    setStep('paste');
+    setStep(isCustom ? 'review' : 'paste');
     setRawText('');
-    setName('');
+    setName(isCustom ? `New ${componentType === 'table' ? 'Table' : 'Card'}` : '');
+    setCategory('General');
     setDetection(null);
-    setColumns([]);
+    setColumns(isCustom ? ['Column 1', 'Column 2'] : []);
     setRows([]);
+    setSections(isCustom && componentType === 'card' ? [{ id: crypto.randomUUID(), header: 'Section 1', content: '' }] : []);
     setShowRawText(false);
     onOpenChange(false);
   };
 
   const handleBack = () => {
-    setStep('paste');
+    if (isCustom) {
+      handleClose();
+    } else {
+      setStep('paste');
+    }
   };
 
   // Table editing functions
@@ -286,7 +344,12 @@ export function PasteWizardOverlay({
           <DialogTitle className="text-primary font-mono uppercase tracking-wider flex items-center gap-2">
             <span className="text-lg">{">"}</span>
             {componentType === 'table' ? <Table className="w-5 h-5" /> : <LayoutList className="w-5 h-5" />}
-            Create {componentType === 'table' ? 'Table' : 'Card'} from Pasted Rules
+            {isCustom 
+              ? `Create Custom ${componentType === 'table' ? 'Table' : 'Card'}`
+              : saveToRules 
+                ? `Create Rules ${componentType === 'table' ? 'Table' : 'Card'}`
+                : `Create ${componentType === 'table' ? 'Table' : 'Card'} from Pasted Rules`
+            }
           </DialogTitle>
         </DialogHeader>
 
@@ -328,39 +391,53 @@ Example:
           </div>
         )}
 
-        {step === 'review' && detection && (
+        {step === 'review' && (detection || isCustom) && (
           <div className="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
-            {/* Detection info */}
-            <div className="flex items-center gap-4 text-xs">
-              <span className="bg-primary/20 text-primary px-2 py-1 rounded font-mono uppercase">
-                {detection.type.replace('-', ' ')}
-              </span>
-              <span className="text-muted-foreground">
-                {rows.length} rows × {columns.length} columns
-              </span>
-              <span className={`px-2 py-1 rounded font-mono uppercase ${
-                detection.confidence === 'high' ? 'bg-green-500/20 text-green-400' :
-                detection.confidence === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-                'bg-red-500/20 text-red-400'
-              }`}>
-                {detection.confidence} confidence
-              </span>
-              {detection.diceType && (
-                <span className="bg-accent text-accent-foreground px-2 py-1 rounded font-mono">
-                  {detection.diceType.toUpperCase()}
+            {/* Detection info - only show if not custom mode */}
+            {detection && !isCustom && (
+              <div className="flex items-center gap-4 text-xs">
+                <span className="bg-primary/20 text-primary px-2 py-1 rounded font-mono uppercase">
+                  {detection.type.replace('-', ' ')}
                 </span>
-              )}
-            </div>
+                <span className="text-muted-foreground">
+                  {rows.length} rows × {columns.length} columns
+                </span>
+                <span className={`px-2 py-1 rounded font-mono uppercase ${
+                  detection.confidence === 'high' ? 'bg-green-500/20 text-green-400' :
+                  detection.confidence === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                  'bg-red-500/20 text-red-400'
+                }`}>
+                  {detection.confidence} confidence
+                </span>
+                {detection.diceType && (
+                  <span className="bg-accent text-accent-foreground px-2 py-1 rounded font-mono">
+                    {detection.diceType.toUpperCase()}
+                  </span>
+                )}
+              </div>
+            )}
 
-            {/* AI Convert button - show when confidence is not high */}
-            {detection.confidence !== 'high' && (
+            {/* Custom mode info */}
+            {isCustom && (
+              <div className="flex items-center gap-4 text-xs">
+                <span className="bg-accent text-accent-foreground px-2 py-1 rounded font-mono uppercase">
+                  Manual Entry
+                </span>
+                <span className="text-muted-foreground">
+                  {rows.length} rows × {columns.length} columns
+                </span>
+              </div>
+            )}
+
+            {/* AI Convert button - show when confidence is not high and not custom */}
+            {detection && !isCustom && detection.confidence !== 'high' && (
               <div className="bg-accent/30 border border-accent rounded p-3 flex items-center justify-between gap-3">
                 <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div className="text-xs text-muted-foreground">
                     <p className="font-medium text-foreground">Detection confidence is {detection.confidence}</p>
                     {detection.warnings.length > 0 && (
-                      <ul className="mt-1 space-y-0.5 text-yellow-400">
+                      <ul className="mt-1 space-y-0.5 text-amber-400">
                         {detection.warnings.map((w, i) => (
                           <li key={i}>• {w}</li>
                         ))}
@@ -385,10 +462,10 @@ Example:
             )}
 
             {/* Warnings for high confidence */}
-            {detection.confidence === 'high' && detection.warnings.length > 0 && (
-              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3 flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-yellow-400 space-y-1">
+            {detection && !isCustom && detection.confidence === 'high' && detection.warnings.length > 0 && (
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded p-3 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-400 space-y-1">
                   {detection.warnings.map((w, i) => (
                     <p key={i}>{w}</p>
                   ))}
@@ -396,13 +473,27 @@ Example:
               </div>
             )}
 
-            {/* Name input */}
-            <TerminalInput
-              label="Component Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter component name..."
-            />
+            {/* Name and Category inputs */}
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <TerminalInput
+                  label={saveToRules ? "Rule Name" : "Component Name"}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter name..."
+                />
+              </div>
+              {saveToRules && (
+                <div className="w-48">
+                  <TerminalInput
+                    label="Category"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="e.g., Combat, Movement..."
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Editable table */}
             <div className="flex-1 overflow-hidden border border-border rounded">
@@ -538,13 +629,18 @@ Example:
             {/* Actions */}
             <div className="flex justify-end gap-3 pt-2 border-t border-border">
               <TerminalButton variant="outline" onClick={handleBack}>
-                Back
+                {isCustom ? 'Cancel' : 'Back'}
               </TerminalButton>
               <TerminalButton
                 onClick={handleCreate}
-                disabled={!name.trim() || createComponent.isPending}
+                disabled={!name.trim() || createComponent.isPending || createRule.isPending}
               >
-                {createComponent.isPending ? 'Creating...' : '[ Create Component ]'}
+                {(createComponent.isPending || createRule.isPending) 
+                  ? 'Creating...' 
+                  : saveToRules 
+                    ? '[ Create Rule ]' 
+                    : '[ Create Component ]'
+                }
               </TerminalButton>
             </div>
           </div>

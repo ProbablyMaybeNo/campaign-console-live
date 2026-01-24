@@ -21,8 +21,11 @@ interface AddComponentModalProps {
 }
 
 const COMPONENT_TYPES = [
-  { type: "table", label: "Table", icon: Table, description: "Data table with rows and columns", usesPasteWizard: true },
-  { type: "card", label: "Card", icon: LayoutList, description: "Card list with expandable items", usesPasteWizard: true },
+  { type: "rules_table", label: "Rules Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
+  { type: "rules_card", label: "Rules Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
+  { type: "custom_table", label: "Custom Table", icon: Table, description: "Blank table for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
+  { type: "custom_card", label: "Custom Card", icon: LayoutList, description: "Blank card for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
+  { type: "narrative_table", label: "Narrative", icon: LayoutList, description: "Display narrative events" },
   { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
   { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
@@ -124,7 +127,8 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
   };
 
   // Show paste wizard if selected type uses it
-  if (showPasteWizard && selectedType) {
+  if (showPasteWizard && selectedType && selectedTypeData) {
+    const componentType = selectedType.includes('table') ? 'table' : 'card';
     return (
       <PasteWizardOverlay
         open={showPasteWizard}
@@ -132,7 +136,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
           if (!open) handlePasteWizardClose();
         }}
         campaignId={campaignId}
-        componentType={selectedType as "table" | "card"}
+        componentType={componentType as "table" | "card"}
+        saveToRules={selectedTypeData.saveToRules}
+        isCustom={selectedTypeData.isCustom}
         onComplete={handlePasteWizardComplete}
       />
     );
