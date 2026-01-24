@@ -124,9 +124,19 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
     );
   }
 
+  const isGMPreview = settings.id === "gm-preview";
+
   return (
     <ScrollArea className="h-full">
       <div className="space-y-6 p-1 pr-4">
+        {/* GM Preview Notice */}
+        {isGMPreview && (
+          <div className="bg-secondary/20 border border-secondary/50 rounded p-3 text-center">
+            <p className="text-xs font-mono text-secondary">
+              [ GM PREVIEW MODE ] This is what players see. Changes won't be saved.
+            </p>
+          </div>
+        )}
         {/* Player Info Section */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-primary">
@@ -208,25 +218,27 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
           />
         </section>
 
-        {/* Save Button */}
-        <div className="flex justify-end border-t border-border pt-4">
-          <TerminalButton
-            onClick={handleSave}
-            disabled={!hasChanges || updateSettings.isPending}
-          >
-            {updateSettings.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Save Settings
-              </>
-            )}
-          </TerminalButton>
-        </div>
+        {/* Save Button - hidden in GM preview mode */}
+        {!isGMPreview && (
+          <div className="flex justify-end border-t border-border pt-4">
+            <TerminalButton
+              onClick={handleSave}
+              disabled={!hasChanges || updateSettings.isPending}
+            >
+              {updateSettings.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Settings
+                </>
+              )}
+            </TerminalButton>
+          </div>
+        )}
 
         {/* Narrative Section */}
         <section className="space-y-4 border-t border-border pt-6">

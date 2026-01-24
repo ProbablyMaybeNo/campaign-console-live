@@ -33,6 +33,7 @@ export function usePlayerSettings(campaignId: string | undefined) {
     queryFn: async (): Promise<PlayerSettings | null> => {
       if (!campaignId || !user?.id) return null;
 
+      // First check if user is a campaign player
       const { data, error } = await supabase
         .from("campaign_players")
         .select(`
@@ -51,7 +52,33 @@ export function usePlayerSettings(campaignId: string | undefined) {
         .maybeSingle();
 
       if (error) throw error;
-      return data;
+      
+      // If user is a player, return their settings
+      if (data) return data;
+
+      // Check if user is the GM (campaign owner) - return mock settings for preview mode
+      const { data: campaign } = await supabase
+        .from("campaigns")
+        .select("owner_id")
+        .eq("id", campaignId)
+        .maybeSingle();
+
+      if (campaign?.owner_id === user.id) {
+        // Return a mock/preview settings object for GM testing
+        return {
+          id: "gm-preview",
+          user_id: user.id,
+          campaign_id: campaignId,
+          player_name: "(GM Preview)",
+          faction: null,
+          sub_faction: null,
+          current_points: null,
+          warband_link: null,
+          additional_info: null,
+        };
+      }
+
+      return null;
     },
     enabled: !!campaignId && !!user?.id,
   });
