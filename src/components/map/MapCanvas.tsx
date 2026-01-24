@@ -327,9 +327,9 @@ export function MapCanvas({
                         </div>
                       )}
                       
-                      {/* Label tooltip on hover */}
+                      {/* Label tooltip - below the icon */}
                       {(isHovered || isEditing) && marker.label && !isEditing && (
-                        <div className="absolute left-1/2 -translate-x-1/2 -top-8 bg-background border border-border rounded px-2 py-1 text-xs whitespace-nowrap shadow-lg">
+                        <div className="absolute left-1/2 -translate-x-1/2 top-9 bg-background border border-border rounded px-2 py-1 text-xs whitespace-nowrap shadow-lg">
                           {marker.label}
                           {isGmOnly && <span className="ml-1 text-amber-400">(GM)</span>}
                         </div>
