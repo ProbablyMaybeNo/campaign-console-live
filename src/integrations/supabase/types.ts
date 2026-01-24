@@ -829,31 +829,43 @@ export type Database = {
       schedule_entries: {
         Row: {
           campaign_id: string
+          color: string | null
           created_at: string
+          end_date: string | null
+          entry_type: string | null
           id: string
           round_number: number
           scenario: string | null
           scheduled_date: string | null
+          start_date: string | null
           status: string | null
           title: string
         }
         Insert: {
           campaign_id: string
+          color?: string | null
           created_at?: string
+          end_date?: string | null
+          entry_type?: string | null
           id?: string
           round_number: number
           scenario?: string | null
           scheduled_date?: string | null
+          start_date?: string | null
           status?: string | null
           title: string
         }
         Update: {
           campaign_id?: string
+          color?: string | null
           created_at?: string
+          end_date?: string | null
+          entry_type?: string | null
           id?: string
           round_number?: number
           scenario?: string | null
           scheduled_date?: string | null
+          start_date?: string | null
           status?: string | null
           title?: string
         }

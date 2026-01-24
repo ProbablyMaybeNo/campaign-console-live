@@ -12,6 +12,7 @@ import {
   Hash,
   Map,
   Users,
+  Calendar,
 } from "lucide-react";
 
 interface AddComponentModalProps {
@@ -31,6 +32,7 @@ const COMPONENT_TYPES = [
   { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
   { type: "map", label: "Map", icon: Map, description: "Live campaign map with markers" },
   { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
+  { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -93,6 +95,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       width = 500;
       height = 350;
       config.columns = ["name", "faction", "current_points"];
+    } else if (selectedType === "calendar") {
+      width = 450;
+      height = 400;
     }
 
     await createComponent.mutateAsync({
@@ -217,6 +222,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "player_list" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   Shows a configurable table of all players. Choose which columns to display (name, faction, points, etc.) from the widget settings.
+                </p>
+              )}
+
+              {selectedType === "calendar" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Displays a monthly calendar with rounds and events. Manage schedule via the Schedule overlay.
                 </p>
               )}
 
