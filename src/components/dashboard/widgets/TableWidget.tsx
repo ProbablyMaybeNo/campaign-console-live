@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Plus, Trash2, Pencil, X, Check, FileText } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
+import { useRuleSync } from "@/hooks/useRuleSync";
 import type { Json } from "@/integrations/supabase/types";
 import {
   Collapsible,
@@ -24,59 +25,59 @@ interface TableConfig {
   rows?: TableRow[];
   rawText?: string;
   sourceLabel?: string;
+  rule_id?: string;
 }
 
 export function TableWidget({ component, isGM }: TableWidgetProps) {
   const updateComponent = useUpdateComponent();
+  const { syncTableToRule } = useRuleSync();
   const config = (component.config as TableConfig) || {};
   const columns = config.columns || ["Name", "Value"];
   const rows = config.rows || [];
   const rawText = config.rawText;
   const sourceLabel = config.sourceLabel;
+  const ruleId = config.rule_id;
 
   const [editingCell, setEditingCell] = useState<{ rowId: string; col: string } | null>(null);
   const [editingHeader, setEditingHeader] = useState<number | null>(null);
   const [headerValue, setHeaderValue] = useState("");
   const [showRawText, setShowRawText] = useState(false);
 
+  // Helper to update component and sync to rule
+  const updateAndSync = useCallback((newColumns: string[], newRows: TableRow[]) => {
+    const newConfig = { ...config, columns: newColumns, rows: newRows };
+    updateComponent.mutate({
+      id: component.id,
+      config: newConfig as unknown as Json,
+    });
+    
+    // Sync to linked rule if exists
+    if (ruleId) {
+      syncTableToRule({ ruleId, columns: newColumns, rows: newRows, rawText });
+    }
+  }, [config, component.id, ruleId, rawText, updateComponent, syncTableToRule]);
+
   const handleAddRow = () => {
     const newRow: TableRow = { id: crypto.randomUUID() };
     columns.forEach((col) => (newRow[col] = ""));
-    
-    const newConfig = { ...config, columns, rows: [...rows, newRow] };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync(columns, [...rows, newRow]);
   };
 
   const handleDeleteRow = (rowId: string) => {
-    const newConfig = { ...config, columns, rows: rows.filter((r) => r.id !== rowId) };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync(columns, rows.filter((r) => r.id !== rowId));
   };
 
   const handleCellChange = (rowId: string, col: string, value: string) => {
     const updatedRows = rows.map((row) =>
       row.id === rowId ? { ...row, [col]: value } : row
     );
-    const newConfig = { ...config, columns, rows: updatedRows };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync(columns, updatedRows);
   };
 
   const handleAddColumn = () => {
     const newColName = `Column ${columns.length + 1}`;
     const updatedRows = rows.map((row) => ({ ...row, [newColName]: "" }));
-    const newConfig = { ...config, columns: [...columns, newColName], rows: updatedRows };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync([...columns, newColName], updatedRows);
   };
 
   const handleStartEditHeader = (index: number) => {
@@ -114,11 +115,7 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
       return newRow;
     });
 
-    const newConfig = { ...config, columns: updatedColumns, rows: updatedRows };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync(updatedColumns, updatedRows);
     setEditingHeader(null);
   };
 
@@ -134,11 +131,7 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
       return newRow;
     });
 
-    const newConfig = { ...config, columns: updatedColumns, rows: updatedRows };
-    updateComponent.mutate({
-      id: component.id,
-      config: newConfig as unknown as Json,
-    });
+    updateAndSync(updatedColumns, updatedRows);
   };
 
   return (
