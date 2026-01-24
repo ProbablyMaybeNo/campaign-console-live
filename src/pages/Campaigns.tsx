@@ -8,7 +8,7 @@ import { JoinCampaignModal } from "@/components/campaigns/JoinCampaignModal";
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Copy, Check } from "lucide-react";
+import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Copy, Check, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 
@@ -109,6 +109,7 @@ export default function Campaigns() {
                   <tr className="border-b border-primary/30">
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Role</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Campaign Name</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Players</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Campaign ID</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Start Date</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Status</th>
@@ -136,6 +137,12 @@ export default function Campaigns() {
                       </td>
                       <td className="py-3 px-4 text-foreground">
                         {campaign.name}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Users className="w-3.5 h-3.5" />
+                          <span className="font-mono">{campaign.player_count ?? 0}</span>
+                        </div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">

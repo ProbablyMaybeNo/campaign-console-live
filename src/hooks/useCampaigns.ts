@@ -13,6 +13,7 @@ export interface Campaign {
   owner_id: string;
   created_at: string;
   updated_at: string;
+  player_count?: number;
 }
 
 export interface CreateCampaignInput {
@@ -56,6 +57,8 @@ export function useCampaigns() {
 
       const playerCampaignIds = playerCampaigns?.map(p => p.campaign_id) || [];
       
+      let allCampaigns: Campaign[] = ownedCampaigns || [];
+      
       if (playerCampaignIds.length > 0) {
         const { data: joinedCampaigns, error: joinedError } = await supabase
           .from("campaigns")
@@ -65,10 +68,31 @@ export function useCampaigns() {
 
         if (joinedError) throw joinedError;
 
-        return [...(ownedCampaigns || []), ...(joinedCampaigns || [])];
+        allCampaigns = [...allCampaigns, ...(joinedCampaigns || [])];
       }
 
-      return ownedCampaigns || [];
+      // Fetch player counts for all campaigns
+      if (allCampaigns.length > 0) {
+        const campaignIds = allCampaigns.map(c => c.id);
+        const { data: playerCounts, error: countError } = await supabase
+          .from("campaign_players")
+          .select("campaign_id")
+          .in("campaign_id", campaignIds);
+
+        if (!countError && playerCounts) {
+          const countMap: Record<string, number> = {};
+          playerCounts.forEach(p => {
+            countMap[p.campaign_id] = (countMap[p.campaign_id] || 0) + 1;
+          });
+
+          allCampaigns = allCampaigns.map(campaign => ({
+            ...campaign,
+            player_count: countMap[campaign.id] || 0,
+          }));
+        }
+      }
+
+      return allCampaigns;
     },
     enabled: !!user,
   });
