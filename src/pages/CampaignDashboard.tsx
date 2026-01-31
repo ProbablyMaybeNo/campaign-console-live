@@ -59,8 +59,17 @@ export default function CampaignDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    const stored = localStorage.getItem("campaign-sidebar-open");
+    return stored !== null ? stored === "true" : true;
+  });
   const effectiveIsGM = isGM && !previewAsPlayer;
+
+  // Persist sidebar state to localStorage
+  const handleSidebarToggle = (open: boolean) => {
+    setSidebarOpen(open);
+    localStorage.setItem("campaign-sidebar-open", String(open));
+  };
 
   // Filter components based on visibility for players
   const visibleComponents = effectiveIsGM 
@@ -164,7 +173,7 @@ export default function CampaignDashboard() {
               <div className="flex items-center justify-between mb-3 px-3">
                 <p className="text-xs uppercase tracking-wider text-white font-medium">Campaign Control</p>
                 <button
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => handleSidebarToggle(false)}
                   className="text-[hsl(142,76%,55%)] hover:text-[hsl(142,76%,70%)] transition-colors"
                   title="Close sidebar"
                 >
@@ -210,7 +219,7 @@ export default function CampaignDashboard() {
           {/* Campaign Control button - appears when sidebar is closed */}
           {effectiveIsGM && !sidebarOpen && (
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => handleSidebarToggle(true)}
               className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 rounded bg-[hsl(142,76%,50%)]/10 border border-[hsl(142,76%,65%)] text-[hsl(142,76%,65%)] font-mono text-xs font-bold uppercase tracking-wider transition-all hover:bg-[hsl(142,76%,50%)]/20 hover:scale-105"
               style={{ 
                 boxShadow: '0 0 15px hsl(142 76% 50% / 0.3), 0 0 30px hsl(142 76% 50% / 0.15)',
