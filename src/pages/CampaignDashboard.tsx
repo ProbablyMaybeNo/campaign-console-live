@@ -101,7 +101,11 @@ export default function CampaignDashboard() {
       {/* Fixed Header */}
       <header className="border-b border-primary/20 bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50">
         <div className="flex items-center justify-between">
-          <Link to="/campaigns" className="text-[hsl(200,100%,50%)] hover:text-[hsl(200,100%,60%)] transition-colors">
+          <Link 
+            to="/campaigns" 
+            className="text-[hsl(200,100%,65%)] hover:text-[hsl(200,100%,75%)] transition-all"
+            style={{ textShadow: '0 0 10px hsl(200 100% 50% / 0.6), 0 0 20px hsl(200 100% 50% / 0.3)' }}
+          >
             <span className="flex items-center gap-1 font-mono text-sm font-medium">
               <ArrowLeft className="w-4 h-4" />
               Campaigns
@@ -117,15 +121,23 @@ export default function CampaignDashboard() {
                 }}
                 className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-90 ${
                   previewAsPlayer 
-                    ? "bg-[hsl(142,76%,36%)] text-black ring-2 ring-[hsl(200,100%,50%)] ring-offset-2 ring-offset-background" 
-                    : "bg-[hsl(200,100%,50%)] text-black"
+                    ? "bg-[hsl(142,76%,45%)] text-black ring-2 ring-[hsl(200,100%,60%)] ring-offset-2 ring-offset-background" 
+                    : "bg-[hsl(200,100%,60%)] text-black"
                 }`}
+                style={{ 
+                  boxShadow: previewAsPlayer 
+                    ? '0 0 15px hsl(142 76% 50% / 0.5), 0 0 30px hsl(142 76% 50% / 0.25)' 
+                    : '0 0 15px hsl(200 100% 50% / 0.5), 0 0 30px hsl(200 100% 50% / 0.25)' 
+                }}
                 title={previewAsPlayer ? "Click to return to GM view" : "Click to preview as Player"}
               >
                 {previewAsPlayer ? "Player (Preview)" : "Games Master"}
               </button>
             ) : (
-              <div className="px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[hsl(142,76%,36%)] text-black">
+              <div 
+                className="px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[hsl(142,76%,45%)] text-black"
+                style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.5), 0 0 30px hsl(142 76% 50% / 0.25)' }}
+              >
                 Player
               </div>
             )}
