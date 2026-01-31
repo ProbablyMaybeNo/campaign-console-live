@@ -99,7 +99,7 @@ export default function CampaignDashboard() {
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Fixed Header */}
-      <header className="border-b border-[hsl(142,76%,50%)]/40 bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 10px hsl(142 76% 50% / 0.15)' }}>
+      <header className="border-b-2 border-[hsl(142,76%,65%)] bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 15px hsl(142 76% 50% / 0.3)' }}>
         <div className="flex items-center justify-between">
           <Link 
             to="/campaigns" 
@@ -151,7 +151,7 @@ export default function CampaignDashboard() {
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Fixed Sidebar - GM only */}
         {effectiveIsGM && (
-          <aside className="w-56 border-r border-[hsl(142,76%,50%)]/30 bg-sidebar/95 backdrop-blur-sm flex-shrink-0 p-4 hidden md:flex flex-col sticky left-0 overflow-y-auto">
+          <aside className="w-56 border-r-2 border-[hsl(142,76%,65%)] bg-sidebar/95 backdrop-blur-sm flex-shrink-0 p-4 hidden md:flex flex-col sticky left-0 overflow-y-auto" style={{ boxShadow: '1px 0 15px hsl(142 76% 50% / 0.2)' }}>
             <p className="text-xs uppercase tracking-wider text-white font-medium mb-3 px-3">Campaign Control</p>
             <nav className="space-y-1 flex-1">
               {sidebarItems.map((item) => {
