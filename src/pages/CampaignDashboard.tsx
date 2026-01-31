@@ -22,7 +22,9 @@ import {
   LayoutGrid,
   Database,
   BookOpen,
-  UserCog
+  UserCog,
+  PanelLeftOpen,
+  PanelLeftClose
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,6 +59,7 @@ export default function CampaignDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const effectiveIsGM = isGM && !previewAsPlayer;
 
   // Filter components based on visibility for players
@@ -149,38 +152,54 @@ export default function CampaignDashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Fixed Sidebar - GM only */}
+        {/* Collapsible Sidebar - GM only */}
         {effectiveIsGM && (
-          <aside className="w-56 border-r-2 border-[hsl(142,76%,65%)] bg-sidebar/95 backdrop-blur-sm flex-shrink-0 p-4 hidden md:flex flex-col sticky left-0 overflow-y-auto" style={{ boxShadow: '1px 0 15px hsl(142 76% 50% / 0.2)' }}>
-            <p className="text-xs uppercase tracking-wider text-white font-medium mb-3 px-3">Campaign Control</p>
-            <nav className="space-y-1 flex-1">
-              {sidebarItems.map((item) => {
-                if (item.gmOnly && !effectiveIsGM) return null;
-                if (item.playerOnly && effectiveIsGM) return null;
-                
-                const isActive = item.id === "home" 
-                  ? !activeOverlay 
-                  : activeOverlay === item.id;
-                
-                return (
-                  <NavItem
-                    key={item.id}
-                    icon={<item.icon className="w-4 h-4" />}
-                    label={item.label}
-                    active={isActive}
-                    onClick={() => handleNavClick(item.id)}
-                  />
-                );
-              })}
+          <aside 
+            className={`border-r-2 border-[hsl(142,76%,65%)] bg-sidebar/95 backdrop-blur-sm flex-shrink-0 hidden md:flex flex-col overflow-y-auto transition-all duration-300 ease-in-out ${
+              sidebarOpen ? "w-56 p-4" : "w-0 p-0 border-r-0"
+            }`}
+            style={{ boxShadow: sidebarOpen ? '1px 0 15px hsl(142 76% 50% / 0.2)' : 'none' }}
+          >
+            <div className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+              <div className="flex items-center justify-between mb-3 px-3">
+                <p className="text-xs uppercase tracking-wider text-white font-medium">Campaign Control</p>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="text-[hsl(142,76%,55%)] hover:text-[hsl(142,76%,70%)] transition-colors"
+                  title="Close sidebar"
+                >
+                  <PanelLeftClose className="w-4 h-4" />
+                </button>
+              </div>
+              <nav className="space-y-1 flex-1">
+                {sidebarItems.map((item) => {
+                  if (item.gmOnly && !effectiveIsGM) return null;
+                  if (item.playerOnly && effectiveIsGM) return null;
+                  
+                  const isActive = item.id === "home" 
+                    ? !activeOverlay 
+                    : activeOverlay === item.id;
+                  
+                  return (
+                    <NavItem
+                      key={item.id}
+                      icon={<item.icon className="w-4 h-4" />}
+                      label={item.label}
+                      active={isActive}
+                      onClick={() => handleNavClick(item.id)}
+                    />
+                  );
+                })}
 
-              <div className="h-px bg-border my-3" />
-              <NavItem 
-                icon={<Settings className="w-4 h-4" />} 
-                label="Settings" 
-                active={activeOverlay === "settings"}
-                onClick={() => openOverlay("settings")}
-              />
-            </nav>
+                <div className="h-px bg-border my-3" />
+                <NavItem 
+                  icon={<Settings className="w-4 h-4" />} 
+                  label="Settings" 
+                  active={activeOverlay === "settings"}
+                  onClick={() => openOverlay("settings")}
+                />
+              </nav>
+            </div>
           </aside>
         )}
 
@@ -188,6 +207,22 @@ export default function CampaignDashboard() {
           className="flex-1 overflow-hidden relative min-h-0 border-r-2 border-b-2 border-[hsl(142,76%,65%)]"
           style={{ boxShadow: 'inset -1px -1px 15px hsl(142 76% 50% / 0.2)' }}
         >
+          {/* Campaign Control button - appears when sidebar is closed */}
+          {effectiveIsGM && !sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 rounded bg-[hsl(142,76%,50%)]/10 border border-[hsl(142,76%,65%)] text-[hsl(142,76%,65%)] font-mono text-xs font-bold uppercase tracking-wider transition-all hover:bg-[hsl(142,76%,50%)]/20 hover:scale-105"
+              style={{ 
+                boxShadow: '0 0 15px hsl(142 76% 50% / 0.3), 0 0 30px hsl(142 76% 50% / 0.15)',
+                textShadow: '0 0 10px hsl(142 76% 50% / 0.6)'
+              }}
+              title="Open Campaign Control"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+              Campaign Control
+            </button>
+          )}
+
           <InfiniteCanvas
             components={visibleComponents}
             isGM={effectiveIsGM}
