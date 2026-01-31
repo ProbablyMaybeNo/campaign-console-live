@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, memo, useMemo } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { DashboardComponent, useUpdateComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
+import { DashboardComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
 import { GripVertical, X, Maximize2 } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TableWidget } from "./widgets/TableWidget";
@@ -21,6 +21,9 @@ interface DraggableComponentProps {
   isSelected: boolean;
   onSelect: () => void;
   campaignId: string;
+  scale: number;
+  onResize: (id: string, width: number, height: number) => void;
+  onResizeEnd: () => void;
 }
 
 const MIN_WIDTH = 200;
@@ -51,18 +54,27 @@ function DraggableComponentInner({
   isSelected,
   onSelect,
   campaignId,
+  scale,
+  onResize,
+  onResizeEnd,
 }: DraggableComponentProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [localSize, setLocalSize] = useState({ width: component.width, height: component.height });
   const resizeRef = useRef<{ startX: number; startY: number; startWidth: number; startHeight: number } | null>(null);
 
-  const updateComponent = useUpdateComponent();
   const deleteComponent = useDeleteComponent();
 
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: component.id,
     disabled: !isGM || isPanning || isResizing,
   });
+
+  // Sync local size with component props when they change (e.g., from server)
+  useMemo(() => {
+    if (!isResizing) {
+      setLocalSize({ width: component.width, height: component.height });
+    }
+  }, [component.width, component.height, isResizing]);
 
   // Use GPU-accelerated transforms with will-change hint
   const style = useMemo(() => ({
@@ -73,8 +85,8 @@ function DraggableComponentInner({
     height: localSize.height,
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     zIndex: isDragging || isSelected ? 50 : 1,
-    willChange: isDragging ? "transform" : "auto",
-  }), [component.position_x, component.position_y, localSize.width, localSize.height, transform, isDragging, isSelected]);
+    willChange: isDragging || isResizing ? "transform" : "auto",
+  }), [component.position_x, component.position_y, localSize.width, localSize.height, transform, isDragging, isSelected, isResizing]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     if (!isGM) return;
@@ -90,33 +102,34 @@ function DraggableComponentInner({
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizeRef.current) return;
-      const deltaX = e.clientX - resizeRef.current.startX;
-      const deltaY = e.clientY - resizeRef.current.startY;
+      
+      // Scale-compensated delta calculation
+      const deltaX = (e.clientX - resizeRef.current.startX) / scale;
+      const deltaY = (e.clientY - resizeRef.current.startY) / scale;
+      
+      const newWidth = Math.max(MIN_WIDTH, resizeRef.current.startWidth + deltaX);
+      const newHeight = Math.max(MIN_HEIGHT, resizeRef.current.startHeight + deltaY);
+      
       setLocalSize({
-        width: Math.max(MIN_WIDTH, resizeRef.current.startWidth + deltaX),
-        height: Math.max(MIN_HEIGHT, resizeRef.current.startHeight + deltaY),
+        width: newWidth,
+        height: newHeight,
       });
+      
+      // Notify parent for optimistic updates
+      onResize(component.id, newWidth, newHeight);
     };
 
     const handleMouseUp = () => {
       setIsResizing(false);
-      if (resizeRef.current) {
-        const finalWidth = Math.max(MIN_WIDTH, localSize.width);
-        const finalHeight = Math.max(MIN_HEIGHT, localSize.height);
-        updateComponent.mutate({
-          id: component.id,
-          width: Math.round(finalWidth),
-          height: Math.round(finalHeight),
-        });
-      }
       resizeRef.current = null;
+      onResizeEnd();
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-  }, [isGM, localSize, component.id, updateComponent]);
+  }, [isGM, localSize, component.id, scale, onResize, onResizeEnd]);
 
   const handleDelete = useCallback(() => {
     deleteComponent.mutate({ id: component.id, campaignId });
@@ -241,6 +254,7 @@ export const DraggableComponent = memo(DraggableComponentInner, (prev, next) => 
     prev.isGM === next.isGM &&
     prev.isPanning === next.isPanning &&
     prev.isSelected === next.isSelected &&
-    prev.campaignId === next.campaignId
+    prev.campaignId === next.campaignId &&
+    prev.scale === next.scale
   );
 });

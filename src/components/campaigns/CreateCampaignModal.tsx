@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCreateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { writeCanvasTransform } from "@/lib/canvasPlacement";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface CreateCampaignModalProps {
@@ -84,19 +85,34 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
       display_settings: displaySettings,
     });
     
-    // Auto-create the Campaign Console widget at the canvas origin
-    // These coordinates are chosen so the component appears centered when the
-    // canvas first loads with its default transform
+    // Spawn coordinates for the Campaign Console at a known origin
+    // The canvas will auto-center on this position when loaded
+    const SPAWN_X = 0;
+    const SPAWN_Y = 0;
+    const CONSOLE_WIDTH = 500;
+    const CONSOLE_HEIGHT = 350;
+
+    // Pre-seed the canvas transform so the initial view centers on the console
+    // This ensures the component appears in view even before the canvas renders
+    writeCanvasTransform(campaign.id, {
+      scale: 0.5,
+      positionX: 0,
+      positionY: 0,
+      viewportWidth: 1200, // Reasonable default
+      viewportHeight: 800,
+    });
+
+    // Auto-create the Campaign Console widget at the origin
     await createComponent.mutateAsync({
       campaign_id: campaign.id,
       name: "Campaign Console",
       component_type: "campaign-console",
       data_source: "campaign",
       config: {},
-      position_x: 200,
-      position_y: 200,
-      width: 500,
-      height: 350,
+      position_x: SPAWN_X,
+      position_y: SPAWN_Y,
+      width: CONSOLE_WIDTH,
+      height: CONSOLE_HEIGHT,
     });
     
     resetForm();
