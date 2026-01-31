@@ -12,6 +12,7 @@ import { MapWidget } from "./widgets/MapWidget";
 import { PlayerListWidget } from "./widgets/PlayerListWidget";
 import { NarrativeTableWidget } from "./widgets/NarrativeTableWidget";
 import { CalendarWidget } from "./widgets/CalendarWidget";
+import { CampaignConsoleWidget } from "./widgets/CampaignConsoleWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -40,6 +41,7 @@ const COMPONENT_ICONS: Record<string, string> = {
   player_list: "👥",
   narrative_table: "📖",
   calendar: "📅",
+  "campaign-console": "⚔️",
 };
 
 function DraggableComponentInner({
@@ -152,6 +154,8 @@ function DraggableComponentInner({
         return <NarrativeTableWidget campaignId={campaignId} isGM={isGM} />;
       case "calendar":
         return <CalendarWidget campaignId={campaignId} isGM={isGM} />;
+      case "campaign-console":
+        return <CampaignConsoleWidget campaignId={campaignId} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">

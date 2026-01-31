@@ -2,6 +2,18 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 import { toast } from "sonner";
+import type { Json } from "@/integrations/supabase/types";
+
+export interface DisplaySettings {
+  showId?: boolean;
+  showPoints?: boolean;
+  showPlayers?: boolean;
+  showRound?: boolean;
+  showDates?: boolean;
+  showStatus?: boolean;
+  showGameSystem?: boolean;
+  [key: string]: boolean | undefined; // Index signature for Json compatibility
+}
 
 export interface Campaign {
   id: string;
@@ -14,6 +26,20 @@ export interface Campaign {
   created_at: string;
   updated_at: string;
   player_count?: number;
+  // New fields
+  max_players?: number | null;
+  total_rounds?: number | null;
+  round_length?: string | null;
+  join_code?: string | null;
+  password?: string | null;
+  status?: string | null;
+  game_system?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  current_round?: number | null;
+  display_settings?: DisplaySettings | Json | null;
+  title_color?: string | null;
+  border_color?: string | null;
 }
 
 export interface CreateCampaignInput {
@@ -21,6 +47,17 @@ export interface CreateCampaignInput {
   description?: string;
   points_limit?: number;
   rules_repo_url?: string;
+  max_players?: number;
+  total_rounds?: number;
+  round_length?: string;
+  password?: string;
+  game_system?: string;
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+  title_color?: string;
+  border_color?: string;
+  display_settings?: DisplaySettings;
 }
 
 export interface UpdateCampaignInput {
@@ -29,6 +66,18 @@ export interface UpdateCampaignInput {
   description?: string;
   points_limit?: number;
   rules_repo_url?: string;
+  max_players?: number;
+  total_rounds?: number;
+  round_length?: string;
+  password?: string;
+  game_system?: string;
+  start_date?: string;
+  end_date?: string;
+  current_round?: number;
+  status?: string;
+  title_color?: string;
+  border_color?: string;
+  display_settings?: DisplaySettings;
 }
 
 export function useCampaigns() {
@@ -57,7 +106,7 @@ export function useCampaigns() {
 
       const playerCampaignIds = playerCampaigns?.map(p => p.campaign_id) || [];
       
-      let allCampaigns: Campaign[] = ownedCampaigns || [];
+      let allCampaigns = (ownedCampaigns || []) as Campaign[];
       
       if (playerCampaignIds.length > 0) {
         const { data: joinedCampaigns, error: joinedError } = await supabase
@@ -68,7 +117,7 @@ export function useCampaigns() {
 
         if (joinedError) throw joinedError;
 
-        allCampaigns = [...allCampaigns, ...(joinedCampaigns || [])];
+        allCampaigns = [...allCampaigns, ...((joinedCampaigns || []) as Campaign[])];
       }
 
       // Fetch player counts for all campaigns
@@ -111,7 +160,7 @@ export function useCampaign(campaignId: string | undefined) {
         .maybeSingle();
 
       if (error) throw error;
-      return data;
+      return data as Campaign | null;
     },
     enabled: !!campaignId,
   });
@@ -125,6 +174,16 @@ export function useCreateCampaign() {
     mutationFn: async (input: CreateCampaignInput): Promise<Campaign> => {
       if (!user) throw new Error("Not authenticated");
 
+      const displaySettings: DisplaySettings = input.display_settings || {
+        showId: true,
+        showPoints: true,
+        showPlayers: true,
+        showRound: true,
+        showDates: true,
+        showStatus: true,
+        showGameSystem: true,
+      };
+
       const { data, error } = await supabase
         .from("campaigns")
         .insert({
@@ -133,12 +192,23 @@ export function useCreateCampaign() {
           points_limit: input.points_limit || 1000,
           rules_repo_url: input.rules_repo_url || null,
           owner_id: user.id,
+          max_players: input.max_players || 8,
+          total_rounds: input.total_rounds || 10,
+          round_length: input.round_length || "weekly",
+          password: input.password || null,
+          game_system: input.game_system || null,
+          start_date: input.start_date || null,
+          end_date: input.end_date || null,
+          status: input.status || "active",
+          title_color: input.title_color || "#22c55e",
+          border_color: input.border_color || "#22c55e",
+          display_settings: displaySettings as unknown as Json,
         })
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Campaign;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
@@ -155,17 +225,22 @@ export function useUpdateCampaign() {
 
   return useMutation({
     mutationFn: async (input: UpdateCampaignInput): Promise<Campaign> => {
-      const { id, ...updates } = input;
+      const { id, display_settings, ...updates } = input;
+      
+      const updatePayload: Record<string, unknown> = { ...updates };
+      if (display_settings) {
+        updatePayload.display_settings = display_settings as unknown as Json;
+      }
       
       const { data, error } = await supabase
         .from("campaigns")
-        .update(updates)
+        .update(updatePayload)
         .eq("id", id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as Campaign;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
@@ -205,14 +280,14 @@ export function useJoinCampaign() {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (campaignId: string): Promise<void> => {
+    mutationFn: async ({ joinCode, password }: { joinCode: string; password?: string }): Promise<string> => {
       if (!user) throw new Error("Not authenticated");
 
-      // First check if campaign exists
+      // Find campaign by join code
       const { data: campaign, error: campaignError } = await supabase
         .from("campaigns")
-        .select("id, owner_id")
-        .eq("id", campaignId)
+        .select("id, owner_id, password")
+        .eq("join_code", joinCode.toUpperCase())
         .maybeSingle();
 
       if (campaignError) throw campaignError;
@@ -223,11 +298,16 @@ export function useJoinCampaign() {
         throw new Error("You are the Games Master of this campaign.");
       }
 
+      // Check password if required
+      if (campaign.password && campaign.password !== password) {
+        throw new Error("Incorrect password.");
+      }
+
       // Check if user is already a member
       const { data: existingMembership } = await supabase
         .from("campaign_players")
         .select("id")
-        .eq("campaign_id", campaignId)
+        .eq("campaign_id", campaign.id)
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -239,12 +319,14 @@ export function useJoinCampaign() {
       const { error: joinError } = await supabase
         .from("campaign_players")
         .insert({
-          campaign_id: campaignId,
+          campaign_id: campaign.id,
           user_id: user.id,
           role: "player",
         });
 
       if (joinError) throw joinError;
+      
+      return campaign.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });

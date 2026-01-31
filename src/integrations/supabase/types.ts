@@ -201,39 +201,78 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          border_color: string | null
           created_at: string
+          current_round: number | null
           description: string | null
+          display_settings: Json | null
+          end_date: string | null
+          game_system: string | null
           game_system_id: string | null
           id: string
+          join_code: string | null
+          max_players: number | null
           name: string
           owner_id: string
+          password: string | null
           points_limit: number | null
+          round_length: string | null
           rules_repo_ref: string | null
           rules_repo_url: string | null
+          start_date: string | null
+          status: string | null
+          title_color: string | null
+          total_rounds: number | null
           updated_at: string
         }
         Insert: {
+          border_color?: string | null
           created_at?: string
+          current_round?: number | null
           description?: string | null
+          display_settings?: Json | null
+          end_date?: string | null
+          game_system?: string | null
           game_system_id?: string | null
           id?: string
+          join_code?: string | null
+          max_players?: number | null
           name: string
           owner_id: string
+          password?: string | null
           points_limit?: number | null
+          round_length?: string | null
           rules_repo_ref?: string | null
           rules_repo_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          title_color?: string | null
+          total_rounds?: number | null
           updated_at?: string
         }
         Update: {
+          border_color?: string | null
           created_at?: string
+          current_round?: number | null
           description?: string | null
+          display_settings?: Json | null
+          end_date?: string | null
+          game_system?: string | null
           game_system_id?: string | null
           id?: string
+          join_code?: string | null
+          max_players?: number | null
           name?: string
           owner_id?: string
+          password?: string | null
           points_limit?: number | null
+          round_length?: string | null
           rules_repo_ref?: string | null
           rules_repo_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          title_color?: string | null
+          total_rounds?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1015,6 +1054,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_join_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
