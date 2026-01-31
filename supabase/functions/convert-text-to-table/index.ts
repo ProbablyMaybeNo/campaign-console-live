@@ -50,18 +50,25 @@ serve(async (req) => {
     }
 
     const systemPrompt = hint === "card" 
-      ? `You are a text parser that converts unstructured text into card sections.
-Extract the main title and break the content into logical sections with headers.
+      ? `You are a text formatter that organizes unstructured rules text into well-formatted card sections.
+Extract the main title and break the content into logical sections.
+Format each section's content using simple markdown:
+- Use **bold** for important terms, keywords, and key phrases
+- Use bullet points (• or -) for lists
+- Use numbered lists (1., 2., etc.) for sequential steps
+- Keep formatting clean and readable
+
 Return ONLY valid JSON in this exact format:
 {
   "title": "Main Title",
   "sections": [
-    { "header": "Section Name", "content": "Section content text..." }
+    { "header": "Section Name", "content": "Formatted content with **bold text** and\\n• bullet points\\n• like this" }
   ]
 }
 - Maximum 20 sections
-- Keep section content concise but complete
-- If no clear sections, create one section with header "Content"`
+- Preserve the meaning and important details
+- Make headers clear and descriptive
+- If no clear sections, create logical groupings based on topics`
       : `You are a text parser that converts unstructured text into structured table data.
 Identify column headers and extract rows of data.
 Return ONLY valid JSON in this exact format:

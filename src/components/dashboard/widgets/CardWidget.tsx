@@ -30,6 +30,63 @@ interface CardConfig {
   rule_id?: string;
 }
 
+// Helper to render formatted content with basic markdown support
+function renderFormattedContent(content: string) {
+  if (!content) return <span className="text-muted-foreground/50">No content</span>;
+  
+  // Split by lines and process each
+  const lines = content.split('\n');
+  
+  return (
+    <div className="space-y-1">
+      {lines.map((line, idx) => {
+        const trimmedLine = line.trim();
+        
+        // Empty line
+        if (!trimmedLine) {
+          return <div key={idx} className="h-1" />;
+        }
+        
+        // Bullet point (• or - or *)
+        const bulletMatch = trimmedLine.match(/^[•\-\*]\s*(.+)$/);
+        if (bulletMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-2">
+              <span className="text-primary mt-0.5">•</span>
+              <span>{renderBoldText(bulletMatch[1])}</span>
+            </div>
+          );
+        }
+        
+        // Numbered list (1. 2. etc)
+        const numberedMatch = trimmedLine.match(/^(\d+)\.\s*(.+)$/);
+        if (numberedMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-2 pl-2">
+              <span className="text-primary font-mono text-[10px] min-w-[1rem]">{numberedMatch[1]}.</span>
+              <span>{renderBoldText(numberedMatch[2])}</span>
+            </div>
+          );
+        }
+        
+        // Regular line
+        return <p key={idx}>{renderBoldText(trimmedLine)}</p>;
+      })}
+    </div>
+  );
+}
+
+// Helper to render **bold** text
+function renderBoldText(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={idx} className="text-foreground font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
 export function CardWidget({ component, isGM }: CardWidgetProps) {
   const updateComponent = useUpdateComponent();
   const { syncCardToRule } = useRuleSync();
@@ -211,7 +268,9 @@ export function CardWidget({ component, isGM }: CardWidgetProps) {
                   </button>
                   {expandedSection === section.id && (
                     <div className="px-2 pb-2 text-xs text-muted-foreground border-t border-border/50">
-                      <p className="mt-2 whitespace-pre-wrap">{section.content || "No content"}</p>
+                      <div className="mt-2 formatted-content">
+                        {renderFormattedContent(section.content)}
+                      </div>
                     </div>
                   )}
                 </>
