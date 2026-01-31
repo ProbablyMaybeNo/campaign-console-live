@@ -1,11 +1,10 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, memo } from "react";
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
-import { DndContext, DragEndEvent, DragMoveEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { DraggableComponent } from "./DraggableComponent";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasGrid } from "./CanvasGrid";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
-import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 
 interface InfiniteCanvasProps {
   components: DashboardComponent[];
@@ -14,6 +13,9 @@ interface InfiniteCanvasProps {
   onComponentSelect: (component: DashboardComponent | null) => void;
   selectedComponentId: string | null;
 }
+
+// Memoized grid to prevent re-renders
+const MemoizedCanvasGrid = memo(CanvasGrid);
 
 export function InfiniteCanvas({
   components,
@@ -27,10 +29,11 @@ export function InfiniteCanvas({
   const [scale, setScale] = useState(0.5);
   const updateComponent = useUpdateComponent();
 
+  // Reduce activation distance for faster drag start (3px instead of 8px)
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 3,
       },
     })
   );
@@ -58,29 +61,29 @@ export function InfiniteCanvas({
   const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     if (!ref) return;
-    // Use zoomIn with a small step for 10% increments
-    ref.zoomIn(0.1, 200, "easeOut");
+    ref.zoomIn(0.1, 150, "easeOut");
   }, []);
 
   const handleZoomOut = useCallback(() => {
     const ref = transformRef.current;
     if (!ref) return;
-    // Use zoomOut with a small step for 10% increments
-    ref.zoomOut(0.1, 200, "easeOut");
+    ref.zoomOut(0.1, 150, "easeOut");
   }, []);
 
   const handleReset = useCallback(() => {
-    // Reset to initial 50% zoom
     const ref = transformRef.current;
     if (!ref) return;
-    ref.setTransform(0, 0, 0.5, 200, "easeOut");
+    ref.setTransform(0, 0, 0.5, 150, "easeOut");
   }, []);
 
-  const handleTransform = (ref: ReactZoomPanPinchRef) => {
+  const handleTransform = useCallback((ref: ReactZoomPanPinchRef) => {
     setScale(ref.state.scale);
-  };
+  }, []);
 
-  // Keyboard shortcuts for zoom (Ctrl+Plus, Ctrl+Minus)
+  const handlePanningStart = useCallback(() => setIsPanning(true), []);
+  const handlePanningStop = useCallback(() => setIsPanning(false), []);
+
+  // Keyboard shortcuts for zoom
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -99,11 +102,10 @@ export function InfiniteCanvas({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [handleZoomIn, handleZoomOut, handleReset]);
 
   // Prevent scroll on canvas - only allow scroll within focused components
   const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
-    // Check if the scroll originated from within a scrollable component
     const target = e.target as HTMLElement;
     const scrollableParent = target.closest('[data-scrollable="true"]');
     
@@ -113,10 +115,15 @@ export function InfiniteCanvas({
     }
   }, []);
 
+  const handleCanvasClick = useCallback(() => {
+    onComponentSelect(null);
+  }, [onComponentSelect]);
+
   return (
     <div 
       className="relative w-full h-full overflow-hidden bg-background rounded-md border border-primary/20"
       onWheel={handleCanvasWheel}
+      onClick={handleCanvasClick}
     >
       {/* Canvas Controls */}
       <CanvasControls
@@ -133,14 +140,17 @@ export function InfiniteCanvas({
         minScale={0.25}
         maxScale={2}
         limitToBounds={false}
-        onPanningStart={() => setIsPanning(true)}
-        onPanningStop={() => setIsPanning(false)}
+        onPanningStart={handlePanningStart}
+        onPanningStop={handlePanningStop}
         onTransformed={handleTransform}
         panning={{
           velocityDisabled: true,
           excluded: ["draggable-component"],
         }}
         wheel={{
+          disabled: true,
+        }}
+        doubleClick={{
           disabled: true,
         }}
       >
@@ -155,7 +165,7 @@ export function InfiniteCanvas({
           }}
         >
           {/* Grid Background */}
-          <CanvasGrid />
+          <MemoizedCanvasGrid />
 
           {/* DnD Context for draggable components */}
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -174,7 +184,7 @@ export function InfiniteCanvas({
 
           {/* Empty state */}
           {components.length === 0 && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
               <div className="text-muted-foreground text-sm space-y-2">
                 <p className="text-lg font-mono text-primary/70">[ EMPTY DASHBOARD ]</p>
                 <p className="text-xs max-w-xs">
