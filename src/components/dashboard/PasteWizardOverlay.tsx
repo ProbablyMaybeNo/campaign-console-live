@@ -91,6 +91,12 @@ export function PasteWizardOverlay({
       return;
     }
 
+    // Client-side validation for character limit
+    if (rawText.length > 60000) {
+      toast.error(`Text exceeds 60,000 character limit (currently ${rawText.length.toLocaleString()} characters). Please shorten the text.`);
+      return;
+    }
+
     const result = await convertText(rawText, componentType);
     
     if (!result.success) {
@@ -138,6 +144,12 @@ export function PasteWizardOverlay({
   const handleGenerate = () => {
     if (!rawText.trim()) {
       toast.error('Please paste some text first');
+      return;
+    }
+
+    // Client-side validation for character limit
+    if (rawText.length > 60000) {
+      toast.error(`Text exceeds 60,000 character limit (currently ${rawText.length.toLocaleString()} characters). Please shorten the text.`);
       return;
     }
 
