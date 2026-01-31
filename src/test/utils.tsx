@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom';
 import React, { ReactElement } from 'react';
-import { render as rtlRender, RenderOptions } from '@testing-library/react';
+import { render as rtlRender, RenderOptions, renderHook as rtlRenderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -11,6 +11,8 @@ export const screen = rtl.screen;
 export const fireEvent = rtl.fireEvent;
 export const waitFor = rtl.waitFor;
 export const within = rtl.within;
+export const act = rtl.act;
+export const renderHook = rtlRenderHook;
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -34,4 +36,4 @@ function customRender(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>
   return rtlRender(ui, { wrapper: AllTheProviders, ...options });
 }
 
-export { customRender as render, createTestQueryClient };
+export { customRender as render, createTestQueryClient, rtlRender as rawRender };
