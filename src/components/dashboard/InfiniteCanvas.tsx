@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect, memo } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { DraggableComponent } from "./DraggableComponent";
@@ -13,9 +13,6 @@ interface InfiniteCanvasProps {
   onComponentSelect: (component: DashboardComponent | null) => void;
   selectedComponentId: string | null;
 }
-
-// Memoized grid to prevent re-renders
-const MemoizedCanvasGrid = memo(CanvasGrid);
 
 export function InfiniteCanvas({
   components,
@@ -165,7 +162,7 @@ export function InfiniteCanvas({
           }}
         >
           {/* Grid Background */}
-          <MemoizedCanvasGrid />
+          <CanvasGrid />
 
           {/* DnD Context for draggable components */}
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
