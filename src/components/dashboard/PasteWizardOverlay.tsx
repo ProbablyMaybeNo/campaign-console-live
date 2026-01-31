@@ -14,7 +14,7 @@ import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useCreateRule, TableRuleContent, CardRuleContent } from "@/hooks/useWargameRules";
 import { useAITextConvert } from "@/hooks/useAITextConvert";
 import { analyzeText, toTableConfig, toCardConfig, type DetectedContent } from "@/lib/textPatternDetector";
-import { getCenteredPlacement } from "@/lib/canvasPlacement";
+import { getSpawnPosition } from "@/lib/canvasPlacement";
 import { 
   Table, 
   LayoutList,
@@ -251,7 +251,7 @@ export function PasteWizardOverlay({
 
       const width = componentType === 'table' ? 400 : 350;
       const height = 300;
-      const placement = getCenteredPlacement(campaignId, width, height);
+      const placement = getSpawnPosition(width, height);
 
       await createComponent.mutateAsync({
         campaign_id: campaignId,
@@ -282,7 +282,7 @@ export function PasteWizardOverlay({
         name: name.trim(),
         component_type: componentType,
         config: config as unknown as Json,
-        ...getCenteredPlacement(campaignId, 350, 300),
+        ...getSpawnPosition(350, 300),
         width: 350,
         height: 300,
       });
