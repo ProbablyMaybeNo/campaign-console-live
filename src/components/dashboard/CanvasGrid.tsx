@@ -1,4 +1,6 @@
-export function CanvasGrid() {
+import { memo } from "react";
+
+export const CanvasGrid = memo(function CanvasGrid() {
   return (
     <div
       className="absolute inset-0 pointer-events-none"
@@ -11,4 +13,4 @@ export function CanvasGrid() {
       }}
     />
   );
-}
+});
