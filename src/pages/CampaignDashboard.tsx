@@ -99,7 +99,7 @@ export default function CampaignDashboard() {
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Fixed Header */}
-      <header className="border-b border-primary/20 bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50">
+      <header className="border-b border-[hsl(142,76%,50%)]/40 bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 10px hsl(142 76% 50% / 0.15)' }}>
         <div className="flex items-center justify-between">
           <Link 
             to="/campaigns" 
