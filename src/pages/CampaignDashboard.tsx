@@ -246,11 +246,12 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-wider transition-colors ${
+      className={`w-full flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-wider transition-all ${
         active
-          ? "bg-primary/10 text-primary border-l-2 border-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          ? "bg-[hsl(200,100%,50%)]/10 text-[hsl(200,100%,65%)] border-l-2 border-[hsl(200,100%,60%)]"
+          : "text-[hsl(142,76%,50%)] hover:text-[hsl(142,76%,65%)] hover:bg-[hsl(142,76%,50%)]/10"
       }`}
+      style={active ? { textShadow: '0 0 8px hsl(200 100% 50% / 0.5)' } : { textShadow: '0 0 6px hsl(142 76% 50% / 0.3)' }}
     >
       {icon}
       {label}
