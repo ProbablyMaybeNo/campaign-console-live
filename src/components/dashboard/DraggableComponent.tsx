@@ -178,19 +178,18 @@ export function DraggableComponent({
       }}
     >
       <div className="h-full flex flex-col bg-card border border-primary/30 rounded overflow-hidden">
-        {/* Component Header */}
-        <div className="flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/20">
-          <div className="flex items-center gap-2">
+        {/* Component Header - entire bar is draggable for GM */}
+        <div 
+          className={`flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/20 ${
+            isGM ? "cursor-grab active:cursor-grabbing" : ""
+          }`}
+          {...(isGM ? { ...listeners, ...attributes } : {})}
+        >
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             {isGM && (
-              <div
-                {...listeners}
-                {...attributes}
-                className="cursor-grab active:cursor-grabbing p-1 hover:bg-primary/20 rounded"
-              >
-                <GripVertical className="w-4 h-4 text-primary" />
-              </div>
+              <GripVertical className="w-4 h-4 text-primary flex-shrink-0" />
             )}
-            <span className="text-sm">{getComponentIcon()}</span>
+            <span className="text-sm flex-shrink-0">{getComponentIcon()}</span>
             <span className="text-xs font-mono text-primary uppercase tracking-wider truncate">
               {component.name}
             </span>
@@ -199,8 +198,12 @@ export function DraggableComponent({
             <TerminalButton
               variant="ghost"
               size="sm"
-              onClick={handleDelete}
-              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDelete();
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
             >
               <X className="w-3 h-3" />
             </TerminalButton>
