@@ -434,17 +434,27 @@ Example:
               <TerminalButton variant="outline" onClick={handleClose}>
                 Cancel
               </TerminalButton>
-              <TerminalButton
-                onClick={handleAIGenerate}
-                disabled={!rawText.trim() || isConverting}
-              >
-                {isConverting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Wand2 className="w-4 h-4 mr-2" />
-                )}
-                {isConverting ? 'Converting...' : 'AI Convert'}
-              </TerminalButton>
+              {saveToRules ? (
+                <TerminalButton
+                  onClick={handleAIGenerate}
+                  disabled={!rawText.trim() || isConverting}
+                >
+                  {isConverting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4 mr-2" />
+                  )}
+                  {isConverting ? 'Converting...' : 'AI Convert'}
+                </TerminalButton>
+              ) : (
+                <TerminalButton
+                  onClick={handleGenerate}
+                  disabled={!rawText.trim()}
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate
+                </TerminalButton>
+              )}
             </div>
           </div>
         )}
