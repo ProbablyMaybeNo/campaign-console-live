@@ -6,8 +6,8 @@
 import { detectDiceRollTables, detectWhitespaceAlignedTables, detectPipeTables } from './pdfExtractor';
 
 export interface DetectedContent {
-  type: 'dice-table' | 'whitespace-table' | 'pipe-table' | 'tsv' | 'csv' | 'key-value' | 'lines';
-  title: string;
+  type: 'dice-table' | 'whitespace-table' | 'pipe-table' | 'tsv' | 'csv' | 'key-value' | 'lines' | 'ai-converted';
+  title?: string;
   confidence: 'high' | 'medium' | 'low';
   columns: string[];
   rows: string[][];
