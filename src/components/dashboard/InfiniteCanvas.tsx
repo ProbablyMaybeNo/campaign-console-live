@@ -115,9 +115,11 @@ export function InfiniteCanvas({
   const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
-    if (!ref || !container) return;
+    if (!ref || !container || !ref.state) return;
     
-    const { scale: currentScale, positionX, positionY } = ref.state;
+    const currentScale = ref.state.scale ?? scale;
+    const positionX = ref.state.positionX ?? 0;
+    const positionY = ref.state.positionY ?? 0;
     const newScale = Math.min(2, currentScale + ZOOM_STEP);
     
     // Calculate zoom centered on viewport center
@@ -128,14 +130,16 @@ export function InfiniteCanvas({
     const newPositionY = centerY - (centerY - positionY) * scaleFactor;
     
     ref.setTransform(newPositionX, newPositionY, newScale, 150, "easeOut");
-  }, []);
+  }, [scale]);
 
   const handleZoomOut = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
-    if (!ref || !container) return;
+    if (!ref || !container || !ref.state) return;
     
-    const { scale: currentScale, positionX, positionY } = ref.state;
+    const currentScale = ref.state.scale ?? scale;
+    const positionX = ref.state.positionX ?? 0;
+    const positionY = ref.state.positionY ?? 0;
     const newScale = Math.max(0.25, currentScale - ZOOM_STEP);
     
     // Calculate zoom centered on viewport center
@@ -146,7 +150,7 @@ export function InfiniteCanvas({
     const newPositionY = centerY - (centerY - positionY) * scaleFactor;
     
     ref.setTransform(newPositionX, newPositionY, newScale, 150, "easeOut");
-  }, []);
+  }, [scale]);
 
   const handleReset = useCallback(() => {
     handleRecenter();
@@ -201,6 +205,8 @@ export function InfiniteCanvas({
 
     // Wait for layout to stabilize using requestAnimationFrame
     const frame = requestAnimationFrame(() => {
+      // Double-check ref.state is available before recentering
+      if (!transformRef.current?.state) return;
       centeredCampaignRef.current = campaignId;
       handleRecenter();
     });
@@ -216,10 +222,11 @@ export function InfiniteCanvas({
     if (!ref || !container) return;
 
     const timer = window.setTimeout(() => {
+      if (!ref.state) return;
       writeCanvasTransform(campaignId, {
-        scale: ref.state.scale,
-        positionX: ref.state.positionX,
-        positionY: ref.state.positionY,
+        scale: ref.state.scale ?? 0.5,
+        positionX: ref.state.positionX ?? 0,
+        positionY: ref.state.positionY ?? 0,
         viewportWidth: container.clientWidth,
         viewportHeight: container.clientHeight,
       });
