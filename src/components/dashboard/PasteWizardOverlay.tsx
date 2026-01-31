@@ -14,6 +14,7 @@ import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useCreateRule, TableRuleContent, CardRuleContent } from "@/hooks/useWargameRules";
 import { useAITextConvert } from "@/hooks/useAITextConvert";
 import { analyzeText, toTableConfig, toCardConfig, type DetectedContent } from "@/lib/textPatternDetector";
+import { getCenteredPlacement } from "@/lib/canvasPlacement";
 import { 
   Table, 
   LayoutList,
@@ -248,15 +249,19 @@ export function PasteWizardOverlay({
             rawText: detection?.rawText || rawText,
           };
 
+      const width = componentType === 'table' ? 400 : 350;
+      const height = 300;
+      const placement = getCenteredPlacement(campaignId, width, height);
+
       await createComponent.mutateAsync({
         campaign_id: campaignId,
         name: name.trim(),
         component_type: componentType === 'table' ? 'rules_table' : 'rules_card',
         config: dashboardConfig as unknown as Json,
-        position_x: Math.round(100 + Math.random() * 200),
-        position_y: Math.round(100 + Math.random() * 200),
-        width: componentType === 'table' ? 400 : 350,
-        height: 300,
+        position_x: placement.position_x,
+        position_y: placement.position_y,
+        width,
+        height,
       });
 
       toast.success(`${componentType === 'table' ? 'Rules Table' : 'Rules Card'} added to dashboard!`);
@@ -277,8 +282,7 @@ export function PasteWizardOverlay({
         name: name.trim(),
         component_type: componentType,
         config: config as unknown as Json,
-        position_x: Math.round(100 + Math.random() * 200),
-        position_y: Math.round(100 + Math.random() * 200),
+        ...getCenteredPlacement(campaignId, 350, 300),
         width: 350,
         height: 300,
       });

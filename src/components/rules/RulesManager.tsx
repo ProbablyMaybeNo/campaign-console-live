@@ -5,6 +5,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { PasteWizardOverlay } from "@/components/dashboard/PasteWizardOverlay";
 import { RuleEditorModal } from "./RuleEditorModal";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { getCenteredPlacement } from "@/lib/canvasPlacement";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -80,15 +81,19 @@ export function RulesManager({ campaignId, isGM }: RulesManagerProps) {
       };
     }
 
+    const width = componentType === "table" ? 400 : 350;
+    const height = 300;
+    const placement = getCenteredPlacement(campaignId, width, height);
+
     await createComponent.mutateAsync({
       campaign_id: campaignId,
       name: rule.title,
       component_type: componentType === "table" ? "rules_table" : "rules_card",
       config: config as unknown as Json,
-      position_x: Math.round(100 + Math.random() * 200),
-      position_y: Math.round(100 + Math.random() * 200),
-      width: componentType === "table" ? 400 : 350,
-      height: 300,
+      position_x: placement.position_x,
+      position_y: placement.position_y,
+      width,
+      height,
     });
 
     toast.success(`Added "${rule.title}" to dashboard`);

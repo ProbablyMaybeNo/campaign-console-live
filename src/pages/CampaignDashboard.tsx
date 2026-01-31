@@ -149,7 +149,7 @@ export default function CampaignDashboard() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Sidebar - GM only */}
         {effectiveIsGM && (
           <aside className="w-56 border-r border-primary/20 bg-sidebar flex-shrink-0 p-4 hidden md:flex flex-col">
@@ -185,7 +185,7 @@ export default function CampaignDashboard() {
           </aside>
         )}
 
-        <main className="flex-1 p-4 overflow-auto relative">
+        <main className="flex-1 p-4 overflow-hidden relative min-h-0">
           <InfiniteCanvas
             components={visibleComponents}
             isGM={effectiveIsGM}

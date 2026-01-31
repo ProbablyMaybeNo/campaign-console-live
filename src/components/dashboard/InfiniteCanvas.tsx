@@ -5,6 +5,7 @@ import { DraggableComponent } from "./DraggableComponent";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasGrid } from "./CanvasGrid";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
+import { writeCanvasTransform } from "@/lib/canvasPlacement";
 
 interface InfiniteCanvasProps {
   components: DashboardComponent[];
@@ -23,13 +24,15 @@ export function InfiniteCanvas({
 }: InfiniteCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const persistRafRef = useRef<number | null>(null);
+  const latestTransformRef = useRef<{ scale: number; positionX: number; positionY: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [scale, setScale] = useState(0.5);
   const updateComponent = useUpdateComponent();
 
   // Find the Campaign Console anchor widget
   const anchorComponent = useMemo(() => {
-    return components.find(c => c.component_type === 'campaign_console');
+    return components.find((c) => c.component_type === "campaign-console");
   }, [components]);
 
   // Reduce activation distance for faster drag start (3px instead of 8px)
@@ -65,21 +68,20 @@ export function InfiniteCanvas({
   const handleRecenter = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
-    if (!ref || !container) {
-      console.log('Recenter: refs not ready');
-      return;
-    }
+    if (!ref || !container) return;
 
     // Find anchor or first component - read from current components
     const targetComponent = anchorComponent || components[0];
     if (!targetComponent) {
       // No components, center on a nice starting point
-      const containerRect = container.getBoundingClientRect();
-      ref.setTransform(containerRect.width / 4, containerRect.height / 4, 0.5, 200, "easeOut");
+      ref.setTransform(container.clientWidth / 4, container.clientHeight / 4, 0.5, 200, "easeOut");
       return;
     }
 
-    const containerRect = container.getBoundingClientRect();
+    const containerRect = {
+      width: container.clientWidth,
+      height: container.clientHeight,
+    };
     const targetScale = 0.5;
 
     // We want the component to appear centered in the viewport
@@ -110,8 +112,38 @@ export function InfiniteCanvas({
     handleRecenter();
   }, [handleRecenter]);
 
-  const handleTransform = useCallback((ref: ReactZoomPanPinchRef) => {
-    setScale(ref.state.scale);
+  const handleTransform = useCallback(
+    (ref: ReactZoomPanPinchRef) => {
+      setScale(ref.state.scale);
+
+      latestTransformRef.current = {
+        scale: ref.state.scale,
+        positionX: ref.state.positionX,
+        positionY: ref.state.positionY,
+      };
+
+      if (persistRafRef.current != null) return;
+      persistRafRef.current = window.requestAnimationFrame(() => {
+        persistRafRef.current = null;
+        const container = containerRef.current;
+        const latest = latestTransformRef.current;
+        if (!container || !latest) return;
+        writeCanvasTransform(campaignId, {
+          ...latest,
+          viewportWidth: container.clientWidth,
+          viewportHeight: container.clientHeight,
+        });
+      });
+    },
+    [campaignId]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (persistRafRef.current != null) {
+        window.cancelAnimationFrame(persistRafRef.current);
+      }
+    };
   }, []);
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
@@ -128,6 +160,26 @@ export function InfiniteCanvas({
       return () => clearTimeout(timer);
     }
   }, [anchorId]); // Only trigger when anchor component ID changes
+
+  // Persist an initial snapshot so newly-created components can be centered even
+  // before the user pans/zooms.
+  useEffect(() => {
+    const ref = transformRef.current;
+    const container = containerRef.current;
+    if (!ref || !container) return;
+
+    const timer = window.setTimeout(() => {
+      writeCanvasTransform(campaignId, {
+        scale: ref.state.scale,
+        positionX: ref.state.positionX,
+        positionY: ref.state.positionY,
+        viewportWidth: container.clientWidth,
+        viewportHeight: container.clientHeight,
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [campaignId]);
 
   // Keyboard shortcuts for zoom
   useEffect(() => {

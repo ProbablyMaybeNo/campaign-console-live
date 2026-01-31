@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { getCenteredPlacement } from "@/lib/canvasPlacement";
 import { PasteWizardOverlay } from "./PasteWizardOverlay";
 import { 
   Table, 
@@ -100,13 +101,15 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       height = 400;
     }
 
+    const placement = getCenteredPlacement(campaignId, width, height);
+
     await createComponent.mutateAsync({
       campaign_id: campaignId,
       name: name.trim(),
       component_type: selectedType,
       config,
-      position_x: Math.round(100 + Math.random() * 200),
-      position_y: Math.round(100 + Math.random() * 200),
+      position_x: placement.position_x,
+      position_y: placement.position_y,
       width,
       height,
     });
