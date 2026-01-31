@@ -184,7 +184,10 @@ export default function CampaignDashboard() {
           </aside>
         )}
 
-        <main className="flex-1 p-4 overflow-hidden relative min-h-0">
+        <main 
+          className="flex-1 overflow-hidden relative min-h-0 border-r-2 border-b-2 border-[hsl(142,76%,65%)]"
+          style={{ boxShadow: 'inset -1px -1px 15px hsl(142 76% 50% / 0.2)' }}
+        >
           <InfiniteCanvas
             components={visibleComponents}
             isGM={effectiveIsGM}
@@ -211,7 +214,8 @@ export default function CampaignDashboard() {
           {!effectiveIsGM && (
             <button
               onClick={() => openOverlay("player-settings")}
-              className="fixed bottom-8 right-8 z-40 h-14 w-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all hover:scale-105 active:scale-95"
+              className="fixed bottom-8 right-8 z-40 h-14 w-14 rounded-full bg-[hsl(142,76%,50%)] text-black flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+              style={{ boxShadow: '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' }}
               title="My Settings"
             >
               <UserCog className="w-6 h-6" />
