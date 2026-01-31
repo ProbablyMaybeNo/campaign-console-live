@@ -56,11 +56,19 @@ export function InfiniteCanvas({
   );
 
   const handleZoomIn = () => {
-    transformRef.current?.zoomIn();
+    const ref = transformRef.current;
+    if (!ref) return;
+    const { positionX, positionY, scale: currentScale } = ref.state;
+    const newScale = Math.min(currentScale + 0.1, 2); // 10% increment, max 200%
+    ref.setTransform(positionX, positionY, newScale, 200);
   };
 
   const handleZoomOut = () => {
-    transformRef.current?.zoomOut();
+    const ref = transformRef.current;
+    if (!ref) return;
+    const { positionX, positionY, scale: currentScale } = ref.state;
+    const newScale = Math.max(currentScale - 0.1, 0.25); // 10% decrement, min 25%
+    ref.setTransform(positionX, positionY, newScale, 200);
   };
 
   const handleReset = () => {
