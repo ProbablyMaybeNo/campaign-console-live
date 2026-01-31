@@ -145,7 +145,7 @@ export function ScheduleWidget({ campaignId, isGM }: ScheduleWidgetProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto" data-scrollable="true">
         {entries.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">
             No rounds or events scheduled. {isGM && "Add one to get started."}

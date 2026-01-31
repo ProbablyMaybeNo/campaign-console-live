@@ -194,7 +194,7 @@ export function CardWidget({ component, isGM }: CardWidgetProps) {
           <h3 className="text-sm font-mono text-primary truncate">{config.title || "Card"}</h3>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-2">
+        <div className="flex-1 overflow-y-auto space-y-2" data-scrollable="true">
           {sections.map((section) => (
             <div key={section.id} className="border border-border rounded">
               {editingSectionId === section.id ? (

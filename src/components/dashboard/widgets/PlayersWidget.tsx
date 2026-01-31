@@ -194,7 +194,7 @@ export function PlayersWidget({ campaignId }: PlayersWidgetProps) {
           </span>
         </div>
         
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1 -mr-1">
+        <div className="flex-1 overflow-y-auto space-y-1 pr-1 -mr-1" data-scrollable="true">
           {allPlayers.map((player) => (
             <PlayerRow
               key={player.id}

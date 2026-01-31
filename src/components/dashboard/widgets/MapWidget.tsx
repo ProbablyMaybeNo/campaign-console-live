@@ -59,6 +59,7 @@ export function MapWidget({ component, isGM }: MapWidgetProps) {
       <div className="flex-1 relative group overflow-hidden rounded bg-black/20">
         <div
           className="w-full h-full overflow-auto"
+          data-scrollable="true"
           style={{ cursor: zoom > 1 ? "move" : "default" }}
         >
           <div className="relative inline-block min-w-full min-h-full">

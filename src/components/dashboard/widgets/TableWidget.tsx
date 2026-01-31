@@ -143,7 +143,7 @@ export function TableWidget({ component, isGM }: TableWidgetProps) {
         </div>
       )}
 
-      <div className="overflow-auto flex-1">
+      <div className="overflow-auto flex-1" data-scrollable="true">
         <table className="w-full text-xs border-collapse">
           <thead>
             <tr className="border-b border-primary/30">

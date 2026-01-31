@@ -100,8 +100,23 @@ export function InfiniteCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Prevent scroll on canvas - only allow scroll within focused components
+  const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
+    // Check if the scroll originated from within a scrollable component
+    const target = e.target as HTMLElement;
+    const scrollableParent = target.closest('[data-scrollable="true"]');
+    
+    if (!scrollableParent) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, []);
+
   return (
-    <div className="relative w-full h-full overflow-hidden bg-background rounded-md border border-primary/20">
+    <div 
+      className="relative w-full h-full overflow-hidden bg-background rounded-md border border-primary/20"
+      onWheel={handleCanvasWheel}
+    >
       {/* Canvas Controls */}
       <CanvasControls
         scale={scale}
