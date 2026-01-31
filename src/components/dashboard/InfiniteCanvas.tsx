@@ -316,7 +316,7 @@ export function InfiniteCanvas({
   return (
     <div 
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-background rounded-md border border-primary/20"
+      className="relative w-full h-full overflow-hidden bg-background"
       onWheel={handleCanvasWheel}
       onClick={handleCanvasClick}
     >
