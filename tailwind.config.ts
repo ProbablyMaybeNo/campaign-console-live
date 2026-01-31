@@ -122,6 +122,14 @@ export default {
             boxShadow: "0 0 15px hsl(var(--primary) / 0.5), 0 0 25px hsl(var(--primary) / 0.3)" 
           },
         },
+        "boundary-pulse": {
+          "0%, 100%": { 
+            boxShadow: "inset 0 0 15px hsl(142 76% 50% / 0.1), 0 0 15px hsl(142 76% 50% / 0.2)" 
+          },
+          "50%": { 
+            boxShadow: "inset 0 0 25px hsl(142 76% 50% / 0.2), 0 0 30px hsl(142 76% 50% / 0.35)" 
+          },
+        },
         "scan": {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(100vh)" },
@@ -135,6 +143,7 @@ export default {
         "slide-in-from-top": "slide-in-from-top 0.3s ease-out",
         "slide-in-from-bottom": "slide-in-from-bottom 0.3s ease-out",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
+        "boundary-pulse": "boundary-pulse 3s ease-in-out infinite",
         "scan": "scan 8s linear infinite",
       },
     },
