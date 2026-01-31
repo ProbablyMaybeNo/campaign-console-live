@@ -149,17 +149,19 @@ export function InfiniteCanvas({
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
   const handlePanningStop = useCallback(() => setIsPanning(false), []);
 
-  // Auto-center when anchor component first appears
+  // Auto-center when anchor component first appears or on initial load
   const anchorId = anchorComponent?.id;
+  const hasCenteredRef = useRef(false);
   useEffect(() => {
-    if (anchorId && transformRef.current && containerRef.current) {
-      // Delay to ensure component is rendered
+    if (transformRef.current && containerRef.current && !hasCenteredRef.current) {
+      // Center on the anchor component (or first component) once canvas is ready
       const timer = setTimeout(() => {
+        hasCenteredRef.current = true;
         handleRecenter();
-      }, 150);
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [anchorId]); // Only trigger when anchor component ID changes
+  }, [anchorId, handleRecenter]);
 
   // Persist an initial snapshot so newly-created components can be centered even
   // before the user pans/zooms.
@@ -237,8 +239,8 @@ export function InfiniteCanvas({
       <TransformWrapper
         ref={transformRef}
         initialScale={0.5}
-        initialPositionX={100}
-        initialPositionY={100}
+        initialPositionX={0}
+        initialPositionY={0}
         minScale={0.25}
         maxScale={2}
         limitToBounds={false}
