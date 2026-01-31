@@ -103,8 +103,8 @@ export default function CampaignDashboard() {
         <div className="flex items-center justify-between">
           <Link 
             to="/campaigns" 
-            className="text-[hsl(200,100%,65%)] hover:text-[hsl(200,100%,75%)] transition-all"
-            style={{ textShadow: '0 0 10px hsl(200 100% 50% / 0.6), 0 0 20px hsl(200 100% 50% / 0.3)' }}
+            className="text-[hsl(200,100%,70%)] hover:text-[hsl(200,100%,80%)] transition-all"
+            style={{ textShadow: '0 0 12px hsl(200 100% 60% / 0.7), 0 0 25px hsl(200 100% 50% / 0.4)' }}
           >
             <span className="flex items-center gap-1 font-mono text-sm font-medium">
               <ArrowLeft className="w-4 h-4" />
@@ -121,13 +121,13 @@ export default function CampaignDashboard() {
                 }}
                 className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-90 ${
                   previewAsPlayer 
-                    ? "bg-[hsl(142,76%,45%)] text-black ring-2 ring-[hsl(200,100%,60%)] ring-offset-2 ring-offset-background" 
-                    : "bg-[hsl(200,100%,60%)] text-black"
+                    ? "bg-[hsl(142,76%,50%)] text-black ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" 
+                    : "bg-[hsl(200,100%,65%)] text-black"
                 }`}
                 style={{ 
                   boxShadow: previewAsPlayer 
-                    ? '0 0 15px hsl(142 76% 50% / 0.5), 0 0 30px hsl(142 76% 50% / 0.25)' 
-                    : '0 0 15px hsl(200 100% 50% / 0.5), 0 0 30px hsl(200 100% 50% / 0.25)' 
+                    ? '0 0 20px hsl(142 76% 50% / 0.6), 0 0 40px hsl(142 76% 50% / 0.3)' 
+                    : '0 0 20px hsl(200 100% 60% / 0.6), 0 0 40px hsl(200 100% 50% / 0.3)' 
                 }}
                 title={previewAsPlayer ? "Click to return to GM view" : "Click to preview as Player"}
               >
@@ -249,10 +249,10 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-wider transition-all ${
         active
-          ? "bg-[hsl(200,100%,50%)]/10 text-[hsl(200,100%,65%)] border-l-2 border-[hsl(200,100%,60%)]"
-          : "text-[hsl(142,76%,50%)] hover:text-[hsl(142,76%,65%)] hover:bg-[hsl(142,76%,50%)]/10"
+          ? "bg-[hsl(200,100%,65%)]/15 text-[hsl(200,100%,70%)] border-l-2 border-[hsl(200,100%,65%)]"
+          : "text-[hsl(142,76%,55%)] hover:text-[hsl(142,76%,70%)] hover:bg-[hsl(142,76%,50%)]/10"
       }`}
-      style={active ? { textShadow: '0 0 8px hsl(200 100% 50% / 0.5)' } : { textShadow: '0 0 6px hsl(142 76% 50% / 0.3)' }}
+      style={active ? { textShadow: '0 0 10px hsl(200 100% 60% / 0.6)' } : { textShadow: '0 0 8px hsl(142 76% 50% / 0.4)' }}
     >
       {icon}
       {label}

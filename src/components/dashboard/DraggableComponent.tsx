@@ -185,7 +185,7 @@ function DraggableComponentInner({
       style={style}
       className={`draggable-component ${
         isDragging ? "opacity-90 shadow-2xl" : ""
-      } ${isSelected ? "ring-2 ring-[hsl(200,100%,60%)] ring-offset-2 ring-offset-background" : ""}`}
+      } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""}`}
       onClick={handleClick}
     >
       <div 
