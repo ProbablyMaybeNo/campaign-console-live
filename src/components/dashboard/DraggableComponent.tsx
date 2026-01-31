@@ -185,23 +185,29 @@ function DraggableComponentInner({
       style={style}
       className={`draggable-component ${
         isDragging ? "opacity-90 shadow-2xl" : ""
-      } ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+      } ${isSelected ? "ring-2 ring-[hsl(200,100%,60%)] ring-offset-2 ring-offset-background" : ""}`}
       onClick={handleClick}
     >
-      <div className="h-full flex flex-col bg-card border border-primary/30 rounded overflow-hidden shadow-lg">
+      <div 
+        className="h-full flex flex-col bg-card border border-[hsl(142,76%,50%)]/40 rounded overflow-hidden"
+        style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.15), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
+      >
         {/* Component Header - entire bar is draggable for GM */}
         <div 
-          className={`flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/20 select-none ${
+          className={`flex items-center justify-between px-3 py-2 bg-[hsl(142,76%,50%)]/10 border-b border-[hsl(142,76%,50%)]/30 select-none ${
             isGM ? "cursor-grab active:cursor-grabbing" : ""
           }`}
           {...(isGM ? { ...listeners, ...attributes } : {})}
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {isGM && (
-              <GripVertical className="w-4 h-4 text-primary flex-shrink-0 opacity-50" />
+              <GripVertical className="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0 opacity-50" />
             )}
             <span className="text-sm flex-shrink-0">{icon}</span>
-            <span className="text-xs font-mono text-primary uppercase tracking-wider truncate">
+            <span 
+              className="text-xs font-mono text-[hsl(142,76%,50%)] uppercase tracking-wider truncate"
+              style={{ textShadow: '0 0 8px hsl(142 76% 50% / 0.4)' }}
+            >
               {component.name}
             </span>
           </div>
@@ -232,7 +238,7 @@ function DraggableComponentInner({
             className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize group"
             onMouseDown={handleResizeStart}
           >
-            <Maximize2 className="w-3 h-3 text-primary/50 group-hover:text-primary absolute bottom-1 right-1 rotate-90" />
+            <Maximize2 className="w-3 h-3 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] absolute bottom-1 right-1 rotate-90" />
           </div>
         )}
       </div>
