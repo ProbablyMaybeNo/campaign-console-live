@@ -28,11 +28,11 @@ export function CanvasControls({
 }: CanvasControlsProps) {
   return (
     <TooltipProvider>
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-primary/20 rounded px-2 py-1">
+      <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-card/90 backdrop-blur-sm border border-[hsl(142,76%,50%)]/30 rounded px-2 py-1" style={{ boxShadow: '0 0 10px hsl(142 76% 50% / 0.1)' }}>
         <Tooltip>
           <TooltipTrigger asChild>
             <TerminalButton variant="ghost" size="sm" onClick={onZoomOut}>
-              <ZoomOut className="w-4 h-4" />
+              <ZoomOut className="w-4 h-4 text-white" />
             </TerminalButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -40,14 +40,14 @@ export function CanvasControls({
           </TooltipContent>
         </Tooltip>
 
-        <span className="text-xs font-mono text-muted-foreground min-w-[50px] text-center">
+        <span className="text-xs font-mono text-white/80 min-w-[50px] text-center">
           {Math.round(scale * 100)}%
         </span>
 
         <Tooltip>
           <TooltipTrigger asChild>
             <TerminalButton variant="ghost" size="sm" onClick={onZoomIn}>
-              <ZoomIn className="w-4 h-4" />
+              <ZoomIn className="w-4 h-4 text-white" />
             </TerminalButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -55,12 +55,12 @@ export function CanvasControls({
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-4 bg-border" />
+        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
 
         <Tooltip>
           <TooltipTrigger asChild>
             <TerminalButton variant="ghost" size="sm" onClick={onRecenter}>
-              <Crosshair className="w-4 h-4" />
+              <Crosshair className="w-4 h-4 text-white" />
             </TerminalButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -71,7 +71,7 @@ export function CanvasControls({
         <Tooltip>
           <TooltipTrigger asChild>
             <TerminalButton variant="ghost" size="sm" onClick={onReset}>
-              <Maximize2 className="w-4 h-4" />
+              <Maximize2 className="w-4 h-4 text-white" />
             </TerminalButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -79,7 +79,7 @@ export function CanvasControls({
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-4 bg-border" />
+        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -87,9 +87,9 @@ export function CanvasControls({
               variant="ghost" 
               size="sm" 
               onClick={onToggleSnap}
-              className={snapToGrid ? "bg-primary/20 text-primary" : ""}
+              className={snapToGrid ? "bg-[hsl(142,76%,50%)]/20" : ""}
             >
-              <Grid3X3 className="w-4 h-4" />
+              <Grid3X3 className={`w-4 h-4 ${snapToGrid ? "text-[hsl(142,76%,50%)]" : "text-white"}`} />
             </TerminalButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -97,12 +97,12 @@ export function CanvasControls({
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-4 bg-border" />
+        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" className="opacity-60">
-              <HelpCircle className="w-4 h-4" />
+            <TerminalButton variant="ghost" size="sm" className="opacity-70">
+              <HelpCircle className="w-4 h-4 text-white" />
             </TerminalButton>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs">
