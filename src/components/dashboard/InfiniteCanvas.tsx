@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { DraggableComponent } from "./DraggableComponent";
@@ -22,9 +22,16 @@ export function InfiniteCanvas({
   selectedComponentId,
 }: InfiniteCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [scale, setScale] = useState(0.5);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const updateComponent = useUpdateComponent();
+
+  // Find the Campaign Console anchor widget
+  const anchorComponent = useMemo(() => {
+    return components.find(c => c.component_type === 'campaign_console');
+  }, [components]);
 
   // Reduce activation distance for faster drag start (3px instead of 8px)
   const sensors = useSensors(
@@ -55,6 +62,36 @@ export function InfiniteCanvas({
     [components, isGM, scale, updateComponent]
   );
 
+  // Recenter on the anchor component (Campaign Console)
+  const handleRecenter = useCallback(() => {
+    const ref = transformRef.current;
+    const container = containerRef.current;
+    if (!ref || !container) return;
+
+    // Find anchor or first component
+    const targetComponent = anchorComponent || components[0];
+    if (!targetComponent) {
+      // No components, reset to origin
+      ref.setTransform(0, 0, 0.5, 200, "easeOut");
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const containerCenterX = containerRect.width / 2;
+    const containerCenterY = containerRect.height / 2;
+
+    // Calculate component center
+    const componentCenterX = targetComponent.position_x + targetComponent.width / 2;
+    const componentCenterY = targetComponent.position_y + targetComponent.height / 2;
+
+    // Calculate transform to center the component
+    const targetScale = 0.5;
+    const newX = containerCenterX - componentCenterX * targetScale;
+    const newY = containerCenterY - componentCenterY * targetScale;
+
+    ref.setTransform(newX, newY, targetScale, 200, "easeOut");
+  }, [anchorComponent, components]);
+
   const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     if (!ref) return;
@@ -68,10 +105,8 @@ export function InfiniteCanvas({
   }, []);
 
   const handleReset = useCallback(() => {
-    const ref = transformRef.current;
-    if (!ref) return;
-    ref.setTransform(0, 0, 0.5, 150, "easeOut");
-  }, []);
+    handleRecenter();
+  }, [handleRecenter]);
 
   const handleTransform = useCallback((ref: ReactZoomPanPinchRef) => {
     setScale(ref.state.scale);
@@ -79,6 +114,18 @@ export function InfiniteCanvas({
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
   const handlePanningStop = useCallback(() => setIsPanning(false), []);
+
+  // Auto-center on anchor component on initial load
+  useEffect(() => {
+    if (!hasInitialized && components.length > 0 && transformRef.current && containerRef.current) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        handleRecenter();
+        setHasInitialized(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [components.length, hasInitialized, handleRecenter]);
 
   // Keyboard shortcuts for zoom
   useEffect(() => {
@@ -118,6 +165,7 @@ export function InfiniteCanvas({
 
   return (
     <div 
+      ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-background rounded-md border border-primary/20"
       onWheel={handleCanvasWheel}
       onClick={handleCanvasClick}
@@ -128,6 +176,7 @@ export function InfiniteCanvas({
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onReset={handleReset}
+        onRecenter={handleRecenter}
       />
 
       {/* Zoom/Pan Container */}
