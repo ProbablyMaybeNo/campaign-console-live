@@ -106,7 +106,7 @@ export default function CampaignDashboard() {
             className="text-[hsl(200,100%,70%)] hover:text-[hsl(200,100%,80%)] transition-all"
             style={{ textShadow: '0 0 12px hsl(200 100% 60% / 0.7), 0 0 25px hsl(200 100% 50% / 0.4)' }}
           >
-            <span className="flex items-center gap-1 font-mono text-sm font-medium">
+            <span className="flex items-center gap-1 font-mono text-sm font-medium uppercase tracking-wider">
               <ArrowLeft className="w-4 h-4" />
               Campaigns
             </span>
