@@ -196,13 +196,14 @@ export default function CampaignDashboard() {
           {/* GM: Add component button */}
           {effectiveIsGM && (
             <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3">
-              <TerminalButton
-                className="h-14 w-14 rounded-full glow-primary text-xl"
+              <button
+                className="h-14 w-14 rounded-full bg-[hsl(142,76%,50%)] hover:bg-[hsl(142,76%,60%)] text-black font-bold text-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                style={{ boxShadow: '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' }}
                 onClick={() => setShowAddModal(true)}
                 title="Add Component"
               >
                 <Plus className="w-6 h-6" />
-              </TerminalButton>
+              </button>
             </div>
           )}
 
