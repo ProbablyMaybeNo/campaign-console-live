@@ -16,19 +16,15 @@ export const CanvasGrid = memo(function CanvasGrid() {
         }}
       />
       
-      {/* Neon green boundary box */}
+      {/* Neon green boundary box with pulse animation */}
       <div
-        className="absolute pointer-events-none"
+        className="absolute pointer-events-none animate-boundary-pulse"
         style={{
           top: 0,
           left: 0,
           width: `${CANVAS_WIDTH}px`,
           height: `${CANVAS_HEIGHT}px`,
           border: "2px solid hsl(142 76% 50%)",
-          boxShadow: `
-            inset 0 0 20px hsl(142 76% 50% / 0.15),
-            0 0 20px hsl(142 76% 50% / 0.25)
-          `,
           borderRadius: "4px",
         }}
       />
