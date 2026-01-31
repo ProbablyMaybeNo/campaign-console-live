@@ -17,29 +17,39 @@ interface JoinCampaignModalProps {
 }
 
 export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
-  const [campaignId, setCampaignId] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const joinCampaign = useJoinCampaign();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const trimmedId = campaignId.trim();
-    if (!trimmedId) return;
+    const trimmedCode = joinCode.trim().toUpperCase();
+    if (!trimmedCode) return;
 
     try {
-      await joinCampaign.mutateAsync(trimmedId);
+      const campaignId = await joinCampaign.mutateAsync({
+        joinCode: trimmedCode,
+        password: password || undefined,
+      });
       resetForm();
       onClose();
       // Navigate to the campaign as a player
-      navigate(`/campaign/${trimmedId}`);
-    } catch {
-      // Error is handled in the mutation
+      navigate(`/campaign/${campaignId}`);
+    } catch (error: any) {
+      // If password is required, show password field
+      if (error.message?.includes("password")) {
+        setShowPassword(true);
+      }
     }
   };
 
   const resetForm = () => {
-    setCampaignId("");
+    setJoinCode("");
+    setPassword("");
+    setShowPassword(false);
   };
 
   const handleClose = () => {
@@ -64,16 +74,36 @@ export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
               Campaign ID
             </label>
             <TerminalInput
-              value={campaignId}
-              onChange={(e) => setCampaignId(e.target.value)}
-              placeholder="Enter the campaign ID from your GM..."
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              placeholder="Enter 6-character code (e.g., AB123C)"
               disabled={joinCampaign.isPending}
-              className="font-mono"
+              className="font-mono uppercase"
+              maxLength={6}
             />
             <p className="text-xs text-muted-foreground">
               Ask your Games Master for the campaign ID to join their campaign.
             </p>
           </div>
+
+          {showPassword && (
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
+                Password
+              </label>
+              <TerminalInput
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter campaign password..."
+                disabled={joinCampaign.isPending}
+                className="font-mono"
+              />
+              <p className="text-xs text-destructive">
+                This campaign requires a password to join.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3">
             <TerminalButton
@@ -86,7 +116,7 @@ export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
             </TerminalButton>
             <TerminalButton
               type="submit"
-              disabled={!campaignId.trim() || joinCampaign.isPending}
+              disabled={!joinCode.trim() || joinCampaign.isPending}
             >
               {joinCampaign.isPending ? (
                 <TerminalLoader text="Joining" size="sm" />
