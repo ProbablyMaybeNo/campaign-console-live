@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useCreateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
-import { getSpawnPosition } from "@/lib/canvasPlacement";
+import { getConsoleSpawnPosition } from "@/lib/canvasPlacement";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 interface CreateCampaignModalProps {
@@ -89,8 +89,8 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     const CONSOLE_WIDTH = 500;
     const CONSOLE_HEIGHT = 350;
 
-    // Spawn at canvas center
-    const { position_x, position_y } = getSpawnPosition(CONSOLE_WIDTH, CONSOLE_HEIGHT);
+    // Spawn at top-center of canvas
+    const { position_x, position_y } = getConsoleSpawnPosition(CONSOLE_WIDTH, CONSOLE_HEIGHT);
 
     // Auto-create the Campaign Console widget at the canvas center
     await createComponent.mutateAsync({

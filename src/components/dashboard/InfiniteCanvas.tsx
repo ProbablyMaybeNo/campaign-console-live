@@ -10,7 +10,8 @@ import {
   CANVAS_WIDTH, 
   CANVAS_HEIGHT, 
   getInitialTransform, 
-  getTransformForComponent 
+  getTransformForComponent,
+  clampTransform,
 } from "@/lib/canvasPlacement";
 
 interface InfiniteCanvasProps {
@@ -59,17 +60,34 @@ export function InfiniteCanvas({
 
     // Small delay to ensure TransformWrapper is fully initialized
     const timer = setTimeout(() => {
-      const { positionX, positionY } = getInitialTransform(
-        container.clientWidth,
-        container.clientHeight,
-        INITIAL_SCALE
-      );
-      ref.setTransform(positionX, positionY, INITIAL_SCALE, 0);
+      // If we have an anchor component (Campaign Console), center on it
+      if (anchorComponent) {
+        const { positionX, positionY } = getTransformForComponent(
+          container.clientWidth,
+          container.clientHeight,
+          anchorComponent.position_x,
+          anchorComponent.position_y,
+          anchorComponent.width,
+          anchorComponent.height,
+          INITIAL_SCALE
+        );
+        const clamped = clampTransform(positionX, positionY, INITIAL_SCALE, container.clientWidth, container.clientHeight);
+        ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
+      } else {
+        // No anchor - show top-center of canvas
+        const { positionX, positionY } = getInitialTransform(
+          container.clientWidth,
+          container.clientHeight,
+          INITIAL_SCALE
+        );
+        const clamped = clampTransform(positionX, positionY, INITIAL_SCALE, container.clientWidth, container.clientHeight);
+        ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
+      }
       setIsReady(true);
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [isReady]);
+  }, [isReady, anchorComponent]);
 
   // Reduce activation distance for faster drag start (3px instead of 8px)
   const sensors = useSensors(
@@ -106,7 +124,7 @@ export function InfiniteCanvas({
     [components, isGM, scale, debouncedUpdate, flushNow, snapPosition]
   );
 
-  // Recenter on the anchor component (Campaign Console) or canvas center
+  // Recenter on the anchor component (Campaign Console) or top of canvas
   const handleRecenter = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
@@ -126,19 +144,21 @@ export function InfiniteCanvas({
         targetComponent.height,
         targetScale
       );
-      ref.setTransform(positionX, positionY, targetScale, 200, "easeOut");
+      const clamped = clampTransform(positionX, positionY, targetScale, container.clientWidth, container.clientHeight);
+      ref.setTransform(clamped.positionX, clamped.positionY, targetScale, 200, "easeOut");
     } else {
-      // No components - center on canvas center
+      // No components - show top of canvas
       const { positionX, positionY } = getInitialTransform(
         container.clientWidth,
         container.clientHeight,
         targetScale
       );
-      ref.setTransform(positionX, positionY, targetScale, 200, "easeOut");
+      const clamped = clampTransform(positionX, positionY, targetScale, container.clientWidth, container.clientHeight);
+      ref.setTransform(clamped.positionX, clamped.positionY, targetScale, 200, "easeOut");
     }
   }, [anchorComponent, components]);
 
-  // Zoom toward viewport center
+  // Zoom toward viewport center with clamping
   const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
@@ -155,7 +175,8 @@ export function InfiniteCanvas({
     const newPositionX = centerX - (centerX - positionX) * scaleFactor;
     const newPositionY = centerY - (centerY - positionY) * scaleFactor;
     
-    ref.setTransform(newPositionX, newPositionY, newScale, 150, "easeOut");
+    const clamped = clampTransform(newPositionX, newPositionY, newScale, container.clientWidth, container.clientHeight);
+    ref.setTransform(clamped.positionX, clamped.positionY, newScale, 150, "easeOut");
   }, [scale]);
 
   const handleZoomOut = useCallback(() => {
@@ -174,7 +195,8 @@ export function InfiniteCanvas({
     const newPositionX = centerX - (centerX - positionX) * scaleFactor;
     const newPositionY = centerY - (centerY - positionY) * scaleFactor;
     
-    ref.setTransform(newPositionX, newPositionY, newScale, 150, "easeOut");
+    const clamped = clampTransform(newPositionX, newPositionY, newScale, container.clientWidth, container.clientHeight);
+    ref.setTransform(clamped.positionX, clamped.positionY, newScale, 150, "easeOut");
   }, [scale]);
 
   const handleReset = useCallback(() => {
@@ -186,7 +208,28 @@ export function InfiniteCanvas({
   }, []);
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
-  const handlePanningStop = useCallback(() => setIsPanning(false), []);
+  
+  // Clamp position when panning stops to keep view within bounds
+  const handlePanningStop = useCallback(() => {
+    setIsPanning(false);
+    
+    const ref = transformRef.current;
+    const container = containerRef.current;
+    if (!ref || !container || !ref.state) return;
+    
+    const { positionX, positionY } = clampTransform(
+      ref.state.positionX,
+      ref.state.positionY,
+      ref.state.scale,
+      container.clientWidth,
+      container.clientHeight
+    );
+    
+    // Only update if position changed
+    if (positionX !== ref.state.positionX || positionY !== ref.state.positionY) {
+      ref.setTransform(positionX, positionY, ref.state.scale, 150, "easeOut");
+    }
+  }, []);
 
   // Auto-center when anchor component first appears or on campaign switch
   useEffect(() => {
