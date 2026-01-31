@@ -84,15 +84,17 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
       display_settings: displaySettings,
     });
     
-    // Auto-create the Campaign Console widget
+    // Auto-create the Campaign Console widget at the canvas origin
+    // These coordinates are chosen so the component appears centered when the
+    // canvas first loads with its default transform
     await createComponent.mutateAsync({
       campaign_id: campaign.id,
       name: "Campaign Console",
       component_type: "campaign-console",
       data_source: "campaign",
       config: {},
-      position_x: 50,
-      position_y: 50,
+      position_x: 200,
+      position_y: 200,
       width: 500,
       height: 350,
     });
