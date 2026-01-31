@@ -151,8 +151,8 @@ export default function CampaignDashboard() {
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Fixed Sidebar - GM only */}
         {effectiveIsGM && (
-          <aside className="w-56 border-r border-primary/20 bg-sidebar/95 backdrop-blur-sm flex-shrink-0 p-4 hidden md:flex flex-col sticky left-0 overflow-y-auto">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">Campaign Control</p>
+          <aside className="w-56 border-r border-[hsl(142,76%,50%)]/30 bg-sidebar/95 backdrop-blur-sm flex-shrink-0 p-4 hidden md:flex flex-col sticky left-0 overflow-y-auto">
+            <p className="text-xs uppercase tracking-wider text-white font-medium mb-3 px-3">Campaign Control</p>
             <nav className="space-y-1 flex-1">
               {sidebarItems.map((item) => {
                 if (item.gmOnly && !effectiveIsGM) return null;
