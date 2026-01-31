@@ -55,25 +55,26 @@ export function InfiniteCanvas({
     [components, isGM, scale, updateComponent]
   );
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     if (!ref) return;
-    const { positionX, positionY, scale: currentScale } = ref.state;
-    const newScale = Math.min(currentScale + 0.1, 2); // 10% increment, max 200%
-    ref.setTransform(positionX, positionY, newScale, 200);
-  };
+    // Use zoomIn with a small step for 10% increments
+    ref.zoomIn(0.1, 200, "easeOut");
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     const ref = transformRef.current;
     if (!ref) return;
-    const { positionX, positionY, scale: currentScale } = ref.state;
-    const newScale = Math.max(currentScale - 0.1, 0.25); // 10% decrement, min 25%
-    ref.setTransform(positionX, positionY, newScale, 200);
-  };
+    // Use zoomOut with a small step for 10% increments
+    ref.zoomOut(0.1, 200, "easeOut");
+  }, []);
 
-  const handleReset = () => {
-    transformRef.current?.resetTransform();
-  };
+  const handleReset = useCallback(() => {
+    // Reset to initial 50% zoom
+    const ref = transformRef.current;
+    if (!ref) return;
+    ref.setTransform(0, 0, 0.5, 200, "easeOut");
+  }, []);
 
   const handleTransform = (ref: ReactZoomPanPinchRef) => {
     setScale(ref.state.scale);
