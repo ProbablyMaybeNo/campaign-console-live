@@ -111,11 +111,41 @@ export function useUpdateComponent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard-components", data.campaign_id] });
+    // Optimistic update for immediate UI response
+    onMutate: async (input) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["dashboard-components"] });
+
+      // Find and update the component in all campaign caches
+      const allQueries = queryClient.getQueriesData<DashboardComponent[]>({ 
+        queryKey: ["dashboard-components"] 
+      });
+
+      const previousData: { queryKey: string[]; data: DashboardComponent[] | undefined }[] = [];
+
+      allQueries.forEach(([queryKey, data]) => {
+        if (data) {
+          previousData.push({ queryKey: queryKey as string[], data });
+          queryClient.setQueryData<DashboardComponent[]>(queryKey, (old) =>
+            old?.map((c) => (c.id === input.id ? { ...c, ...input } : c))
+          );
+        }
+      });
+
+      return { previousData };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _input, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        context.previousData.forEach(({ queryKey, data }) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
       toast.error(`Failed to update component: ${error.message}`);
+    },
+    onSettled: (_data, _error, input) => {
+      // Optionally refetch to ensure consistency (disabled for performance)
+      // queryClient.invalidateQueries({ queryKey: ["dashboard-components"] });
     },
   });
 }
@@ -132,12 +162,31 @@ export function useDeleteComponent() {
 
       if (error) throw error;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard-components", variables.campaignId] });
-      toast.success("Component removed");
+    // Optimistic delete
+    onMutate: async ({ id, campaignId }) => {
+      await queryClient.cancelQueries({ queryKey: ["dashboard-components", campaignId] });
+
+      const previousData = queryClient.getQueryData<DashboardComponent[]>(["dashboard-components", campaignId]);
+
+      queryClient.setQueryData<DashboardComponent[]>(
+        ["dashboard-components", campaignId],
+        (old) => old?.filter((c) => c.id !== id)
+      );
+
+      return { previousData, campaignId };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        queryClient.setQueryData(
+          ["dashboard-components", context.campaignId],
+          context.previousData
+        );
+      }
       toast.error(`Failed to remove component: ${error.message}`);
+    },
+    onSuccess: () => {
+      toast.success("Component removed");
     },
   });
 }
