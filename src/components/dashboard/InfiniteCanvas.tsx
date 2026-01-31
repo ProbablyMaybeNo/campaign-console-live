@@ -24,7 +24,7 @@ export function InfiniteCanvas({
 }: InfiniteCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const [isPanning, setIsPanning] = useState(false);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(0.5);
   const updateComponent = useUpdateComponent();
 
   const sensors = useSensors(
@@ -128,7 +128,7 @@ export function InfiniteCanvas({
       {/* Zoom/Pan Container */}
       <TransformWrapper
         ref={transformRef}
-        initialScale={1}
+        initialScale={0.5}
         minScale={0.25}
         maxScale={2}
         limitToBounds={false}
