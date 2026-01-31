@@ -25,7 +25,6 @@ export function InfiniteCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [scale, setScale] = useState(0.5);
-  const [hasInitialized, setHasInitialized] = useState(false);
   const updateComponent = useUpdateComponent();
 
   // Find the Campaign Console anchor widget
@@ -62,32 +61,35 @@ export function InfiniteCanvas({
     [components, isGM, scale, updateComponent]
   );
 
-  // Recenter on the anchor component (Campaign Console)
+  // Recenter on the anchor component (Campaign Console) or first component
   const handleRecenter = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
-    if (!ref || !container) return;
+    if (!ref || !container) {
+      console.log('Recenter: refs not ready');
+      return;
+    }
 
-    // Find anchor or first component
+    // Find anchor or first component - read from current components
     const targetComponent = anchorComponent || components[0];
     if (!targetComponent) {
-      // No components, reset to origin
-      ref.setTransform(0, 0, 0.5, 200, "easeOut");
+      // No components, center on a nice starting point
+      const containerRect = container.getBoundingClientRect();
+      ref.setTransform(containerRect.width / 4, containerRect.height / 4, 0.5, 200, "easeOut");
       return;
     }
 
     const containerRect = container.getBoundingClientRect();
-    const containerCenterX = containerRect.width / 2;
-    const containerCenterY = containerRect.height / 2;
-
-    // Calculate component center
-    const componentCenterX = targetComponent.position_x + targetComponent.width / 2;
-    const componentCenterY = targetComponent.position_y + targetComponent.height / 2;
-
-    // Calculate transform to center the component
     const targetScale = 0.5;
-    const newX = containerCenterX - componentCenterX * targetScale;
-    const newY = containerCenterY - componentCenterY * targetScale;
+
+    // We want the component to appear centered in the viewport
+    // Component is at position (position_x, position_y) in canvas space
+    // At scale 0.5, the visual position is position * 0.5
+    // To center it, we need: translateX + (position_x * scale) + (width * scale / 2) = containerWidth / 2
+    // So: translateX = containerWidth / 2 - position_x * scale - width * scale / 2
+    
+    const newX = (containerRect.width / 2) - (targetComponent.position_x * targetScale) - (targetComponent.width * targetScale / 2);
+    const newY = (containerRect.height / 2) - (targetComponent.position_y * targetScale) - (targetComponent.height * targetScale / 2);
 
     ref.setTransform(newX, newY, targetScale, 200, "easeOut");
   }, [anchorComponent, components]);
@@ -115,17 +117,17 @@ export function InfiniteCanvas({
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
   const handlePanningStop = useCallback(() => setIsPanning(false), []);
 
-  // Auto-center on anchor component on initial load
+  // Auto-center when anchor component first appears
+  const anchorId = anchorComponent?.id;
   useEffect(() => {
-    if (!hasInitialized && components.length > 0 && transformRef.current && containerRef.current) {
-      // Small delay to ensure DOM is ready
+    if (anchorId && transformRef.current && containerRef.current) {
+      // Delay to ensure component is rendered
       const timer = setTimeout(() => {
         handleRecenter();
-        setHasInitialized(true);
-      }, 100);
+      }, 150);
       return () => clearTimeout(timer);
     }
-  }, [components.length, hasInitialized, handleRecenter]);
+  }, [anchorId]); // Only trigger when anchor component ID changes
 
   // Keyboard shortcuts for zoom
   useEffect(() => {
@@ -183,6 +185,8 @@ export function InfiniteCanvas({
       <TransformWrapper
         ref={transformRef}
         initialScale={0.5}
+        initialPositionX={100}
+        initialPositionY={100}
         minScale={0.25}
         maxScale={2}
         limitToBounds={false}
