@@ -55,7 +55,7 @@ export function NarrativeTableWidget({ campaignId }: NarrativeTableWidgetProps) 
   }
 
   return (
-    <div className="h-full overflow-auto relative">
+    <div className="h-full overflow-auto relative" data-scrollable="true">
       <table className="w-full text-xs">
         <thead className="sticky top-0 bg-card z-10">
           <tr className="border-b border-primary/30">

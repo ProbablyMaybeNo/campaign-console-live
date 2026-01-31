@@ -96,7 +96,7 @@ export function MessagesWidget({ campaignId }: MessagesWidgetProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Messages List */}
-      <div className="flex-1 overflow-y-auto space-y-2 mb-2">
+      <div className="flex-1 overflow-y-auto space-y-2 mb-2" data-scrollable="true">
         {messages.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">No messages yet</p>
         ) : (

@@ -82,7 +82,7 @@ export function NarrativeWidget({ campaignId, isGM }: NarrativeWidgetProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Events List */}
-      <div className="flex-1 overflow-y-auto space-y-2">
+      <div className="flex-1 overflow-y-auto space-y-2" data-scrollable="true">
         {events.length === 0 && !showForm ? (
           <p className="text-xs text-muted-foreground text-center py-4">
             No narrative entries yet. {isGM && "Add one to start the story!"}

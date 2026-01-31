@@ -115,7 +115,7 @@ export function RulesWidget({ campaignId, isGM }: RulesWidgetProps) {
       </div>
 
       {/* Rules List */}
-      <div className="flex-1 overflow-y-auto space-y-1">
+      <div className="flex-1 overflow-y-auto space-y-1" data-scrollable="true">
         {filteredRules.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-4">
             No rules match your search.
