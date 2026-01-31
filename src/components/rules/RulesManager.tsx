@@ -5,7 +5,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { PasteWizardOverlay } from "@/components/dashboard/PasteWizardOverlay";
 import { RuleEditorModal } from "./RuleEditorModal";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
-import { getCenteredPlacement } from "@/lib/canvasPlacement";
+import { getSpawnPosition } from "@/lib/canvasPlacement";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -83,7 +83,7 @@ export function RulesManager({ campaignId, isGM }: RulesManagerProps) {
 
     const width = componentType === "table" ? 400 : 350;
     const height = 300;
-    const placement = getCenteredPlacement(campaignId, width, height);
+    const placement = getSpawnPosition(width, height);
 
     await createComponent.mutateAsync({
       campaign_id: campaignId,

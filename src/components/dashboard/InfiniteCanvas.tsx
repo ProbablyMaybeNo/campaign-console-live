@@ -6,7 +6,12 @@ import { CanvasControls } from "./CanvasControls";
 import { CanvasGrid } from "./CanvasGrid";
 import { DashboardComponent } from "@/hooks/useDashboardComponents";
 import { useDebouncedComponentUpdate } from "@/hooks/useDebouncedComponentUpdate";
-import { writeCanvasTransform } from "@/lib/canvasPlacement";
+import { 
+  CANVAS_WIDTH, 
+  CANVAS_HEIGHT, 
+  getInitialTransform, 
+  getTransformForComponent 
+} from "@/lib/canvasPlacement";
 
 interface InfiniteCanvasProps {
   components: DashboardComponent[];
@@ -18,6 +23,7 @@ interface InfiniteCanvasProps {
 
 const ZOOM_STEP = 0.15;
 const GRID_SIZE = 20;
+const INITIAL_SCALE = 0.5;
 
 export function InfiniteCanvas({
   components,
@@ -28,11 +34,10 @@ export function InfiniteCanvas({
 }: InfiniteCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const persistRafRef = useRef<number | null>(null);
-  const latestTransformRef = useRef<{ scale: number; positionX: number; positionY: number } | null>(null);
   const [isPanning, setIsPanning] = useState(false);
-  const [scale, setScale] = useState(0.5);
+  const [scale, setScale] = useState(INITIAL_SCALE);
   const [snapToGrid, setSnapToGrid] = useState(false);
+  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
@@ -43,6 +48,19 @@ export function InfiniteCanvas({
   const anchorComponent = useMemo(() => {
     return components.find((c) => c.component_type === "campaign-console");
   }, [components]);
+
+  // Calculate initial position when container is available
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const { positionX, positionY } = getInitialTransform(
+      container.clientWidth,
+      container.clientHeight,
+      INITIAL_SCALE
+    );
+    setInitialPosition({ x: positionX, y: positionY });
+  }, []);
 
   // Reduce activation distance for faster drag start (3px instead of 8px)
   const sensors = useSensors(
@@ -79,39 +97,39 @@ export function InfiniteCanvas({
     [components, isGM, scale, debouncedUpdate, flushNow, snapPosition]
   );
 
-  // Recenter on the anchor component (Campaign Console) or first component
+  // Recenter on the anchor component (Campaign Console) or canvas center
   const handleRecenter = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
     if (!ref || !container) return;
 
-    // Find anchor or first component - read from current components
-    const targetComponent = anchorComponent || components[0];
-    if (!targetComponent) {
-      // No components, center on a nice starting point
-      ref.setTransform(container.clientWidth / 4, container.clientHeight / 4, 0.5, 200, "easeOut");
-      return;
-    }
-
-    const containerRect = {
-      width: container.clientWidth,
-      height: container.clientHeight,
-    };
-    const targetScale = 0.5;
-
-    // We want the component to appear centered in the viewport
-    // Component is at position (position_x, position_y) in canvas space
-    // At scale 0.5, the visual position is position * 0.5
-    // To center it, we need: translateX + (position_x * scale) + (width * scale / 2) = containerWidth / 2
-    // So: translateX = containerWidth / 2 - position_x * scale - width * scale / 2
+    const targetScale = INITIAL_SCALE;
     
-    const newX = (containerRect.width / 2) - (targetComponent.position_x * targetScale) - (targetComponent.width * targetScale / 2);
-    const newY = (containerRect.height / 2) - (targetComponent.position_y * targetScale) - (targetComponent.height * targetScale / 2);
-
-    ref.setTransform(newX, newY, targetScale, 200, "easeOut");
+    // If we have an anchor component, center on it
+    const targetComponent = anchorComponent || components[0];
+    if (targetComponent) {
+      const { positionX, positionY } = getTransformForComponent(
+        container.clientWidth,
+        container.clientHeight,
+        targetComponent.position_x,
+        targetComponent.position_y,
+        targetComponent.width,
+        targetComponent.height,
+        targetScale
+      );
+      ref.setTransform(positionX, positionY, targetScale, 200, "easeOut");
+    } else {
+      // No components - center on canvas center
+      const { positionX, positionY } = getInitialTransform(
+        container.clientWidth,
+        container.clientHeight,
+        targetScale
+      );
+      ref.setTransform(positionX, positionY, targetScale, 200, "easeOut");
+    }
   }, [anchorComponent, components]);
 
-  // Zoom toward viewport center by calculating the new transform manually
+  // Zoom toward viewport center
   const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
@@ -122,7 +140,6 @@ export function InfiniteCanvas({
     const positionY = ref.state.positionY ?? 0;
     const newScale = Math.min(2, currentScale + ZOOM_STEP);
     
-    // Calculate zoom centered on viewport center
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
     const scaleFactor = newScale / currentScale;
@@ -142,7 +159,6 @@ export function InfiniteCanvas({
     const positionY = ref.state.positionY ?? 0;
     const newScale = Math.max(0.25, currentScale - ZOOM_STEP);
     
-    // Calculate zoom centered on viewport center
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
     const scaleFactor = newScale / currentScale;
@@ -156,38 +172,8 @@ export function InfiniteCanvas({
     handleRecenter();
   }, [handleRecenter]);
 
-  const handleTransform = useCallback(
-    (ref: ReactZoomPanPinchRef) => {
-      setScale(ref.state.scale);
-
-      latestTransformRef.current = {
-        scale: ref.state.scale,
-        positionX: ref.state.positionX,
-        positionY: ref.state.positionY,
-      };
-
-      if (persistRafRef.current != null) return;
-      persistRafRef.current = window.requestAnimationFrame(() => {
-        persistRafRef.current = null;
-        const container = containerRef.current;
-        const latest = latestTransformRef.current;
-        if (!container || !latest) return;
-        writeCanvasTransform(campaignId, {
-          ...latest,
-          viewportWidth: container.clientWidth,
-          viewportHeight: container.clientHeight,
-        });
-      });
-    },
-    [campaignId]
-  );
-
-  useEffect(() => {
-    return () => {
-      if (persistRafRef.current != null) {
-        window.cancelAnimationFrame(persistRafRef.current);
-      }
-    };
+  const handleTransform = useCallback((ref: ReactZoomPanPinchRef) => {
+    setScale(ref.state.scale);
   }, []);
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
@@ -203,9 +189,8 @@ export function InfiniteCanvas({
     if (!anchorComponent) return;
     if (centeredCampaignRef.current === campaignId) return;
 
-    // Wait for layout to stabilize using requestAnimationFrame
+    // Wait for layout to stabilize
     const frame = requestAnimationFrame(() => {
-      // Double-check ref.state is available before recentering
       if (!transformRef.current?.state) return;
       centeredCampaignRef.current = campaignId;
       handleRecenter();
@@ -214,31 +199,9 @@ export function InfiniteCanvas({
     return () => cancelAnimationFrame(frame);
   }, [anchorComponent?.id, campaignId, handleRecenter]);
 
-  // Persist an initial snapshot so newly-created components can be centered even
-  // before the user pans/zooms.
-  useEffect(() => {
-    const ref = transformRef.current;
-    const container = containerRef.current;
-    if (!ref || !container) return;
-
-    const timer = window.setTimeout(() => {
-      if (!ref.state) return;
-      writeCanvasTransform(campaignId, {
-        scale: ref.state.scale ?? 0.5,
-        positionX: ref.state.positionX ?? 0,
-        positionY: ref.state.positionY ?? 0,
-        viewportWidth: container.clientWidth,
-        viewportHeight: container.clientHeight,
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [campaignId]);
-
   // Keyboard shortcuts for zoom and navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -319,9 +282,9 @@ export function InfiniteCanvas({
       {/* Zoom/Pan Container */}
       <TransformWrapper
         ref={transformRef}
-        initialScale={0.5}
-        initialPositionX={0}
-        initialPositionY={0}
+        initialScale={INITIAL_SCALE}
+        initialPositionX={initialPosition.x}
+        initialPositionY={initialPosition.y}
         minScale={0.25}
         maxScale={2}
         limitToBounds={false}
@@ -350,8 +313,8 @@ export function InfiniteCanvas({
             height: "100%",
           }}
           contentStyle={{
-            width: "4000px",
-            height: "4000px",
+            width: `${CANVAS_WIDTH}px`,
+            height: `${CANVAS_HEIGHT}px`,
           }}
         >
           {/* Grid Background */}
@@ -377,7 +340,14 @@ export function InfiniteCanvas({
 
           {/* Empty state */}
           {components.length === 0 && (
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+            <div 
+              className="absolute text-center pointer-events-none"
+              style={{
+                left: `${CANVAS_WIDTH / 2}px`,
+                top: `${CANVAS_HEIGHT / 2}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
               <div className="text-muted-foreground text-sm space-y-2">
                 <p className="text-lg font-mono text-primary/70">[ EMPTY DASHBOARD ]</p>
                 <p className="text-xs max-w-xs">

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
-import { getCenteredPlacement } from "@/lib/canvasPlacement";
+import { getSpawnPosition } from "@/lib/canvasPlacement";
 import { PasteWizardOverlay } from "./PasteWizardOverlay";
 import { 
   Table, 
@@ -101,7 +101,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       height = 400;
     }
 
-    const placement = getCenteredPlacement(campaignId, width, height);
+    // Spawn at canvas center with slight offset to not overlap existing components
+    const offset = { x: Math.random() * 100 - 50, y: Math.random() * 100 - 50 };
+    const placement = getSpawnPosition(width, height, offset);
 
     await createComponent.mutateAsync({
       campaign_id: campaignId,
