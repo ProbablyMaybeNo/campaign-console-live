@@ -37,7 +37,7 @@ export function InfiniteCanvas({
   const [isPanning, setIsPanning] = useState(false);
   const [scale, setScale] = useState(INITIAL_SCALE);
   const [snapToGrid, setSnapToGrid] = useState(false);
-  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
+  const [isReady, setIsReady] = useState(false);
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
@@ -49,18 +49,27 @@ export function InfiniteCanvas({
     return components.find((c) => c.component_type === "campaign-console");
   }, [components]);
 
-  // Calculate initial position when container is available
+  // Center on mount once the transform wrapper is ready
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    if (isReady) return;
     
-    const { positionX, positionY } = getInitialTransform(
-      container.clientWidth,
-      container.clientHeight,
-      INITIAL_SCALE
-    );
-    setInitialPosition({ x: positionX, y: positionY });
-  }, []);
+    const ref = transformRef.current;
+    const container = containerRef.current;
+    if (!ref || !container) return;
+
+    // Small delay to ensure TransformWrapper is fully initialized
+    const timer = setTimeout(() => {
+      const { positionX, positionY } = getInitialTransform(
+        container.clientWidth,
+        container.clientHeight,
+        INITIAL_SCALE
+      );
+      ref.setTransform(positionX, positionY, INITIAL_SCALE, 0);
+      setIsReady(true);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [isReady]);
 
   // Reduce activation distance for faster drag start (3px instead of 8px)
   const sensors = useSensors(
@@ -283,8 +292,8 @@ export function InfiniteCanvas({
       <TransformWrapper
         ref={transformRef}
         initialScale={INITIAL_SCALE}
-        initialPositionX={initialPosition.x}
-        initialPositionY={initialPosition.y}
+        initialPositionX={0}
+        initialPositionY={0}
         minScale={0.25}
         maxScale={2}
         limitToBounds={false}
