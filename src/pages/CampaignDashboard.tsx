@@ -97,26 +97,16 @@ export default function CampaignDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-primary/20 bg-card/50 px-4 py-3 flex-shrink-0">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
+      {/* Fixed Header */}
+      <header className="border-b border-primary/20 bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link to="/campaigns">
-              <TerminalButton variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Campaigns
-              </TerminalButton>
-            </Link>
-            <div className="h-4 w-px bg-border" />
-            <div>
-              <h1 className="text-lg font-bold text-primary uppercase tracking-wider">
-                {campaign.name}
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                {campaign.points_limit} pts
-              </p>
-            </div>
-          </div>
+          <Link to="/campaigns" className="text-[hsl(200,100%,50%)] hover:text-[hsl(200,100%,60%)] transition-colors">
+            <span className="flex items-center gap-1 font-mono text-sm font-medium">
+              <ArrowLeft className="w-4 h-4" />
+              Campaigns
+            </span>
+          </Link>
           
           <div className="flex items-center gap-3">
             {isGM ? (
@@ -139,9 +129,6 @@ export default function CampaignDashboard() {
                 Player
               </div>
             )}
-            <span className="text-xs text-muted-foreground hidden md:block">
-              {user?.email}
-            </span>
             <TerminalButton variant="outline" size="sm" onClick={() => signOut()}>
               Logout
             </TerminalButton>
@@ -150,9 +137,9 @@ export default function CampaignDashboard() {
       </header>
 
       <div className="flex flex-1 overflow-hidden min-h-0">
-        {/* Sidebar - GM only */}
+        {/* Fixed Sidebar - GM only */}
         {effectiveIsGM && (
-          <aside className="w-56 border-r border-primary/20 bg-sidebar flex-shrink-0 p-4 hidden md:flex flex-col">
+          <aside className="w-56 border-r border-primary/20 bg-sidebar/95 backdrop-blur-sm flex-shrink-0 p-4 hidden md:flex flex-col sticky left-0 overflow-y-auto">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-3">Campaign Control</p>
             <nav className="space-y-1 flex-1">
               {sidebarItems.map((item) => {
