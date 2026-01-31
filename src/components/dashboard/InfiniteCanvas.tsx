@@ -96,7 +96,7 @@ export function InfiniteCanvas({
           excluded: ["draggable-component"],
         }}
         wheel={{
-          step: 0.1,
+          disabled: true,
         }}
       >
         <TransformComponent
