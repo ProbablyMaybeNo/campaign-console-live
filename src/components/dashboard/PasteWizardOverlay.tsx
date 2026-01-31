@@ -85,7 +85,8 @@ export function PasteWizardOverlay({
   const createRule = useCreateRule();
   const { convertText, isConverting } = useAITextConvert();
 
-  const handleAIConvert = async () => {
+  // Primary AI-powered generation - called from paste step
+  const handleAIGenerate = async () => {
     if (!rawText.trim()) {
       toast.error('No text to convert');
       return;
@@ -112,15 +113,21 @@ export function PasteWizardOverlay({
       if (result.data.title && !name) {
         setName(result.data.title);
       }
-      // Update detection to show AI-converted
-      setDetection(prev => prev ? {
-        ...prev,
+      setDetection({
+        type: 'ai-converted',
         confidence: 'high',
-        type: 'whitespace-table',
+        columns: result.data.columns,
+        rows: result.data.rows.map(r => result.data.columns.map(c => r[c] || '')),
+        rawText,
         warnings: [],
-      } : null);
+      });
     } else if (result.type === 'card') {
-      // For card type, convert sections to table-like structure for display
+      setSections(result.data.sections.map(s => ({
+        id: crypto.randomUUID(),
+        header: s.header,
+        content: s.content,
+      })));
+      // Also set rows for the table view in review
       setColumns(['Header', 'Content']);
       setRows(result.data.sections.map(s => ({
         id: crypto.randomUUID(),
@@ -130,15 +137,17 @@ export function PasteWizardOverlay({
       if (result.data.title && !name) {
         setName(result.data.title);
       }
-      setDetection(prev => prev ? {
-        ...prev,
+      setDetection({
+        type: 'ai-converted',
         confidence: 'high',
-        type: 'key-value',
+        columns: ['Header', 'Content'],
+        rows: result.data.sections.map(s => [s.header, s.content]),
+        rawText,
         warnings: [],
-      } : null);
+      });
     }
 
-    toast.success('AI conversion applied - review the results');
+    setStep('review');
   };
 
   const handleGenerate = () => {
@@ -426,11 +435,15 @@ Example:
                 Cancel
               </TerminalButton>
               <TerminalButton
-                onClick={handleGenerate}
-                disabled={!rawText.trim()}
+                onClick={handleAIGenerate}
+                disabled={!rawText.trim() || isConverting}
               >
-                <Sparkles className="w-4 h-4 mr-2" />
-                Generate
+                {isConverting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Wand2 className="w-4 h-4 mr-2" />
+                )}
+                {isConverting ? 'Converting...' : 'AI Convert'}
               </TerminalButton>
             </div>
           </div>
@@ -474,35 +487,11 @@ Example:
               </div>
             )}
 
-            {/* AI Convert button - show when confidence is not high and not custom */}
-            {detection && !isCustom && detection.confidence !== 'high' && (
-              <div className="bg-accent/30 border border-accent rounded p-3 flex items-center justify-between gap-3">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div className="text-xs text-muted-foreground">
-                    <p className="font-medium text-foreground">Detection confidence is {detection.confidence}</p>
-                    {detection.warnings.length > 0 && (
-                      <ul className="mt-1 space-y-0.5 text-amber-400">
-                        {detection.warnings.map((w, i) => (
-                          <li key={i}>• {w}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-                <TerminalButton
-                  variant="outline"
-                  onClick={handleAIConvert}
-                  disabled={isConverting}
-                  className="flex-shrink-0"
-                >
-                  {isConverting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Wand2 className="w-4 h-4 mr-2" />
-                  )}
-                  {isConverting ? 'Converting...' : 'Try AI Convert'}
-                </TerminalButton>
+            {/* AI-converted info badge */}
+            {detection && !isCustom && detection.type === 'ai-converted' && (
+              <div className="bg-primary/10 border border-primary/30 rounded p-2 text-xs text-primary flex items-center gap-2">
+                <Wand2 className="w-4 h-4" />
+                <span>Converted with AI - review and edit as needed</span>
               </div>
             )}
 
