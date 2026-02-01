@@ -32,7 +32,7 @@ export default function Index() {
             className="text-lg text-white uppercase tracking-wider"
             style={{ textShadow: '0 0 10px rgba(255, 255, 255, 0.5)' }}
           >
-            Wargame Campaign Tracker
+            Table Top Campaign Tracker
           </p>
           <div 
             className="text-xs text-white/90 font-mono"
