@@ -115,14 +115,14 @@ export function OverlayPanel({
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className={cn(
-              "relative w-full bg-card border border-primary/30 shadow-2xl flex flex-col max-h-[80vh]",
+              "relative w-full bg-card border border-primary/50 shadow-[0_0_30px_hsl(var(--primary)/0.15)] flex flex-col max-h-[80vh]",
               sizeClasses[size],
               className
             )}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-start justify-between p-4 border-b border-border shrink-0">
+            <div className="flex items-start justify-between p-4 border-b border-primary/30 shrink-0">
               <div className="flex items-start gap-3">
                 {icon && (
                   <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center shrink-0 text-primary">
@@ -130,7 +130,7 @@ export function OverlayPanel({
                   </div>
                 )}
                 <div>
-                  <h2 className="text-sm font-mono uppercase tracking-widest text-primary font-medium">
+                  <h2 className="text-sm font-mono uppercase tracking-widest text-primary font-medium text-glow-primary">
                     {title}
                   </h2>
                   {subtitle && (
@@ -156,7 +156,7 @@ export function OverlayPanel({
 
             {/* Footer */}
             {footer && (
-              <div className="p-4 border-t border-border shrink-0 bg-muted/20">
+              <div className="p-4 border-t border-primary/30 shrink-0 bg-muted/20">
                 {footer}
               </div>
             )}
