@@ -50,12 +50,12 @@ export default function Auth() {
         }} />
       </div>
 
-      {/* Frame border */}
-      <div className="absolute inset-4 border border-cyan-500/30 pointer-events-none" />
-      <div className="absolute inset-6 border border-cyan-500/20 pointer-events-none" />
+      {/* Frame border - neon green matching dashboard */}
+      <div className="absolute inset-4 border border-primary/40 pointer-events-none shadow-[0_0_15px_hsl(var(--primary)/0.15)]" />
+      <div className="absolute inset-6 border border-primary/25 pointer-events-none" />
 
       {/* User icon in top right */}
-      <div className="absolute top-8 right-8 p-3 border border-primary/40 text-primary">
+      <div className="absolute top-8 right-8 p-3 border border-primary/50 text-primary glow-primary">
         <UserPlus className="w-6 h-6" />
       </div>
 
@@ -70,10 +70,10 @@ export default function Auth() {
         </div>
 
         {/* Login Card */}
-        <div className="border border-primary/40 bg-card/80">
+        <div className="border border-primary/50 bg-card/80 shadow-[0_0_20px_hsl(var(--primary)/0.1)]">
           {/* Card Header */}
           <div className="flex items-center justify-between px-4 py-2 border-b border-primary/30 bg-primary/5">
-            <h2 className="text-xs font-mono uppercase tracking-wider text-foreground">
+            <h2 className="text-xs font-mono uppercase tracking-wider text-primary text-glow-primary">
               {mode === "login" ? "System Login" : "Create Account"}
             </h2>
             <button className="text-muted-foreground hover:text-foreground">
@@ -85,7 +85,7 @@ export default function Auth() {
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {mode === "signup" && (
               <div className="space-y-1.5">
-                <label className="text-xs uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs uppercase tracking-wider text-primary/80">
                   Display Name
                 </label>
                 <input
@@ -93,13 +93,13 @@ export default function Auth() {
                   placeholder="Enter display name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-input border border-border px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                  className="w-full bg-input border border-primary/30 px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary/70 focus:shadow-[0_0_8px_hsl(var(--primary)/0.2)] transition-all"
                 />
               </div>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs uppercase tracking-wider text-primary/80">
                 Username
               </label>
               <input
@@ -108,12 +108,12 @@ export default function Auth() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full bg-input border border-border px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                className="w-full bg-input border border-primary/30 px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary/70 focus:shadow-[0_0_8px_hsl(var(--primary)/0.2)] transition-all"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs uppercase tracking-wider text-primary/80">
                 Password
               </label>
               <input
@@ -122,7 +122,7 @@ export default function Auth() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full bg-input border border-border px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary"
+                className="w-full bg-input border border-primary/30 px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary/70 focus:shadow-[0_0_8px_hsl(var(--primary)/0.2)] transition-all"
               />
             </div>
 
@@ -146,7 +146,7 @@ export default function Auth() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary/20 border border-primary text-primary py-2 text-sm font-mono uppercase tracking-wider hover:bg-primary/30 transition-colors disabled:opacity-50"
+              className="w-full bg-primary/20 border border-primary text-primary py-2 text-sm font-mono uppercase tracking-wider hover:bg-primary/30 hover:shadow-[0_0_12px_hsl(var(--primary)/0.3)] transition-all disabled:opacity-50 text-glow-primary"
             >
               {loading ? (
                 <TerminalLoader text={mode === "login" ? "Authenticating" : "Creating"} size="sm" />
@@ -161,13 +161,13 @@ export default function Auth() {
                 setMode(mode === "login" ? "signup" : "login");
                 setError(null);
               }}
-              className="w-full text-xs text-primary hover:underline uppercase tracking-wider"
+              className="w-full text-xs text-primary hover:underline uppercase tracking-wider text-glow-primary"
             >
               {mode === "login" ? "Create Account" : "Back to Login"}
             </button>
 
             {/* Version */}
-            <p className="text-center text-xs text-muted-foreground pt-2 border-t border-border">
+            <p className="text-center text-xs text-muted-foreground pt-2 border-t border-primary/20">
               v0.9.21
             </p>
           </form>
