@@ -36,17 +36,17 @@ export default function Index() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
           {user ? (
             <Link to="/campaigns">
               <TerminalButton size="lg">
-                {">> Enter Console"}
+                Enter Console
               </TerminalButton>
             </Link>
           ) : (
             <Link to="/auth">
               <TerminalButton size="lg">
-                {">> Access System"}
+                Access System
               </TerminalButton>
             </Link>
           )}
