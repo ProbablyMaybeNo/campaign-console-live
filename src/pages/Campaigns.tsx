@@ -68,8 +68,8 @@ export default function Campaigns() {
   return (
     <div className="min-h-screen bg-background p-6 relative">
       {/* Frame borders */}
-      <div className="absolute inset-4 border border-cyan-500/30 pointer-events-none" />
-      <div className="absolute inset-6 border border-cyan-500/20 pointer-events-none" />
+      <div className="absolute inset-4 pointer-events-none" style={{ border: '1px solid hsl(142, 76%, 65%, 0.4)' }} />
+      <div className="absolute inset-6 pointer-events-none" style={{ border: '1px solid hsl(142, 76%, 65%, 0.25)' }} />
 
       {/* User icon and Help */}
       <div className="absolute top-8 right-8 flex items-center gap-3">
@@ -103,7 +103,7 @@ export default function Campaigns() {
         </div>
 
         {/* Campaign Table */}
-        <div className="border border-primary/30 border-dashed p-6 mb-6">
+        <div className="p-6 mb-6" style={{ border: '1px dashed hsl(142, 76%, 65%, 0.4)' }}>
           {isLoading ? (
             <div className="flex justify-center py-12">
               <TerminalLoader text="Loading campaigns" />
@@ -117,7 +117,7 @@ export default function Campaigns() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-primary/30">
+                  <tr style={{ borderBottom: '1px solid hsl(142, 76%, 65%, 0.4)' }}>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Role</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Campaign Name</th>
                     <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Players</th>
@@ -132,11 +132,12 @@ export default function Campaigns() {
                       key={campaign.id}
                       onClick={() => handleRowClick(campaign.id)}
                       onDoubleClick={() => navigate(`/campaign/${campaign.id}`)}
-                      className={`border-b border-border/30 cursor-pointer transition-colors ${
+                      className={`cursor-pointer transition-colors ${
                         selectedCampaignId === campaign.id 
                           ? "bg-primary/10" 
                           : "hover:bg-accent/30"
                       }`}
+                      style={{ borderBottom: '1px solid hsl(142, 76%, 65%, 0.25)' }}
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
