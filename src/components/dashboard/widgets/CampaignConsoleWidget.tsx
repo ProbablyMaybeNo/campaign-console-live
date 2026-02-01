@@ -54,12 +54,12 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
   const formatDate = (date: string) => format(new Date(date), "dd/MM/yy");
 
   return (
-    <div className="w-full h-full flex flex-col p-4 gap-3 overflow-hidden select-none relative">
+    <div className="w-full h-full flex flex-col p-3 gap-2 overflow-hidden select-none relative">
       {/* Decorative Frame with Corner Accents */}
-      <div className="absolute inset-3 pointer-events-none">
+      <div className="absolute inset-2 pointer-events-none">
         {/* Corner accents - Top Left */}
         <div 
-          className="absolute top-0 left-0 w-6 h-6"
+          className="absolute top-0 left-0 w-5 h-5"
           style={{
             borderTop: `2px solid ${borderColor}`,
             borderLeft: `2px solid ${borderColor}`,
@@ -68,7 +68,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         />
         {/* Corner accents - Top Right */}
         <div 
-          className="absolute top-0 right-0 w-6 h-6"
+          className="absolute top-0 right-0 w-5 h-5"
           style={{
             borderTop: `2px solid ${borderColor}`,
             borderRight: `2px solid ${borderColor}`,
@@ -77,7 +77,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         />
         {/* Corner accents - Bottom Left */}
         <div 
-          className="absolute bottom-0 left-0 w-6 h-6"
+          className="absolute bottom-0 left-0 w-5 h-5"
           style={{
             borderBottom: `2px solid ${borderColor}`,
             borderLeft: `2px solid ${borderColor}`,
@@ -86,7 +86,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         />
         {/* Corner accents - Bottom Right */}
         <div 
-          className="absolute bottom-0 right-0 w-6 h-6"
+          className="absolute bottom-0 right-0 w-5 h-5"
           style={{
             borderBottom: `2px solid ${borderColor}`,
             borderRight: `2px solid ${borderColor}`,
@@ -96,33 +96,33 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         
         {/* Outer frame lines */}
         <div 
-          className="absolute top-0 left-8 right-8 h-px"
+          className="absolute top-0 left-6 right-6 h-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
         <div 
-          className="absolute bottom-0 left-8 right-8 h-px"
+          className="absolute bottom-0 left-6 right-6 h-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
         <div 
-          className="absolute left-0 top-8 bottom-8 w-px"
+          className="absolute left-0 top-6 bottom-6 w-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
         <div 
-          className="absolute right-0 top-8 bottom-8 w-px"
+          className="absolute right-0 top-6 bottom-6 w-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
       </div>
 
       {/* Campaign Title Box */}
       <div
-        className="border-2 px-6 py-4 flex items-center justify-center relative z-10"
+        className="border-2 px-4 py-3 flex items-center justify-center relative z-10"
         style={{ 
           borderColor,
           boxShadow: `0 0 15px ${borderColor}30, inset 0 0 20px ${borderColor}10`,
         }}
       >
         <h1
-          className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-wide text-center"
+          className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-wide text-center"
           style={{
             color: titleColor,
             fontFamily: "'UnifrakturMaguntia', serif",
