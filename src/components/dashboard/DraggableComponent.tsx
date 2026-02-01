@@ -13,13 +13,15 @@ import { PlayerListWidget } from "./widgets/PlayerListWidget";
 import { NarrativeTableWidget } from "./widgets/NarrativeTableWidget";
 import { CalendarWidget } from "./widgets/CalendarWidget";
 import { CampaignConsoleWidget } from "./widgets/CampaignConsoleWidget";
+import { ActivityFeedWidget } from "./widgets/ActivityFeedWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
   isGM: boolean;
   isPanning: boolean;
   isSelected: boolean;
-  onSelect: () => void;
+  isMultiSelected?: boolean;
+  onSelect: (shiftKey: boolean) => void;
   campaignId: string;
   scale: number;
   onResize: (id: string, width: number, height: number) => void;
@@ -44,6 +46,7 @@ const COMPONENT_ICONS: Record<string, string> = {
   player_list: "👥",
   narrative_table: "📖",
   calendar: "📅",
+  activity_feed: "⚡",
   "campaign-console": "⚔️",
 };
 
@@ -52,6 +55,7 @@ function DraggableComponentInner({
   isGM,
   isPanning,
   isSelected,
+  isMultiSelected = false,
   onSelect,
   campaignId,
   scale,
@@ -139,7 +143,7 @@ function DraggableComponentInner({
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    onSelect();
+    onSelect(e.shiftKey);
   }, [onSelect]);
 
   const icon = COMPONENT_ICONS[component.component_type] || "📦";
@@ -172,6 +176,8 @@ function DraggableComponentInner({
         return <CalendarWidget campaignId={campaignId} isGM={isGM} />;
       case "campaign-console":
         return <CampaignConsoleWidget campaignId={campaignId} isGM={isGM} />;
+      case "activity_feed":
+        return <ActivityFeedWidget campaignId={campaignId} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">
@@ -190,7 +196,7 @@ function DraggableComponentInner({
         style={style}
         className={`draggable-component ${
           isDragging ? "opacity-90 shadow-2xl" : ""
-        } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""}`}
+        } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""}`}
         onClick={handleClick}
       >
         <div 
@@ -234,7 +240,7 @@ function DraggableComponentInner({
       style={style}
       className={`draggable-component ${
         isDragging ? "opacity-90 shadow-2xl" : ""
-      } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""}`}
+      } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""}`}
       onClick={handleClick}
     >
       <div 
@@ -309,6 +315,7 @@ export const DraggableComponent = memo(DraggableComponentInner, (prev, next) => 
     prev.isGM === next.isGM &&
     prev.isPanning === next.isPanning &&
     prev.isSelected === next.isSelected &&
+    prev.isMultiSelected === next.isMultiSelected &&
     prev.campaignId === next.campaignId &&
     prev.scale === next.scale
   );
