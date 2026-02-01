@@ -65,7 +65,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
           className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-wide text-center"
           style={{
             color: titleColor,
-            fontFamily: "'Uncial Antiqua', serif",
+            fontFamily: "'UnifrakturMaguntia', serif",
             textShadow: `0 0 10px ${titleColor}40, 0 0 20px ${titleColor}20`,
           }}
         >
