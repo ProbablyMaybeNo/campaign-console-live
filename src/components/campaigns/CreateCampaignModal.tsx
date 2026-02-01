@@ -12,6 +12,7 @@ import { useCreateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { getConsoleSpawnPosition } from "@/lib/canvasPlacement";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { HelpButton } from "@/components/help/HelpButton";
 
 interface CreateCampaignModalProps {
   open: boolean;
@@ -150,9 +151,12 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="bg-card border-primary/30 max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-primary uppercase tracking-widest text-sm">
-            [Create New Campaign]
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-primary uppercase tracking-widest text-sm">
+              [Create New Campaign]
+            </DialogTitle>
+            <HelpButton variant="icon" />
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
