@@ -108,7 +108,8 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     
     resetForm();
     onClose();
-    navigate(`/campaign/${campaign.id}`);
+    // Navigate with ?new=1 to trigger getting started guide
+    navigate(`/campaign/${campaign.id}?new=1`);
   };
 
   const resetForm = () => {
