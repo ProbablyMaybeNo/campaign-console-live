@@ -9,9 +9,12 @@ import {
   EyeOff, 
   Trash2, 
   GripVertical,
-  Loader2
+  Loader2,
+  Copy,
+  Lock,
+  Unlock,
 } from "lucide-react";
-import { useDashboardComponents, useUpdateComponent, useDeleteComponent, type DashboardComponent } from "@/hooks/useDashboardComponents";
+import { useDashboardComponents, useUpdateComponent, useDeleteComponent, useCreateComponent, type DashboardComponent } from "@/hooks/useDashboardComponents";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { OverlayLoading, OverlayEmpty } from "@/components/ui/OverlayPanel";
@@ -25,6 +28,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useUndoDelete } from "@/hooks/useUndoDelete";
+import { toast } from "sonner";
 
 const componentTypeIcons: Record<string, React.ReactNode> = {
   table: <Table2 className="w-4 h-4" />,
@@ -50,6 +55,8 @@ export function ComponentsManager({ campaignId }: ComponentsManagerProps) {
   const { data: components, isLoading, error } = useDashboardComponents(campaignId);
   const updateComponent = useUpdateComponent();
   const deleteComponent = useDeleteComponent();
+  const createComponent = useCreateComponent();
+  const { handleDeleteWithUndo } = useUndoDelete(campaignId);
   const [deleteTarget, setDeleteTarget] = useState<DashboardComponent | null>(null);
 
   if (isLoading) {
@@ -89,9 +96,40 @@ export function ComponentsManager({ campaignId }: ComponentsManagerProps) {
     });
   };
 
+  const handleLockToggle = (component: DashboardComponent) => {
+    const isLocked = (component.config as { locked?: boolean })?.locked ?? false;
+    
+    updateComponent.mutate({
+      id: component.id,
+      config: {
+        ...(component.config as object),
+        locked: !isLocked,
+      },
+    });
+    
+    toast.info(isLocked ? `"${component.name}" unlocked` : `"${component.name}" locked`);
+  };
+
+  const handleDuplicate = (component: DashboardComponent) => {
+    createComponent.mutate({
+      campaign_id: campaignId,
+      name: `${component.name} (Copy)`,
+      component_type: component.component_type,
+      data_source: component.data_source,
+      config: component.config,
+      position_x: component.position_x + 50,
+      position_y: component.position_y + 50,
+      width: component.width,
+      height: component.height,
+    });
+    toast.success(`Duplicated "${component.name}"`);
+  };
+
   const handleDelete = () => {
     if (deleteTarget) {
-      deleteComponent.mutate({ id: deleteTarget.id, campaignId });
+      handleDeleteWithUndo(deleteTarget, () => {
+        deleteComponent.mutate({ id: deleteTarget.id, campaignId });
+      });
       setDeleteTarget(null);
     }
   };
@@ -100,10 +138,14 @@ export function ComponentsManager({ campaignId }: ComponentsManagerProps) {
     return (component.config as { visibility?: string })?.visibility === "gm";
   };
 
+  const isLocked = (component: DashboardComponent) => {
+    return (component.config as { locked?: boolean })?.locked ?? false;
+  };
+
   return (
     <div className="space-y-2">
       <div className="text-xs text-muted-foreground mb-4">
-        Toggle visibility to control which components players can see.
+        Toggle visibility to control which components players can see. Lock widgets to prevent accidental movement.
       </div>
       
       <div className="divide-y divide-border border border-border rounded-md bg-card">
@@ -124,7 +166,12 @@ export function ComponentsManager({ campaignId }: ComponentsManagerProps) {
 
             {/* Name and type */}
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate">{component.name}</div>
+              <div className="font-medium text-sm truncate flex items-center gap-2">
+                {component.name}
+                {isLocked(component) && (
+                  <Lock className="w-3 h-3 text-[hsl(200,100%,65%)]" />
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">
                 {componentTypeLabels[component.component_type] || component.component_type}
               </div>
@@ -150,6 +197,28 @@ export function ComponentsManager({ campaignId }: ComponentsManagerProps) {
               />
             </div>
 
+            {/* Lock button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${isLocked(component) ? "text-[hsl(200,100%,65%)]" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => handleLockToggle(component)}
+              title={isLocked(component) ? "Unlock widget" : "Lock widget"}
+            >
+              {isLocked(component) ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
+            </Button>
+
+            {/* Duplicate button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-[hsl(142,76%,50%)]"
+              onClick={() => handleDuplicate(component)}
+              title="Duplicate widget"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+
             {/* Delete button */}
             <Button
               variant="ghost"
@@ -169,7 +238,7 @@ export function ComponentsManager({ campaignId }: ComponentsManagerProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Component</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteTarget?.name}"? This action cannot be undone.
+              Are you sure you want to delete "{deleteTarget?.name}"? You can undo this action for 5 seconds after deleting.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
