@@ -1,8 +1,34 @@
-// Bounded canvas configuration
-export const CANVAS_WIDTH = 6000;
-export const CANVAS_HEIGHT = 4000;
-export const CANVAS_CENTER_X = CANVAS_WIDTH / 2;  // 3000
-export const CANVAS_CENTER_Y = CANVAS_HEIGHT / 2; // 2000
+// Bounded canvas configuration - responsive to window size
+// Base dimensions are used as minimum values
+const BASE_CANVAS_WIDTH = 4000;
+const BASE_CANVAS_HEIGHT = 3000;
+const MIN_CANVAS_WIDTH = 2000;
+const MIN_CANVAS_HEIGHT = 1500;
+
+// Calculate responsive canvas dimensions based on viewport
+export function getCanvasDimensions(viewportWidth: number, viewportHeight: number) {
+  // Scale canvas to be approximately 3-4x the viewport size
+  // This gives room to pan while not being excessively large
+  const scaleFactor = 3.5;
+  
+  const width = Math.max(
+    MIN_CANVAS_WIDTH,
+    Math.round(Math.max(viewportWidth * scaleFactor, BASE_CANVAS_WIDTH))
+  );
+  
+  const height = Math.max(
+    MIN_CANVAS_HEIGHT,
+    Math.round(Math.max(viewportHeight * scaleFactor, BASE_CANVAS_HEIGHT))
+  );
+  
+  return { width, height };
+}
+
+// Default export for components that need static values (backward compatibility)
+export const CANVAS_WIDTH = BASE_CANVAS_WIDTH;
+export const CANVAS_HEIGHT = BASE_CANVAS_HEIGHT;
+export const CANVAS_CENTER_X = BASE_CANVAS_WIDTH / 2;
+export const CANVAS_CENTER_Y = BASE_CANVAS_HEIGHT / 2;
 
 // Padding from canvas edges for spawning
 const EDGE_PADDING = 100;
@@ -87,10 +113,12 @@ export function clampTransform(
   positionY: number,
   scale: number,
   viewportWidth: number,
-  viewportHeight: number
+  viewportHeight: number,
+  canvasWidth: number = CANVAS_WIDTH,
+  canvasHeight: number = CANVAS_HEIGHT
 ) {
-  const scaledWidth = CANVAS_WIDTH * scale;
-  const scaledHeight = CANVAS_HEIGHT * scale;
+  const scaledWidth = canvasWidth * scale;
+  const scaledHeight = canvasHeight * scale;
   
   // Calculate bounds - don't allow panning to show space outside canvas
   // When zoomed out (canvas smaller than viewport), center it
