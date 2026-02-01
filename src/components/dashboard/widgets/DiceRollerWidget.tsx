@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Dices, Settings, Check, X } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
+import { useRecordRoll } from "@/hooks/useRollHistory";
 
 interface DiceRollerWidgetProps {
   component: DashboardComponent;
+  campaignId: string;
   isGM: boolean;
 }
 
@@ -14,8 +16,9 @@ interface DiceConfig {
   lastTotal?: number;
 }
 
-export function DiceRollerWidget({ component, isGM }: DiceRollerWidgetProps) {
+export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidgetProps) {
   const updateComponent = useUpdateComponent();
+  const { recordRoll } = useRecordRoll(campaignId);
   const [isRolling, setIsRolling] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [tempSides, setTempSides] = useState(6);
@@ -27,20 +30,25 @@ export function DiceRollerWidget({ component, isGM }: DiceRollerWidgetProps) {
   const lastRolls = config.lastRolls ?? [];
   const lastTotal = config.lastTotal ?? 0;
 
-  const rollDice = () => {
+  const rollDice = async () => {
     setIsRolling(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const rolls: number[] = [];
       for (let i = 0; i < count; i++) {
         rolls.push(Math.floor(Math.random() * sides) + 1);
       }
       const total = rolls.reduce((a, b) => a + b, 0);
 
+      // Update widget state
       updateComponent.mutate({
         id: component.id,
         config: { ...config, lastRolls: rolls, lastTotal: total },
       });
+
+      // Record roll to history
+      await recordRoll(`${count}d${sides}`, rolls, total);
+
       setIsRolling(false);
     }, 500);
   };
@@ -134,8 +142,14 @@ export function DiceRollerWidget({ component, isGM }: DiceRollerWidgetProps) {
         className={`w-20 h-20 rounded-lg border-2 border-primary bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-transform ${
           isRolling ? "animate-bounce" : ""
         }`}
+        style={{
+          boxShadow: "0 0 15px hsl(142, 76%, 55%, 0.3)",
+        }}
       >
-        <Dices className={`w-10 h-10 text-primary ${isRolling ? "animate-spin" : ""}`} />
+        <Dices 
+          className={`w-10 h-10 text-primary ${isRolling ? "animate-spin" : ""}`}
+          style={{ filter: "drop-shadow(0 0 6px hsl(142, 76%, 55%))" }}
+        />
       </button>
 
       {lastRolls.length > 0 && !isRolling && (
@@ -144,14 +158,22 @@ export function DiceRollerWidget({ component, isGM }: DiceRollerWidgetProps) {
             {lastRolls.map((roll, i) => (
               <span
                 key={i}
-                className="w-8 h-8 rounded border border-primary/50 bg-primary/10 flex items-center justify-center text-sm font-mono"
+                className="w-8 h-8 rounded border border-primary/50 bg-primary/10 flex items-center justify-center text-sm font-mono text-primary"
+                style={{
+                  boxShadow: "0 0 8px hsl(142, 76%, 55%, 0.2)",
+                }}
               >
                 {roll}
               </span>
             ))}
           </div>
           {count > 1 && (
-            <p className="text-lg font-mono text-primary mt-2">Total: {lastTotal}</p>
+            <p 
+              className="text-lg font-mono text-primary mt-2"
+              style={{ textShadow: "0 0 8px hsl(142, 76%, 55%, 0.4)" }}
+            >
+              Total: {lastTotal}
+            </p>
           )}
         </div>
       )}

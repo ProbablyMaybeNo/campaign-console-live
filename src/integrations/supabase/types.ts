@@ -341,6 +341,47 @@ export type Database = {
           },
         ]
       }
+      dice_roll_history: {
+        Row: {
+          campaign_id: string
+          dice_config: string
+          id: string
+          player_id: string
+          player_name: string
+          rolled_at: string
+          rolls: number[]
+          total: number
+        }
+        Insert: {
+          campaign_id: string
+          dice_config: string
+          id?: string
+          player_id: string
+          player_name: string
+          rolled_at?: string
+          rolls: number[]
+          total: number
+        }
+        Update: {
+          campaign_id?: string
+          dice_config?: string
+          id?: string
+          player_id?: string
+          player_name?: string
+          rolled_at?: string
+          rolls?: number[]
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dice_roll_history_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       extraction_jobs: {
         Row: {
           campaign_id: string
