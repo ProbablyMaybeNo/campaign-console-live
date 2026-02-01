@@ -141,6 +141,7 @@ function DraggableComponentInner({
   }, [onSelect]);
 
   const icon = COMPONENT_ICONS[component.component_type] || "📦";
+  const isCampaignConsole = component.component_type === "campaign-console";
 
   // Memoize component content to prevent re-renders during drag
   const componentContent = useMemo(() => {
@@ -178,6 +179,52 @@ function DraggableComponentInner({
         );
     }
   }, [component, isGM, campaignId]);
+
+  // Campaign Console uses a minimal chrome layout (no title bar, just corner controls)
+  if (isCampaignConsole) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`draggable-component ${
+          isDragging ? "opacity-90 shadow-2xl" : ""
+        } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""}`}
+        onClick={handleClick}
+      >
+        <div 
+          className="h-full flex flex-col bg-card border border-[hsl(142,76%,50%)]/40 rounded overflow-hidden relative"
+          style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.15), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
+        >
+          {/* Corner Controls for Campaign Console (GM only) */}
+          {isGM && (
+            <>
+              {/* Move handle - top left */}
+              <div 
+                className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-card/80 hover:bg-card border border-[hsl(142,76%,50%)]/30"
+                {...listeners}
+                {...attributes}
+              >
+                <GripVertical className="w-4 h-4 text-[hsl(142,76%,50%)] opacity-60 hover:opacity-100" />
+              </div>
+              
+              {/* Resize handle - bottom right */}
+              <div
+                className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize group z-10"
+                onMouseDown={handleResizeStart}
+              >
+                <Maximize2 className="w-4 h-4 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] rotate-90" />
+              </div>
+            </>
+          )}
+
+          {/* Component Content - full area */}
+          <div className="flex-1 overflow-auto text-xs text-muted-foreground">
+            {componentContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
