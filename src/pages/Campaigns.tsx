@@ -89,8 +89,15 @@ export default function Campaigns() {
 
         {/* Title */}
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-mono tracking-widest text-primary">
-            -- CAMPAIGN OVERVIEW --
+          <h1 
+            className="text-3xl font-bold tracking-widest uppercase"
+            style={{ 
+              color: 'hsl(142, 76%, 65%)',
+              textShadow: '0 0 10px hsl(142, 76%, 65%), 0 0 20px hsl(142, 76%, 50%), 0 0 30px hsl(142, 76%, 40%)',
+              fontFamily: '"IBM Plex Mono", monospace'
+            }}
+          >
+            CAMPAIGN DIRECTORY
           </h1>
           <div className="w-full h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent mt-4" />
         </div>
