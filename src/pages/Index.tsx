@@ -17,7 +17,7 @@ export default function Index() {
         }} />
       </div>
 
-      <div className="text-center space-y-6 relative z-10">
+      <div className="text-center space-y-2 relative z-10">
         {/* Header Image */}
         <div className="flex justify-center">
           <img 
