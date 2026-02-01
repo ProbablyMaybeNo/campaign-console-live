@@ -78,61 +78,57 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         className="border border-dashed px-4 py-2"
         style={{ borderColor: `${borderColor}60` }}
       >
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 min-w-0">
-            {displaySettings.showId && (
-              <IconField
-                icon={<Hash className="w-4 h-4" />}
-                value={joinCode || "—"}
-                valueColor="hsl(0, 85%, 60%)"
-              />
-            )}
+        <div className="flex items-center justify-evenly gap-6 flex-wrap">
+          {displaySettings.showId && (
+            <IconField
+              icon={<Hash className="w-4 h-4" />}
+              value={joinCode || "—"}
+              valueColor="hsl(0, 85%, 60%)"
+            />
+          )}
 
-            {displaySettings.showRound && (
-              <IconField
-                icon={<CalendarDays className="w-4 h-4" />}
-                value={`${currentRound}/${totalRounds}`}
-                valueColor="hsl(142, 76%, 60%)"
-              />
-            )}
+          {displaySettings.showRound && (
+            <IconField
+              icon={<CalendarDays className="w-4 h-4" />}
+              value={`${currentRound}/${totalRounds}`}
+              valueColor="hsl(142, 76%, 60%)"
+            />
+          )}
 
-            {displaySettings.showDates && (startDate || endDate) && (
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <span className="text-white font-mono text-xs font-medium leading-none">
-                  {startDate ? formatDate(startDate) : "—"} → {endDate ? formatDate(endDate) : "—"}
-                </span>
-              </div>
-            )}
+          {displaySettings.showDates && (startDate || endDate) && (
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-white font-mono text-xs font-medium leading-none">
+                {startDate ? formatDate(startDate) : "—"} → {endDate ? formatDate(endDate) : "—"}
+              </span>
+            </div>
+          )}
 
-            {displaySettings.showGameSystem && gameSystem && (
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <Swords className="w-4 h-4 text-[hsl(0,85%,60%)]" />
-                <span className="text-white font-mono text-xs font-medium leading-none">
-                  {gameSystem}
-                </span>
-              </div>
-            )}
-          </div>
+          {displaySettings.showGameSystem && gameSystem && (
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <Swords className="w-4 h-4 text-[hsl(0,85%,60%)]" />
+              <span className="text-white font-mono text-xs font-medium leading-none">
+                {gameSystem}
+              </span>
+            </div>
+          )}
 
-          <div className="flex items-center gap-4 shrink-0">
-            {displaySettings.showPlayers && (
-              <IconField
-                icon={<Users className="w-4 h-4" />}
-                value={`${players.length}/${maxPlayers}`}
-                valueColor="hsl(195, 100%, 60%)"
-              />
-            )}
+          {displaySettings.showPlayers && (
+            <IconField
+              icon={<Users className="w-4 h-4" />}
+              value={`${players.length}/${maxPlayers}`}
+              valueColor="hsl(195, 100%, 60%)"
+            />
+          )}
 
-            {displaySettings.showPoints && (
-              <IconField
-                icon={<Target className="w-4 h-4" />}
-                value={`${campaign.points_limit || 0} pts`}
-                valueColor="hsl(195, 100%, 60%)"
-              />
-            )}
+          {displaySettings.showPoints && (
+            <IconField
+              icon={<Target className="w-4 h-4" />}
+              value={`${campaign.points_limit || 0} pts`}
+              valueColor="hsl(195, 100%, 60%)"
+            />
+          )}
 
-            {displaySettings.showStatus && <StatusToggle active={status === "active"} />}
-          </div>
+          {displaySettings.showStatus && <StatusToggle active={status === "active"} />}
         </div>
       </div>
     </div>
