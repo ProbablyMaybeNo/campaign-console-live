@@ -1,538 +1,444 @@
 # v1 Release Manual Testing Plan
 
-## Campaign Console Application - Comprehensive QA Checklist
+## Campaign Console Application - Functional QA Checklist
 
-This testing plan is designed for manual QA testing before v1 release. Each section contains step-by-step instructions that can be executed by a tester (human or AI agent).
+> ⚠️ **IMPORTANT**: This is a **hands-on functional testing guide**. Every test requires actually interacting with the running application through a browser. Tests verify real behavior and data persistence, not just that code exists.
 
 ---
 
-## Test Environment Setup
+## Testing Methodology
 
-Before testing:
-1. Open the application in a modern browser (Chrome/Firefox/Safari)
-2. Have access to two different email accounts for multi-user testing
-3. Clear browser cache/localStorage for clean state testing
-4. Note the preview URL for testing
+### How to Execute Tests
+1. **Open the live preview URL** in your browser
+2. **Perform each action** by clicking, typing, and interacting with the UI
+3. **Observe the result** on screen (not in code)
+4. **Verify persistence** by refreshing the page after key actions
+5. **Check console** for JavaScript errors after each section
+
+### Test Data to Use
+| Purpose | Value |
+|---------|-------|
+| GM Email | `qa-gm@testcampaign.com` |
+| Player Email | `qa-player@testcampaign.com` |
+| Password | `TestPassword123!` |
+| Campaign Name | `QA Test Campaign v1` |
+| Points Limit | `2000` |
+| Test Message | `Hello from QA testing!` |
+
+### For AI Agent Testing
+- Use `open_browser` tool to start testing session
+- Take screenshots at key checkpoints
+- Check console logs for errors after major actions
+- Use a second browser/incognito for multi-user tests
 
 ---
 
 ## 1. Authentication System
 
 ### 1.1 Sign Up Flow
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Navigate to `/auth` | Login page displays with "CAMPAIGN CONSOLE" title, Swords icon, and login form |
-| 2 | Click "Create Account" link | Form switches to show Display Name field |
-| 3 | Leave all fields empty and submit | Form shows validation/required field errors |
-| 4 | Enter invalid email format | Shows email validation error |
-| 5 | Enter valid email, short password | Shows password requirement error |
-| 6 | Enter valid email, password, and display name | Account created, redirects to `/campaigns` |
+**Start State**: Logged out, on `/auth` page, localStorage cleared
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/auth` | Login page with "CAMPAIGN CONSOLE" title, Swords icon | Title visible, login form displayed |
+| 2 | Click "Create Account" link | Form shows Display Name field | New input field appears |
+| 3 | Click submit with empty fields | Validation errors appear | Red error text visible |
+| 4 | Type `invalid-email` in email field | Email validation error shown | Error message mentions email format |
+| 5 | Enter valid email + password `abc` | Password too short error | Error mentions minimum length |
+| 6 | Enter `qa-gm@testcampaign.com`, `TestPassword123!`, `QA Tester` | Account created, redirects to `/campaigns` | URL changes to `/campaigns`, toast shows success |
+| 7 | Refresh the page | Still on `/campaigns`, still logged in | Page reloads, campaigns page visible |
+
+**Cleanup**: Keep this account for later tests
 
 ### 1.2 Login Flow
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Navigate to `/auth` | Login form displayed |
-| 2 | Enter invalid credentials | Error message: "Invalid login credentials" |
-| 3 | Enter valid credentials | Success toast, redirects to `/campaigns` |
-| 4 | Refresh page after login | Session persists, still on `/campaigns` |
+**Start State**: Logged out (use different browser or logout first)
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/auth` | Login form displayed | Email and password inputs visible |
+| 2 | Enter `wrong@email.com` / `wrongpass` | Error: "Invalid login credentials" | Toast or error message appears |
+| 3 | Enter `qa-gm@testcampaign.com` / `TestPassword123!` | Success, redirects to `/campaigns` | URL changes, campaigns list visible |
+| 4 | Refresh page | Session persists | Still on `/campaigns` after refresh |
 
 ### 1.3 Logout Flow
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Click "Logout" button | Session ends, redirects to `/auth` |
-| 2 | Try to access `/campaigns` directly | Redirects back to `/auth` |
+**Start State**: Logged in
 
-### 1.4 Session Persistence
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Login successfully | Navigate to campaigns page |
-| 2 | Close browser tab completely | Session should persist |
-| 3 | Reopen application | Should still be logged in |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click "Logout" button | Session ends, redirects to `/auth` | URL changes to `/auth`, login form visible |
+| 2 | Navigate directly to `/campaigns` | Redirects back to `/auth` | URL changes to `/auth` (protected route) |
 
 ---
 
 ## 2. Campaign Management
 
 ### 2.1 Create Campaign
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Click "[ Create ]" button on Campaigns page | Create Campaign modal opens |
-| 2 | Leave name empty, try to submit | Submit button disabled or shows error |
-| 3 | Enter campaign name only | Create button becomes active |
-| 4 | Fill in optional fields (description, points, players) | Fields accept input correctly |
-| 5 | Expand "Advanced Settings" | Shows password and color options |
-| 6 | Expand "Display Settings" | Shows toggles for Campaign Console display |
-| 7 | Submit the form | Campaign created, navigates to campaign dashboard |
-| 8 | Verify Campaign Console widget exists | Widget shows campaign name, metadata |
+**Start State**: Logged in as GM account, on `/campaigns` page
 
-### 2.2 Join Campaign
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Login with a different account | Navigate to Campaigns page |
-| 2 | Click "[ Join ]" button | Join Campaign modal opens |
-| 3 | Enter invalid campaign code | Error: "Campaign not found" |
-| 4 | Enter valid campaign code (from GM) | Joins campaign, navigates to dashboard |
-| 5 | Join password-protected campaign without password | Prompts for password |
-| 6 | Enter correct password | Successfully joins campaign |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click "[ Create ]" button | Modal opens with title "Create New Campaign" | Modal visible, background dimmed |
+| 2 | Try to submit with empty name | Button disabled or shows error | Cannot submit, validation message |
+| 3 | Type `QA Test Campaign v1` in Name field | Create button becomes active | Button no longer disabled |
+| 4 | Enter description: `Testing campaign for v1 QA` | Text appears in textarea | Description shows |
+| 5 | Set Points Limit to `2000` | Field shows 2000 | Input value updates |
+| 6 | Click "Create Campaign" | Loading, then redirect to dashboard | URL changes to `/campaign/{id}`, Campaign Console widget visible |
+| 7 | Verify Campaign Console shows name | Widget displays "QA Test Campaign v1" | Name visible in fantasy font |
+| 8 | Refresh the page | Campaign Console still visible | Data persisted in database |
+| 9 | Navigate to `/campaigns` | Campaign appears in list | Row shows campaign name with Crown icon (GM) |
+
+### 2.2 Join Campaign (Second User)
+**Start State**: Second browser/incognito, create `qa-player@testcampaign.com` account
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Login as player account | Navigate to `/campaigns` | Campaigns page visible |
+| 2 | Click "[ Join ]" button | Join Campaign modal opens | Modal with code input field |
+| 3 | Enter `invalid-code-12345` | Error: "Campaign not found" | Error message appears |
+| 4 | Get valid join code from GM's campaign | Have the code ready | (GM copies from campaign settings or ID) |
+| 5 | Enter valid join code | Joins campaign, redirects to dashboard | URL changes to campaign dashboard |
+| 6 | Verify player sees Campaign Console | Widget shows campaign name | Same campaign visible as player |
+| 7 | Refresh page | Still on campaign dashboard | Joined state persisted |
 
 ### 2.3 Campaign List Display
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Navigate to `/campaigns` | Table shows all user's campaigns |
-| 2 | Verify role icons | Crown (GM) for owned, User icon for joined |
-| 3 | Single-click a campaign row | Row highlights, "Open" button enables |
-| 4 | Double-click a campaign row | Navigates directly to campaign dashboard |
-| 5 | Click "Open" with selection | Navigates to selected campaign |
-| 6 | Click copy ID button (GM only) | Campaign ID copied to clipboard, toast shown |
+**Start State**: Logged in with campaigns to view
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/campaigns` | Table shows all campaigns | Campaign rows visible |
+| 2 | Check role icons | Crown for owned, User icon for joined | Correct icons per campaign |
+| 3 | Single-click a campaign row | Row highlights | Visual highlight/selection |
+| 4 | Click "Open" button | Navigates to campaign dashboard | URL changes to `/campaign/{id}` |
+| 5 | Go back to `/campaigns`, double-click row | Navigates directly to dashboard | Same as clicking Open |
 
 ### 2.4 Delete Campaign
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Select a campaign you own | Row highlighted |
-| 2 | Click "[ Remove Campaign ]" | Confirmation modal appears |
-| 3 | Cancel deletion | Modal closes, campaign still exists |
-| 4 | Confirm deletion | Campaign removed from list |
-| 5 | Try to delete campaign you don't own | Button should be disabled |
+**Start State**: Logged in as GM with a test campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Select a campaign you own | Row highlighted | Selection visible |
+| 2 | Click "[ Remove Campaign ]" | Confirmation modal appears | Modal asks "Are you sure?" |
+| 3 | Click Cancel | Modal closes | Campaign still in list |
+| 4 | Click "[ Remove Campaign ]" again | Confirmation modal | Modal reappears |
+| 5 | Confirm deletion | Campaign removed from list | Row disappears, toast confirms |
+| 6 | Refresh page | Campaign still gone | Deletion persisted |
 
 ---
 
 ## 3. Campaign Dashboard
 
 ### 3.1 Dashboard Loading
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Navigate to campaign | Loading spinner shown |
-| 2 | Dashboard loads | Campaign Console widget visible at center |
-| 3 | Canvas loads at 100% zoom | Scale indicator shows 100% |
+**Start State**: Logged in as GM, navigating to a campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click on a campaign to open | Loading state shown | Spinner or loading indicator |
+| 2 | Dashboard loads | Campaign Console widget visible | Widget with campaign name at center |
+| 3 | Check zoom indicator | Shows "100%" | Scale text in canvas controls |
 
 ### 3.2 Campaign Console Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Verify widget content | Shows campaign name in fantasy font |
-| 2 | Check metadata display | Shows ID, players, round, dates, etc. based on settings |
-| 3 | Verify no X (close) button | Widget should not be deletable |
-| 4 | GM: Verify drag handle (top-left) | GripVertical icon visible |
-| 5 | GM: Drag widget | Widget moves, position persists |
-| 6 | GM: Verify resize handle (bottom-right) | Maximize2 icon visible |
-| 7 | GM: Resize widget | Widget resizes, size persists |
+**Start State**: On campaign dashboard as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Read widget content | Shows campaign name in decorative font | Fantasy/medieval font styling |
+| 2 | Check metadata | Shows ID, players, round info based on settings | Metadata rows visible |
+| 3 | Look for X (close) button | No close button exists | Widget cannot be deleted |
+| 4 | Find drag handle (top-left) | GripVertical icon visible | Grip icon in top-left corner |
+| 5 | Drag widget to new position | Widget moves with cursor | Widget follows drag |
+| 6 | Release and refresh page | Widget stays in new position | Position persisted to database |
+| 7 | Find resize handle (bottom-right) | Maximize2 icon visible | Corner resize icon |
+| 8 | Drag to resize widget | Widget size changes | Widget gets larger/smaller |
+| 9 | Refresh page | Widget keeps new size | Size persisted |
 
 ### 3.3 Canvas Controls
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Click zoom in (+) button | Canvas zooms in by 15% |
-| 2 | Click zoom out (-) button | Canvas zooms out by 15% |
-| 3 | Click reset button | Zoom resets to 100% |
-| 4 | Click recenter button (crosshair) | View smoothly pans to Campaign Console |
-| 5 | Test Ctrl+Plus/Minus | Zoom controls work via keyboard |
-| 6 | Test Ctrl+0 | Zoom resets via keyboard |
-| 7 | Test mouse wheel on canvas | Should NOT zoom (disabled) |
-| 8 | Pan canvas by dragging empty space | Canvas pans smoothly |
+**Start State**: On campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click zoom in (+) button | Canvas zooms in | Scale indicator increases (e.g., 115%) |
+| 2 | Click zoom out (-) button | Canvas zooms out | Scale indicator decreases |
+| 3 | Click reset (1:1) button | Zoom resets to 100% | Scale shows "100%" |
+| 4 | Click recenter (crosshair) button | View pans to Campaign Console | Console widget centers in viewport |
+| 5 | Use Ctrl+Plus on keyboard | Zooms in | Scale increases |
+| 6 | Use Ctrl+0 on keyboard | Resets zoom | Scale returns to 100% |
+| 7 | Try mouse wheel scroll on canvas | Should NOT zoom (pans instead or nothing) | Scroll wheel does not change scale |
+| 8 | Click and drag on empty canvas area | Canvas pans | View position changes |
 
 ### 3.4 Snap to Grid
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Toggle snap-to-grid button | Button shows active state |
-| 2 | Drag a widget | Widget snaps to 20px grid |
-| 3 | Resize a widget | Size snaps to 20px increments |
+**Start State**: On dashboard with at least one widget
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find snap-to-grid toggle button | Grid icon in controls | Button visible |
+| 2 | Enable snap-to-grid | Button shows active state | Button highlighted/pressed |
+| 3 | Drag a widget | Widget snaps to grid positions | Jumps in 20px increments |
+| 4 | Resize a widget | Size snaps to grid | Jumps in 20px increments |
 
 ---
 
 ## 4. Dashboard Widgets
 
 ### 4.1 Add Component Modal (GM Only)
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Click floating + button | Add Component modal opens |
-| 2 | Verify all widget types shown | 11 types: Rules Table, Rules Card, Custom Table, Custom Card, Narrative, Counter, Image, Dice Roller, Map, Player List, Calendar |
-| 3 | Click widget type that uses Paste Wizard | Paste Wizard overlay opens |
-| 4 | Click widget type without Paste Wizard | Configuration form appears |
+**Start State**: On dashboard as GM
 
-### 4.2 Counter Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Add Counter widget | Widget appears on canvas |
-| 2 | Click + button | Value increments by step |
-| 3 | Click - button | Value decrements by step |
-| 4 | Click settings (gear) icon | Configuration panel opens |
-| 5 | Set min/max/step/label | Settings save correctly |
-| 6 | Try to exceed max | Value stays at max |
-| 7 | Player view: Verify +/- buttons hidden | Only displays value |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button (bottom-right) | Add Component modal opens | Modal with widget type grid |
+| 2 | Count widget types | 11+ types available | Rules Table, Custom Table, Counter, Dice Roller, Image, Map, Player List, Calendar, etc. |
+| 3 | Click "Counter" | Widget added to canvas | New Counter widget appears |
+
+### 4.2 Counter Widget - Full Functionality Test
+**Start State**: On dashboard as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Add Counter widget via + button | Widget appears with value 0 | Counter shows "0" |
+| 2 | Click + button on widget | Value becomes 1 | Display shows "1" |
+| 3 | Click + button 4 more times | Value becomes 5 | Display shows "5" |
+| 4 | Click - button | Value becomes 4 | Display shows "4" |
+| 5 | Refresh the page | Value still shows 4 | Counter value persisted |
+| 6 | Click settings (gear) icon | Configuration panel opens | Settings form appears |
+| 7 | Set Label to "Round Counter" | Label updates | Label visible above counter |
+| 8 | Set Min to 0, Max to 10, Step to 2 | Settings save | Confirm in settings panel |
+| 9 | Click + button | Value increases by 2 (to 6) | Step of 2 applied |
+| 10 | Keep clicking + until max | Value stops at 10 | Cannot exceed maximum |
+| 11 | Refresh page | All settings retained | Label, value, limits persist |
 
 ### 4.3 Dice Roller Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Add Dice Roller widget | Widget appears with default 1d6 |
-| 2 | Click dice button | Animation plays, result shows |
-| 3 | Configure for 2d20 | Shows "2d20" label |
-| 4 | Roll 2d20 | Shows 2 individual dice and total |
-| 5 | All dice options work | d4, d6, d8, d10, d12, d20, d100 |
+**Start State**: On dashboard as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Add Dice Roller widget | Widget appears with default d6 | Shows "1d6" label |
+| 2 | Click the roll button | Dice animation plays | Visual roll animation |
+| 3 | Result displays | Shows a number 1-6 | Result value visible |
+| 4 | Open settings, set to 2d20 | Configuration updates | Shows "2d20" label |
+| 5 | Roll 2d20 | Shows individual dice + total | Two values and sum displayed |
+| 6 | Test all dice types | d4, d6, d8, d10, d12, d20, d100 | Each produces valid range |
 
 ### 4.4 Table Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Add Custom Table via Paste Wizard | Table widget created |
-| 2 | Click "+ Add Row" | New empty row appears |
-| 3 | Click cell to edit | Inline editing activates |
-| 4 | Edit cell and press Enter | Value saves |
-| 5 | Click "+ Add Column" | New column added |
-| 6 | Rename column header | Header updates, data keys migrate |
-| 7 | Delete column | Column and data removed |
-| 8 | Delete row (trash icon) | Row removed |
-| 9 | Scroll long table | Internal scrolling works |
+**Start State**: On dashboard as GM
 
-### 4.5 Image Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Add Image widget | Widget appears with placeholder |
-| 2 | Paste image URL | Image displays |
-| 3 | Upload image file | Image uploads and displays |
-| 4 | Test fit modes | Cover/Contain work correctly |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Add Custom Table widget | Table widget created | Empty table appears |
+| 2 | Click "+ Add Row" | New row appears | Table has one row |
+| 3 | Click a cell | Cell becomes editable | Cursor in cell, can type |
+| 4 | Type "Test Value" and press Enter | Value saves | Cell shows "Test Value" |
+| 5 | Refresh page | Value persists | "Test Value" still in cell |
+| 6 | Click "+ Add Column" | New column added | Table has additional column |
+| 7 | Click column header to rename | Header editable | Can change column name |
+| 8 | Type "My Column" and confirm | Header updates | Shows "My Column" |
+| 9 | Add more rows and data | Table populates | Multiple rows with data |
+| 10 | Click row delete (trash) icon | Row removed | Row disappears |
+| 11 | Refresh page | Changes persist | Deletions and edits saved |
 
-### 4.6 Map Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Add Map widget | Shows live view of campaign map |
-| 2 | If no map: Shows message | "No map available" or similar |
-| 3 | Upload map via Map overlay | Map widget updates in real-time |
-| 4 | Place marker via Map overlay | Marker appears on widget |
+### 4.5 Widget Deletion
+**Start State**: On dashboard as GM with widgets
 
-### 4.7 Player List Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Add Player List widget | Shows table of campaign players |
-| 2 | Configure visible columns | Only selected columns display |
-| 3 | Player joins campaign | Widget updates with new player |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find X button on Counter widget | Close button visible (top-right) | X icon present |
+| 2 | Click X button | Widget removed (or confirmation) | Widget disappears |
+| 3 | Refresh page | Widget stays deleted | Not restored on refresh |
+| 4 | Check Campaign Console | No X button exists | Console is permanent |
 
-### 4.8 Calendar Widget
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Add Calendar widget | Monthly calendar displays |
-| 2 | Add event via Schedule overlay | Event appears on calendar |
-| 3 | Navigate months | Previous/next month works |
+### 4.6 Widget Drag and Resize (Persistence Test)
+**Start State**: On dashboard as GM with widgets
 
-### 4.9 Widget Deletion
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | GM: Click X on regular widget | Confirmation may appear |
-| 2 | Confirm deletion | Widget removed |
-| 3 | Verify Campaign Console has no X | Cannot delete console |
-| 4 | Player: Verify no X buttons | Players cannot delete |
-
-### 4.10 Widget Drag and Resize
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | GM: Drag widget by title bar | Widget moves smoothly |
-| 2 | GM: Resize via corner handle | Widget resizes, min size enforced |
-| 3 | Changes persist after refresh | Positions saved to database |
-| 4 | Player: Cannot drag | Widgets fixed in place |
-| 5 | Player: Cannot resize | No resize handles visible |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Drag a widget to far right of canvas | Widget moves | Widget at new position |
+| 2 | Note approximate position | Remember location | Mental note |
+| 3 | Refresh page | Widget at same position | Position saved to database |
+| 4 | Resize widget to be larger | Widget size changes | Bigger widget |
+| 5 | Refresh page | Widget keeps size | Size saved to database |
 
 ---
 
 ## 5. Sidebar Navigation (GM Only)
 
 ### 5.1 Sidebar Visibility
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | GM login: Verify sidebar visible | Left sidebar with navigation items |
-| 2 | Click collapse button | Sidebar collapses |
-| 3 | "Campaign Control" button appears | Button in main area |
-| 4 | Click "Campaign Control" | Sidebar expands |
-| 5 | Refresh page | Sidebar state persists |
-| 6 | Player login: Verify no sidebar | Only floating settings button |
+**Start State**: On dashboard as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Verify sidebar visible on left | Navigation sidebar present | Sidebar with menu items |
+| 2 | Click collapse button (<<) | Sidebar collapses | Sidebar minimizes |
+| 3 | Refresh page | Sidebar stays collapsed | State persisted |
+| 4 | Find "Campaign Control" button | Button appears in main area | Expand button visible |
+| 5 | Click "Campaign Control" | Sidebar expands | Full sidebar returns |
 
 ### 5.2 Navigation Items
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Click "Home" | Closes any open overlay |
-| 2 | Click "Components" | Components Manager overlay opens |
-| 3 | Click "Players" | Players Manager overlay opens |
-| 4 | Click "Rules" | Rules Manager overlay opens |
-| 5 | Click "Map" | Map Manager overlay opens |
-| 6 | Click "Narrative" | Narrative overlay opens |
-| 7 | Click "Messages" | Messages overlay opens |
-| 8 | Click "Schedule" | Schedule overlay opens |
-| 9 | Click "Settings" | Campaign Settings modal opens |
+**Start State**: On dashboard as GM with sidebar open
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click "Home" | Any open overlay closes | Clean dashboard view |
+| 2 | Click "Components" | Components Manager opens | Overlay with component list |
+| 3 | Click "Players" | Players Manager opens | Overlay with player list |
+| 4 | Click "Rules" | Rules Manager opens | Overlay with rules list |
+| 5 | Click "Map" | Map Manager opens | Map view overlay |
+| 6 | Click "Narrative" | Narrative overlay opens | Narrative entries view |
+| 7 | Click "Messages" | Messages overlay opens | Chat interface |
+| 8 | Click "Schedule" | Schedule overlay opens | Schedule/calendar view |
+| 9 | Click "Settings" | Settings modal opens | Campaign settings form |
 
 ---
 
-## 6. Overlay Panels
+## 6. Overlay Panels - Functional Tests
 
-### 6.1 Components Manager (GM Only)
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Components overlay | Lists all dashboard components |
-| 2 | View component visibility settings | Shows visibility status |
-| 3 | Toggle component visibility | Updates immediately |
-| 4 | Delete component from here | Component removed from dashboard |
+### 6.1 Rules Manager (Data Persistence Test)
+**Start State**: On dashboard as GM, open Rules overlay
 
-### 6.2 Players Manager (GM View)
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Players overlay as GM | Shows full player management |
-| 2 | View all player details | Name, faction, points visible |
-| 3 | Edit player information | Changes save correctly |
-| 4 | Remove player from campaign | Player removed |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click "+ Add Rule" or similar button | Rule creation form appears | Input fields visible |
+| 2 | Enter Title: "Movement Rules" | Title field populated | Text in field |
+| 3 | Enter content/data | Content saved | Data in form |
+| 4 | Save the rule | Rule appears in list | New rule row visible |
+| 5 | Close overlay and reopen | Rule still in list | Data persisted |
+| 6 | Refresh entire page | Rule still exists | Database persistence confirmed |
+| 7 | Click to edit the rule | Editor opens with data | Previous data loaded |
+| 8 | Modify and save | Changes apply | Updated content visible |
+| 9 | Delete the rule | Rule removed from list | Row disappears |
+| 10 | Refresh page | Rule stays deleted | Deletion persisted |
 
-### 6.3 Players Widget (Player View)
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Players overlay as Player | Shows read-only player list |
-| 2 | Cannot edit other players | No edit controls visible |
+### 6.2 Messages (Real-time Test)
+**Start State**: Two browsers - GM and Player on same campaign
 
-### 6.4 Rules Manager
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Rules overlay | Shows existing rules |
-| 2 | GM: Click "Rules Table" | Paste Wizard opens |
-| 3 | Paste tabular data | AI parses into table |
-| 4 | Save rule | Rule appears in list |
-| 5 | Click "Add to Dashboard" | Creates linked widget |
-| 6 | Edit rule | Opens Rule Editor modal |
-| 7 | Delete rule | Rule and linked widgets affected |
-| 8 | Search rules | Filter works correctly |
-| 9 | Filter by category | Shows matching rules only |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Both open Messages overlay | Chat visible in both | Chat interface in each browser |
+| 2 | GM types "Hello from GM" and sends | Message appears in GM view | Message in chat |
+| 3 | Check Player view | Message appears in Player view | Real-time sync within 2 seconds |
+| 4 | Player types "Hello from Player" and sends | Message appears in Player view | Message sent |
+| 5 | Check GM view | Message appears in GM view | Real-time sync confirmed |
+| 6 | Both refresh pages | All messages still visible | Messages persisted |
 
-### 6.5 Map Manager
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Map overlay with no map | Shows upload interface (GM) or message (Player) |
-| 2 | GM: Upload map image | Map displays |
-| 3 | Switch to Legend tab | Legend editor visible |
-| 4 | Add legend item | Item created with color/shape |
-| 5 | Switch back to Map tab | Marker palette visible |
-| 6 | Select placement mode | Mode indicator updates |
-| 7 | Click on map | Marker placed |
-| 8 | Set marker as GM-only | Marker hidden from players |
-| 9 | Toggle fog region mode | Can draw fog regions |
-| 10 | Player view: Verify restricted markers hidden | Only "all" visibility markers show |
+### 6.3 Schedule Manager (CRUD Test)
+**Start State**: On dashboard as GM, open Schedule overlay
 
-### 6.6 Narrative Manager
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Narrative overlay | Shows existing entries |
-| 2 | GM: Click "Add Entry" | Form appears |
-| 3 | Enter title and content | Submit button enables |
-| 4 | Submit entry | Entry appears in list |
-| 5 | Click entry to expand | Shows full content |
-| 6 | Player: Can view entries | Entries readable |
-
-### 6.7 Messages
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Messages overlay | Shows chat history |
-| 2 | Type message and send | Message appears immediately |
-| 3 | Other user sends message | Message appears in real-time |
-| 4 | Verify message timestamps | Times displayed correctly |
-
-### 6.8 Schedule Manager
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Schedule overlay | Shows rounds and events |
-| 2 | GM: Click "Add Round / Event" | Form appears |
-| 3 | Toggle between Round and Event type | Form fields update |
-| 4 | Set dates using calendar picker | Dates selected correctly |
-| 5 | Choose color | Color applied to entry |
-| 6 | Set status | Status saved |
-| 7 | Edit existing entry | Form populates, updates work |
-| 8 | Delete entry | Entry removed |
-
-### 6.9 Campaign Settings (GM Only)
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Settings overlay | Campaign settings modal opens |
-| 2 | Edit campaign name | Name updates |
-| 3 | Change points limit | Limit updates |
-| 4 | Change title/border colors | Colors apply to Campaign Console |
-| 5 | Toggle display settings | Console widget updates accordingly |
-| 6 | Set/change password | Password protection updates |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click "Add Round / Event" | Form appears | Input fields for entry |
+| 2 | Enter Title: "Round 1 - Opening" | Title field populated | Text visible |
+| 3 | Select dates | Date pickers work | Dates selected |
+| 4 | Choose a color (e.g., blue) | Color applied | Color indicator updates |
+| 5 | Save the entry | Entry appears in list/calendar | New entry visible |
+| 6 | Refresh page | Entry persists | Data saved |
+| 7 | Click to edit entry | Form pre-filled with data | Previous data loaded |
+| 8 | Change title to "Round 1 - Modified" | Title updates | New title in field |
+| 9 | Save changes | Updated entry visible | Title shows modified |
+| 10 | Delete the entry | Entry removed | Disappears from view |
+| 11 | Refresh page | Entry stays deleted | Deletion persisted |
 
 ---
 
 ## 7. Player Settings (Player View)
 
-### 7.1 Access Player Settings
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Login as player | Navigate to joined campaign |
-| 2 | Click floating settings button | Player Settings overlay opens |
-| 3 | Or click "My Settings" in sidebar (if visible) | Same overlay opens |
+### 7.1 Player Info Persistence
+**Start State**: Logged in as Player, on joined campaign dashboard
 
-### 7.2 Player Info Section
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Edit player name | Field accepts input |
-| 2 | Edit current points | Only numbers accepted |
-| 3 | Edit faction/sub-faction | Fields accept input |
-| 4 | Add warband link | URL saved |
-| 5 | Add additional info | Text area saves content |
-| 6 | Click "Save Settings" | Changes persist |
-| 7 | Refresh page | Settings still saved |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating settings button | Player Settings overlay opens | Form with player fields |
+| 2 | Enter Player Name: "QA Test Player" | Field populated | Text visible |
+| 3 | Enter Current Points: `500` | Field shows 500 | Number in field |
+| 4 | Enter Faction: "Order of the Rose" | Field populated | Text visible |
+| 5 | Click "Save Settings" | Success message | Toast or confirmation |
+| 6 | Close overlay | Settings panel closes | Back to dashboard |
+| 7 | Reopen Player Settings | All data still present | Fields pre-filled |
+| 8 | Refresh page and reopen | All data persists | Database save confirmed |
 
-### 7.3 Player Narrative
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Click "Add Entry" | Form appears |
-| 2 | Enter title and content | Entry created |
-| 3 | View existing entries | Shows player's own entries |
-| 4 | Delete an entry | Confirmation, then removed |
+### 7.2 Leave Campaign
+**Start State**: Logged in as Player, on joined campaign
 
-### 7.4 Leave Campaign
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Click "Leave Campaign" button | Confirmation dialog appears |
-| 2 | Cancel | Dialog closes |
-| 3 | Confirm | Redirects to /campaigns, campaign removed from list |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Player Settings | Settings overlay | Form visible |
+| 2 | Find "Leave Campaign" button | Button visible | Likely at bottom of form |
+| 3 | Click "Leave Campaign" | Confirmation dialog | "Are you sure?" prompt |
+| 4 | Click Cancel | Dialog closes | Still on campaign |
+| 5 | Click "Leave Campaign" again | Confirmation dialog | Prompt reappears |
+| 6 | Confirm leaving | Redirects to `/campaigns` | URL changes |
+| 7 | Check campaigns list | Campaign no longer shows (or shows as left) | Campaign removed from player's list |
 
 ---
 
 ## 8. Role Preview Mode (GM Only)
 
 ### 8.1 Toggle Preview Mode
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | GM: Click role badge (blue "Games Master") | Badge changes to green "Player (Preview)" |
-| 2 | Toast notification appears | "Previewing as Player" |
-| 3 | Sidebar hides GM-only items | "Components" not visible |
-| 4 | Floating + button hides | Cannot add components |
-| 5 | Widget controls hide | No drag/resize/delete |
-| 6 | GM-only markers on map hidden | Only player-visible markers |
-| 7 | Click badge again | Returns to GM view |
-| 8 | Toast: "Returning to GM view" | Confirmation shown |
+**Start State**: On dashboard as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find role badge (blue "Games Master") | Badge visible in header/sidebar | Blue colored badge |
+| 2 | Click the badge | Badge changes to "Player (Preview)" green | Color and text change |
+| 3 | Toast notification | "Previewing as Player" | Toast message appears |
+| 4 | Check floating + button | Not visible | Cannot add components |
+| 5 | Check widget drag handles | Not visible | Cannot drag widgets |
+| 6 | Click badge again | Returns to "Games Master" blue | GM view restored |
+| 7 | Toast: "Returning to GM view" | Confirmation | Toast message appears |
+| 8 | Floating + button reappears | GM controls back | Can add components again |
 
 ---
 
-## 9. Warband Builder
+## 9. Error Handling
 
-### 9.1 Access Warband Builder
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open Warbands overlay | Warbands list shown |
-| 2 | Click "Open Warband Builder" | Navigates to builder page |
+### 9.1 Invalid Routes
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/some-invalid-route` | 404 page displayed | "Not Found" message |
+| 2 | Navigate to `/campaign/00000000-0000-0000-0000-000000000000` | Error or 404 | Campaign not found message |
 
-### 9.2 Create Warband
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Enter warband name | Header updates |
-| 2 | Select faction | Unit library filters |
-| 3 | Select sub-faction | Further filtering |
-| 4 | Click unit in library | Unit added to roster |
-| 5 | Increase unit quantity | Points update |
-| 6 | Verify points tracking | Current/limit/remaining shown |
-| 7 | Exceed points limit | Warning styling appears |
-| 8 | Click Save | Warband saved, toast shown |
+### 9.2 Auth Protection
+**Start State**: Logged out
 
-### 9.3 Edit Warband
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Select existing warband | Opens in builder |
-| 2 | Make changes | "Unsaved changes" indicator |
-| 3 | Save | Changes persisted |
-| 4 | Delete warband | Confirmation, then removed |
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate directly to `/campaigns` | Redirects to `/auth` | Login page shown |
+| 2 | Navigate to `/campaign/any-id` | Redirects to `/auth` | Login page shown |
 
 ---
 
-## 10. Real-time Features
+## 10. Responsive Design
 
-### 10.1 Multi-user Dashboard Updates
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Open campaign in two browsers (GM + Player) | Both see same dashboard |
-| 2 | GM adds widget | Player sees widget appear |
-| 3 | GM moves widget | Player sees position update |
-| 4 | GM edits table data | Player sees data change |
-| 5 | GM updates counter | Player sees new value |
+### 10.1 Mobile View (375px width)
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Resize browser to 375px width | UI adapts | Layout changes for mobile |
+| 2 | Check sidebar | Should be hidden or hamburger menu | Not taking full width |
+| 3 | Pan canvas | Still functional | Can move around |
+| 4 | Open a modal | Fits screen, scrollable | Modal content accessible |
 
-### 10.2 Real-time Messages
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Both users open Messages | Chat visible |
-| 2 | User 1 sends message | User 2 sees immediately |
-| 3 | User 2 replies | User 1 sees immediately |
-
-### 10.3 Map Real-time
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | GM places marker | Player sees marker appear |
-| 2 | GM moves marker | Position updates for player |
-| 3 | GM reveals fog region | Fog lifts for player |
-
----
-
-## 11. Error Handling
-
-### 11.1 Network Errors
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Disable network | App shows appropriate loading/error states |
-| 2 | Re-enable network | App recovers, data resyncs |
-
-### 11.2 Invalid Routes
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Navigate to `/invalid-route` | 404 page displayed |
-| 2 | Navigate to `/campaign/invalid-id` | Error message shown |
-| 3 | Access campaign you're not part of | Access denied or error |
-
-### 11.3 Auth Errors
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | Let session expire | Redirects to login |
-| 2 | Clear cookies mid-session | Redirects to login |
-
----
-
-## 12. Responsive Design (Mobile/Tablet)
-
-### 12.1 Mobile View
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | View on mobile width (375px) | UI adapts appropriately |
-| 2 | Sidebar hidden on mobile | Uses mobile navigation |
-| 3 | Canvas still functional | Can pan and zoom |
-| 4 | Modals/overlays fit screen | Content scrollable |
-
-### 12.2 Tablet View
-| Step | Action | Expected Result |
-|------|--------|-----------------|
-| 1 | View on tablet width (768px) | Sidebar may be visible |
-| 2 | Canvas has adequate space | Dashboard usable |
-
----
-
-## 13. Browser Compatibility
-
-Test all major flows in:
-- Chrome (latest)
-- Firefox (latest)
-- Safari (latest)
-- Edge (latest)
+### 10.2 Tablet View (768px width)
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Resize browser to 768px | UI adapts | Tablet-appropriate layout |
+| 2 | Canvas usable | Adequate space for widgets | Can interact with dashboard |
 
 ---
 
 ## Test Completion Checklist
 
-| Section | Status |
-|---------|--------|
-| 1. Authentication | [ ] Pass / [ ] Fail |
-| 2. Campaign Management | [ ] Pass / [ ] Fail |
-| 3. Campaign Dashboard | [ ] Pass / [ ] Fail |
-| 4. Dashboard Widgets | [ ] Pass / [ ] Fail |
-| 5. Sidebar Navigation | [ ] Pass / [ ] Fail |
-| 6. Overlay Panels | [ ] Pass / [ ] Fail |
-| 7. Player Settings | [ ] Pass / [ ] Fail |
-| 8. Role Preview Mode | [ ] Pass / [ ] Fail |
-| 9. Warband Builder | [ ] Pass / [ ] Fail |
-| 10. Real-time Features | [ ] Pass / [ ] Fail |
-| 11. Error Handling | [ ] Pass / [ ] Fail |
-| 12. Responsive Design | [ ] Pass / [ ] Fail |
-| 13. Browser Compatibility | [ ] Pass / [ ] Fail |
+| Section | Status | Notes |
+|---------|--------|-------|
+| 1. Authentication | [ ] Pass / [ ] Fail | |
+| 2. Campaign Management | [ ] Pass / [ ] Fail | |
+| 3. Campaign Dashboard | [ ] Pass / [ ] Fail | |
+| 4. Dashboard Widgets | [ ] Pass / [ ] Fail | |
+| 5. Sidebar Navigation | [ ] Pass / [ ] Fail | |
+| 6. Overlay Panels | [ ] Pass / [ ] Fail | |
+| 7. Player Settings | [ ] Pass / [ ] Fail | |
+| 8. Role Preview Mode | [ ] Pass / [ ] Fail | |
+| 9. Error Handling | [ ] Pass / [ ] Fail | |
+| 10. Responsive Design | [ ] Pass / [ ] Fail | |
 
 ---
 
 ## Bug Report Template
-
-When issues are found, document with:
 
 ```text
 **Bug Title**: [Short description]
@@ -540,7 +446,18 @@ When issues are found, document with:
 **Step**: [Step number where issue occurred]
 **Expected**: [What should happen]
 **Actual**: [What actually happened]
+**Data Persisted?**: [Yes/No - did refresh retain data?]
+**Console Errors**: [Any JS errors in console?]
 **Severity**: [Critical / High / Medium / Low]
 **Browser**: [Browser and version]
 **Screenshots**: [If applicable]
 ```
+
+---
+
+## Post-Test Cleanup
+
+After completing all tests:
+1. Delete test campaigns created during testing
+2. Log out of all test accounts
+3. Clear any test data that should not remain
