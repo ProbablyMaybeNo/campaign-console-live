@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { TerminalButton } from "@/components/ui/TerminalButton";
-import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { toast } from "sonner";
-import { Swords, X, UserPlus } from "lucide-react";
+import { X, UserPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import headerImage from "@/assets/campaign-console-header.png";
 
 export default function Auth() {
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -61,16 +60,13 @@ export default function Auth() {
       </div>
 
       <div className="w-full max-w-md space-y-8 relative z-10">
-        {/* Logo */}
-        <div className="text-center space-y-4">
-          <div className="flex justify-center">
-            <div className="relative">
-              <Swords className="w-20 h-20 text-primary" strokeWidth={1} />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold tracking-widest text-primary italic">
-            CAMPAIGN CONSOLE
-          </h1>
+        {/* Header Image */}
+        <div className="flex justify-center">
+          <img 
+            src={headerImage} 
+            alt="Campaign Console" 
+            className="w-full max-w-sm h-auto"
+          />
         </div>
 
         {/* Login Card */}

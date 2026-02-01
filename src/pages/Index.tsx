@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { useAuth } from "@/hooks/useAuth";
+import headerImage from "@/assets/campaign-console-header.png";
 
 export default function Index() {
   const { user } = useAuth();
@@ -17,10 +18,16 @@ export default function Index() {
       </div>
 
       <div className="text-center space-y-8 relative z-10">
-        <div className="space-y-4">
-          <h1 className="text-5xl font-bold tracking-widest text-primary text-glow-primary">
-            CAMPAIGN CONSOLE
-          </h1>
+        {/* Header Image */}
+        <div className="flex justify-center">
+          <img 
+            src={headerImage} 
+            alt="Campaign Console" 
+            className="w-full max-w-2xl h-auto"
+          />
+        </div>
+        
+        <div className="space-y-2">
           <p className="text-lg text-muted-foreground uppercase tracking-wider">
             Wargame Campaign Tracker
           </p>
