@@ -32,7 +32,7 @@ export default function Index() {
             Wargame Campaign Tracker
           </p>
           <div className="text-xs text-foreground/80 font-mono">
-            // GM-First · Rules-Aware · Infinite Whiteboard
+            BOOT: CAMPAIGN OPTIMIZATION — INITIALIZING...
           </div>
         </div>
 
