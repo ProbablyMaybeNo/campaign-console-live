@@ -58,19 +58,24 @@ export function getConsoleSpawnPosition(width: number, height: number) {
   };
 }
 
+// Default Campaign Console dimensions for calculating spawn area
+const CONSOLE_HEIGHT = 180;
+const CONSOLE_SPAWN_GAP = 30; // Gap between console and new widgets
+const SPAWN_AREA_TOP = EDGE_PADDING + CONSOLE_HEIGHT + CONSOLE_SPAWN_GAP;
+
 /**
- * Get spawn position for a new component, centered on the canvas center
- * with optional offset for multiple components
+ * Get spawn position for a new component, positioned below the Campaign Console
+ * with slight random offset to prevent overlap
  */
 export function getSpawnPosition(
   width: number,
   height: number,
   offset: { x: number; y: number } = { x: 0, y: 0 }
 ) {
-  // Spawn centered on canvas center, adjusted for component size
+  // Spawn below the console, centered horizontally
   return {
     position_x: Math.round(CANVAS_CENTER_X - width / 2 + offset.x),
-    position_y: Math.round(CANVAS_CENTER_Y - height / 2 + offset.y),
+    position_y: Math.round(SPAWN_AREA_TOP + offset.y),
   };
 }
 
