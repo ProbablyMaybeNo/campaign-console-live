@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dices, Settings, Check, X } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
 import { useRecordRoll } from "@/hooks/useRollHistory";
+import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { format } from "date-fns";
 
 interface DiceRollerWidgetProps {
   component: DashboardComponent;
@@ -16,6 +19,15 @@ interface DiceConfig {
   lastTotal?: number;
 }
 
+interface DiceRoll {
+  id: string;
+  player_name: string;
+  dice_config: string;
+  rolls: number[];
+  total: number;
+  rolled_at: string;
+}
+
 export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidgetProps) {
   const updateComponent = useUpdateComponent();
   const { recordRoll } = useRecordRoll(campaignId);
@@ -23,12 +35,53 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
   const [showSettings, setShowSettings] = useState(false);
   const [tempSides, setTempSides] = useState(6);
   const [tempCount, setTempCount] = useState(1);
+  const [rollHistory, setRollHistory] = useState<DiceRoll[]>([]);
 
   const config = (component.config as DiceConfig) || {};
   const sides = config.sides ?? 6;
   const count = config.count ?? 1;
-  const lastRolls = config.lastRolls ?? [];
-  const lastTotal = config.lastTotal ?? 0;
+
+  // Fetch roll history
+  useEffect(() => {
+    const fetchRolls = async () => {
+      const { data } = await supabase
+        .from("dice_roll_history")
+        .select("*")
+        .eq("campaign_id", campaignId)
+        .order("rolled_at", { ascending: false })
+        .limit(10);
+
+      if (data) {
+        setRollHistory(data as DiceRoll[]);
+      }
+    };
+
+    fetchRolls();
+  }, [campaignId]);
+
+  // Subscribe to realtime updates
+  useEffect(() => {
+    const channel = supabase
+      .channel(`dice-rolls-${campaignId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "dice_roll_history",
+          filter: `campaign_id=eq.${campaignId}`,
+        },
+        (payload) => {
+          const newRoll = payload.new as DiceRoll;
+          setRollHistory((prev) => [newRoll, ...prev].slice(0, 10));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [campaignId]);
 
   const rollDice = async () => {
     setIsRolling(true);
@@ -121,62 +174,82 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 relative">
-      {isGM && (
+    <div className="flex flex-col h-full">
+      {/* Dice Roller Section */}
+      <div className="flex flex-col items-center gap-3 py-3 relative">
+        {isGM && (
+          <button
+            onClick={openSettings}
+            className="absolute top-1 right-1 p-1 text-muted-foreground hover:text-primary"
+            title="Configure dice"
+          >
+            <Settings className="w-3 h-3" />
+          </button>
+        )}
+
+        <p className="text-xs text-muted-foreground uppercase tracking-wider">
+          {count}d{sides}
+        </p>
+
         <button
-          onClick={openSettings}
-          className="absolute top-0 right-0 p-1 text-muted-foreground hover:text-primary"
-          title="Configure dice"
+          onClick={rollDice}
+          disabled={isRolling}
+          className={`w-16 h-16 rounded-lg border-2 border-primary bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-transform ${
+            isRolling ? "animate-bounce" : ""
+          }`}
+          style={{
+            boxShadow: "0 0 15px hsl(142, 76%, 55%, 0.3)",
+          }}
         >
-          <Settings className="w-3 h-3" />
+          <Dices 
+            className={`w-8 h-8 text-primary ${isRolling ? "animate-spin" : ""}`}
+            style={{ filter: "drop-shadow(0 0 6px hsl(142, 76%, 55%))" }}
+          />
         </button>
-      )}
+      </div>
 
-      <p className="text-xs text-muted-foreground uppercase tracking-wider">
-        {count}d{sides}
-      </p>
+      {/* Divider */}
+      <div 
+        className="h-px mx-2"
+        style={{ backgroundColor: "hsl(142, 76%, 35%)" }}
+      />
 
-      <button
-        onClick={rollDice}
-        disabled={isRolling}
-        className={`w-20 h-20 rounded-lg border-2 border-primary bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-transform ${
-          isRolling ? "animate-bounce" : ""
-        }`}
-        style={{
-          boxShadow: "0 0 15px hsl(142, 76%, 55%, 0.3)",
-        }}
-      >
-        <Dices 
-          className={`w-10 h-10 text-primary ${isRolling ? "animate-spin" : ""}`}
-          style={{ filter: "drop-shadow(0 0 6px hsl(142, 76%, 55%))" }}
-        />
-      </button>
-
-      {lastRolls.length > 0 && !isRolling && (
-        <div className="text-center">
-          <div className="flex gap-2 justify-center flex-wrap">
-            {lastRolls.map((roll, i) => (
-              <span
-                key={i}
-                className="w-8 h-8 rounded border border-primary/50 bg-primary/10 flex items-center justify-center text-sm font-mono text-primary"
-                style={{
-                  boxShadow: "0 0 8px hsl(142, 76%, 55%, 0.2)",
-                }}
+      {/* Roll History Log */}
+      <ScrollArea className="flex-1 min-h-0" data-scrollable="true">
+        <div className="p-2 space-y-1">
+          {rollHistory.length === 0 ? (
+            <p className="text-[10px] text-muted-foreground text-center py-2">No rolls yet</p>
+          ) : (
+            rollHistory.map((roll) => (
+              <div
+                key={roll.id}
+                className="flex items-center justify-between text-[11px] font-mono px-1 py-0.5 rounded hover:bg-primary/5"
               >
-                {roll}
-              </span>
-            ))}
-          </div>
-          {count > 1 && (
-            <p 
-              className="text-lg font-mono text-primary mt-2"
-              style={{ textShadow: "0 0 8px hsl(142, 76%, 55%, 0.4)" }}
-            >
-              Total: {lastTotal}
-            </p>
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <span 
+                    className="font-medium truncate"
+                    style={{ color: "hsl(195, 100%, 65%)" }}
+                  >
+                    {roll.player_name}
+                  </span>
+                  <span className="text-muted-foreground">
+                    ({roll.dice_config})
+                  </span>
+                </div>
+                <span 
+                  className="font-bold ml-2 shrink-0"
+                  style={{ 
+                    color: "hsl(45, 100%, 60%)",
+                    textShadow: "0 0 6px hsl(45, 100%, 50%, 0.4)",
+                  }}
+                >
+                  {roll.total}
+                </span>
+              </div>
+            ))
           )}
         </div>
-      )}
+      </ScrollArea>
     </div>
   );
 }
