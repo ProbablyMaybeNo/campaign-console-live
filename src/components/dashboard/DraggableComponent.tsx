@@ -64,9 +64,11 @@ function DraggableComponentInner({
 
   const deleteComponent = useDeleteComponent();
 
+  const isLocked = (component.config as { locked?: boolean })?.locked ?? false;
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: component.id,
-    disabled: !isGM || isPanning || isResizing,
+    disabled: !isGM || isPanning || isResizing || isLocked,
   });
 
   // Sync local size with component props when they change (e.g., from server)
@@ -89,7 +91,7 @@ function DraggableComponentInner({
   }), [component.position_x, component.position_y, localSize.width, localSize.height, transform, isDragging, isSelected, isResizing]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    if (!isGM) return;
+    if (!isGM || isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     setIsResizing(true);
@@ -129,7 +131,7 @@ function DraggableComponentInner({
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-  }, [isGM, localSize, component.id, scale, onResize, onResizeEnd]);
+  }, [isGM, isLocked, localSize, component.id, scale, onResize, onResizeEnd]);
 
   const handleDelete = useCallback(() => {
     deleteComponent.mutate({ id: component.id, campaignId });

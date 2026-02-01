@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
-import { useDashboardComponents, DashboardComponent } from "@/hooks/useDashboardComponents";
+import { useDashboardComponents, DashboardComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
 import { useOverlayState, OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
@@ -11,6 +11,10 @@ import { AddComponentModal } from "@/components/dashboard/AddComponentModal";
 import { CampaignOverlays } from "@/components/dashboard/CampaignOverlays";
 import { PlayerFAB } from "@/components/dashboard/PlayerFAB";
 import { PlayerOnboardingModal, usePlayerOnboarding } from "@/components/players/PlayerOnboardingModal";
+import { KeyboardShortcutsModal } from "@/components/dashboard/KeyboardShortcutsModal";
+import { CommandPalette } from "@/components/dashboard/CommandPalette";
+import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
+import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { 
   ArrowLeft, 
   Settings, 
@@ -53,11 +57,15 @@ export default function CampaignDashboard() {
   const { data: components = [], isLoading: componentsLoading } = useDashboardComponents(campaignId);
   const { user, signOut } = useAuth();
   const isGM = useIsGM(campaignId);
+  const deleteComponent = useDeleteComponent();
+  const { handleDeleteWithUndo } = useUndoDelete(campaignId!);
 
   const { activeOverlay, openOverlay, closeOverlay } = useOverlayState();
 
   const [selectedComponent, setSelectedComponent] = useState<DashboardComponent | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
   
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -68,6 +76,40 @@ export default function CampaignDashboard() {
   
   // Player onboarding
   const { showOnboarding, closeOnboarding } = usePlayerOnboarding(campaignId!, !effectiveIsGM && !isGM);
+
+  // GM Keyboard Shortcuts
+  const handleDeleteSelected = useCallback(() => {
+    if (selectedComponent) {
+      const isLocked = (selectedComponent.config as { locked?: boolean })?.locked ?? false;
+      if (isLocked) {
+        toast.error("Cannot delete a locked widget. Unlock it first.");
+        return;
+      }
+      handleDeleteWithUndo(selectedComponent, () => {
+        deleteComponent.mutate({ id: selectedComponent.id, campaignId: campaignId! });
+      });
+      setSelectedComponent(null);
+    }
+  }, [selectedComponent, handleDeleteWithUndo, deleteComponent, campaignId]);
+
+  const handleCopyJoinCode = useCallback(() => {
+    if (campaign?.join_code) {
+      navigator.clipboard.writeText(campaign.join_code);
+      toast.success("Join code copied to clipboard!");
+    }
+  }, [campaign?.join_code]);
+
+  const handleSendAnnouncement = useCallback(() => {
+    openOverlay("messages");
+    toast.info("Opening Messages to send an announcement");
+  }, [openOverlay]);
+
+  useGMKeyboardShortcuts({
+    isGM: effectiveIsGM,
+    onOpenCommandPalette: () => setShowCommandPalette(true),
+    onShowShortcuts: () => setShowShortcuts(true),
+    onDeleteSelected: handleDeleteSelected,
+  });
 
   // Persist sidebar state to localStorage
   const handleSidebarToggle = (open: boolean) => {
@@ -290,6 +332,24 @@ export default function CampaignDashboard() {
           onClose={closeOnboarding}
         />
       )}
+
+      {/* GM: Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+      />
+
+      {/* GM: Command Palette */}
+      <CommandPalette
+        open={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        campaignId={campaignId!}
+        onOpenOverlay={openOverlay}
+        onAddComponent={() => setShowAddModal(true)}
+        onShowShortcuts={() => setShowShortcuts(true)}
+        onCopyJoinCode={handleCopyJoinCode}
+        onSendAnnouncement={handleSendAnnouncement}
+      />
     </div>
   );
 }
