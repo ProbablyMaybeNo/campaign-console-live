@@ -11,6 +11,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Copy, Check, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import { HelpButton } from "@/components/help/HelpButton";
 
 export default function Campaigns() {
   const { user, signOut } = useAuth();
@@ -70,9 +71,12 @@ export default function Campaigns() {
       <div className="absolute inset-4 border border-cyan-500/30 pointer-events-none" />
       <div className="absolute inset-6 border border-cyan-500/20 pointer-events-none" />
 
-      {/* User icon */}
-      <div className="absolute top-8 right-8 p-3 border border-primary/40 text-primary">
-        <UserPlus className="w-6 h-6" />
+      {/* User icon and Help */}
+      <div className="absolute top-8 right-8 flex items-center gap-3">
+        <HelpButton variant="icon" />
+        <div className="p-3 border border-primary/40 text-primary">
+          <UserPlus className="w-6 h-6" />
+        </div>
       </div>
 
       <div className="max-w-5xl mx-auto pt-8 relative z-10">

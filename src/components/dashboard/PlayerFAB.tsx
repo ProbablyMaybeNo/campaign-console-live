@@ -8,11 +8,13 @@ import {
   ChevronUp,
   Calendar,
   Map,
-  BookOpen
+  BookOpen,
+  HelpCircle
 } from "lucide-react";
 import { OverlayType } from "@/hooks/useOverlayState";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { HelpFAQModal } from "@/components/help/HelpFAQModal";
 
 interface PlayerFABProps {
   campaignId: string;
@@ -38,6 +40,7 @@ const fabItems: FABItem[] = [
 export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showHelp, setShowHelp] = useState(false);
   const { user } = useAuth();
 
   // Fetch unread message count (messages since last visit)
@@ -112,7 +115,7 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ delay: index * 0.05 }}
                 onClick={() => handleItemClick(item.id)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card/95 border border-primary/30 backdrop-blur-sm transition-all hover:scale-105 hover:border-primary/60 group"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card/95 border border-primary/30 backdrop-blur-sm transition-all hover:scale-105 hover:border-primary/60 group relative"
                 style={{ boxShadow: `0 0 15px ${item.color}30, 0 4px 12px rgba(0,0,0,0.3)` }}
               >
                 <span className="text-xs font-mono uppercase tracking-wider text-foreground whitespace-nowrap">
@@ -132,6 +135,27 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
                 )}
               </motion.button>
             ))}
+            
+            {/* Help button */}
+            <motion.button
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              transition={{ delay: fabItems.length * 0.05 }}
+              onClick={() => { setShowHelp(true); setIsExpanded(false); }}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card/95 border border-[hsl(200,100%,65%)]/30 backdrop-blur-sm transition-all hover:scale-105 hover:border-[hsl(200,100%,65%)]/60 group"
+              style={{ boxShadow: `0 0 15px hsl(200 100% 50% / 0.3), 0 4px 12px rgba(0,0,0,0.3)` }}
+            >
+              <span className="text-xs font-mono uppercase tracking-wider text-foreground whitespace-nowrap">
+                Help & FAQ
+              </span>
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
+                style={{ backgroundColor: "hsl(200, 100%, 50%)" }}
+              >
+                <HelpCircle className="w-5 h-5 text-black" />
+              </div>
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -167,6 +191,9 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
           </span>
         )}
       </motion.button>
+
+      {/* Help Modal */}
+      <HelpFAQModal open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useJoinCampaign } from "@/hooks/useCampaigns";
 import { useNavigate } from "react-router-dom";
 import { Users, Info, Shield } from "lucide-react";
+import { HelpButton } from "@/components/help/HelpButton";
 
 interface CampaignPreview {
   id: string;
@@ -122,9 +123,12 @@ export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
       <DialogContent className="bg-background border-primary/50 max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-mono text-primary tracking-wider">
-            [ JOIN CAMPAIGN ]
-          </DialogTitle>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="font-mono text-primary tracking-wider">
+              [ JOIN CAMPAIGN ]
+            </DialogTitle>
+            <HelpButton variant="icon" />
+          </div>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">

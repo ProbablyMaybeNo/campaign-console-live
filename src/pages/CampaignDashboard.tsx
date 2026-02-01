@@ -18,6 +18,7 @@ import { CampaignExportModal } from "@/components/dashboard/CampaignExportModal"
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
+import { HelpButton } from "@/components/help/HelpButton";
 import { 
   ArrowLeft, 
   Settings, 
@@ -429,9 +430,10 @@ export default function CampaignDashboard() {
             onComponentSelect={handleComponentSelect}
           />
 
-          {/* GM: Add component button */}
+          {/* GM: Add component button + Help */}
           {effectiveIsGM && (
-            <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3">
+            <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3 items-center">
+              <HelpButton variant="fab" />
               <button
                 className="h-14 w-14 rounded-full bg-[hsl(142,76%,50%)] hover:bg-[hsl(142,76%,60%)] text-black font-bold text-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
                 style={{ boxShadow: '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' }}
