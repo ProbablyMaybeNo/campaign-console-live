@@ -17,7 +17,7 @@ export default function Index() {
         }} />
       </div>
 
-      <div className="text-center space-y-8 relative z-10">
+      <div className="text-center space-y-6 relative z-10">
         {/* Header Image */}
         <div className="flex justify-center">
           <img 
@@ -27,7 +27,10 @@ export default function Index() {
           />
         </div>
         
-        <div className="space-y-2">
+        <div className="space-y-4">
+          <h1 className="text-5xl font-bold tracking-widest text-primary text-glow-primary">
+            CAMPAIGN CONSOLE
+          </h1>
           <p className="text-lg text-muted-foreground uppercase tracking-wider">
             Wargame Campaign Tracker
           </p>
