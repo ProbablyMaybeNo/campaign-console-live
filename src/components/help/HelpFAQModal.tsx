@@ -157,8 +157,7 @@ const faqSections: FAQSection[] = [
 • Image – Display handouts, reference art, or diagrams
 • Map – Campaign map with markers and fog of war
 • Player List – Automatically shows all players and their info
-• Calendar – Displays scheduled rounds or events
-• Activity Feed – Real-time campaign activity log`,
+• Calendar – Displays scheduled rounds or events`,
       },
     ],
   },
