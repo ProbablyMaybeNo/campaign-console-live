@@ -9,13 +9,14 @@ import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
 import { AddComponentModal } from "@/components/dashboard/AddComponentModal";
 import { CampaignOverlays } from "@/components/dashboard/CampaignOverlays";
+import { PlayerFAB } from "@/components/dashboard/PlayerFAB";
+import { PlayerOnboardingModal, usePlayerOnboarding } from "@/components/players/PlayerOnboardingModal";
 import { 
   ArrowLeft, 
   Settings, 
   Users, 
   Map, 
   Scroll, 
-  Swords, 
   MessageSquare, 
   Calendar, 
   Plus,
@@ -64,6 +65,9 @@ export default function CampaignDashboard() {
     return stored !== null ? stored === "true" : true;
   });
   const effectiveIsGM = isGM && !previewAsPlayer;
+  
+  // Player onboarding
+  const { showOnboarding, closeOnboarding } = usePlayerOnboarding(campaignId!, !effectiveIsGM && !isGM);
 
   // Persist sidebar state to localStorage
   const handleSidebarToggle = (open: boolean) => {
@@ -254,16 +258,12 @@ export default function CampaignDashboard() {
             </div>
           )}
 
-          {/* Player: Settings button */}
+          {/* Player: Expandable FAB menu */}
           {!effectiveIsGM && (
-            <button
-              onClick={() => openOverlay("player-settings")}
-              className="fixed bottom-8 right-8 z-40 h-14 w-14 rounded-full bg-[hsl(142,76%,50%)] text-black flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-              style={{ boxShadow: '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' }}
-              title="My Settings"
-            >
-              <UserCog className="w-6 h-6" />
-            </button>
+            <PlayerFAB 
+              campaignId={campaignId!} 
+              onOpenOverlay={openOverlay}
+            />
           )}
         </main>
       </div>
@@ -280,6 +280,16 @@ export default function CampaignDashboard() {
         onOpenChange={setShowAddModal}
         campaignId={campaignId!}
       />
+
+      {/* Player Onboarding Modal */}
+      {campaign && (
+        <PlayerOnboardingModal
+          campaignId={campaignId!}
+          campaignName={campaign.name}
+          open={showOnboarding}
+          onClose={closeOnboarding}
+        />
+      )}
     </div>
   );
 }
