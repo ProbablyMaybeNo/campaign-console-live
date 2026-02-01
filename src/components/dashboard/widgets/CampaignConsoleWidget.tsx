@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import { useCampaign, Campaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCampaignPlayers } from "@/hooks/useCampaignPlayers";
 import { format } from "date-fns";
+import { Users, Swords, CalendarDays, Target, Hash } from "lucide-react";
 
 interface CampaignConsoleWidgetProps {
   campaignId: string;
@@ -51,6 +52,8 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
   const endDate = campaign.end_date;
   const joinCode = campaign.join_code;
 
+  const formatDate = (date: string) => format(new Date(date), "dd/MM/yy");
+
   return (
     <div className="w-full h-full flex flex-col p-4 gap-3 overflow-hidden select-none">
       {/* Campaign Title Box */}
@@ -75,67 +78,44 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         className="flex-1 border border-dashed p-4"
         style={{ borderColor: `${borderColor}60` }}
       >
-        <div className="grid grid-cols-3 gap-x-4 gap-y-3">
-          {/* Row 1 */}
+        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
+          {/* Row 1: ID, Points, Players */}
           {displaySettings.showId && (
-            <InfoField label="ID" value={joinCode || "—"} />
+            <IconField icon={<Hash className="w-4 h-4" />} value={joinCode || "—"} valueColor="hsl(0, 85%, 60%)" />
           )}
           {displaySettings.showPoints && (
-            <InfoField
-              label="Points"
-              value={String(campaign.points_limit || 0)}
-              valueColor="hsl(195, 100%, 50%)"
-            />
+            <IconField icon={<Target className="w-4 h-4" />} value={`${campaign.points_limit || 0} pts`} valueColor="hsl(195, 100%, 60%)" />
           )}
           {displaySettings.showPlayers && (
-            <InfoField
-              label="Players"
-              value={`${players.length} / ${maxPlayers}`}
-            />
+            <IconField icon={<Users className="w-4 h-4" />} value={`${players.length}/${maxPlayers}`} valueColor="hsl(195, 100%, 60%)" />
           )}
 
-          {/* Row 2 */}
+          {/* Row 2: Round, Date Range */}
           {displaySettings.showRound && (
-            <InfoField
-              label="Round"
-              value={`${currentRound} / ${totalRounds}`}
-              valueColor="hsl(142, 76%, 50%)"
-            />
+            <IconField icon={<CalendarDays className="w-4 h-4" />} value={`${currentRound}/${totalRounds}`} valueColor="hsl(142, 76%, 60%)" />
           )}
-          {displaySettings.showDates && startDate && (
-            <InfoField
-              label="Start"
-              value={format(new Date(startDate), "MMM d, yyyy")}
-            />
-          )}
-          {displaySettings.showDates && endDate && (
-            <InfoField
-              label="End"
-              value={format(new Date(endDate), "MMM d, yyyy")}
-            />
+          {displaySettings.showDates && (startDate || endDate) && (
+            <div className="col-span-2 flex items-center gap-2">
+              <span className="text-white font-mono text-sm font-medium">
+                {startDate ? formatDate(startDate) : "—"} → {endDate ? formatDate(endDate) : "—"}
+              </span>
+            </div>
           )}
 
-          {/* Row 3 */}
+          {/* Row 3: Game System */}
           {displaySettings.showGameSystem && gameSystem && (
-            <div className="col-span-3">
-              <InfoField label="System" value={gameSystem} />
+            <div className="col-span-3 flex items-center gap-2">
+              <Swords className="w-4 h-4 text-[hsl(0,85%,60%)]" />
+              <span className="text-white font-mono text-sm font-medium">{gameSystem}</span>
             </div>
           )}
         </div>
 
-        {/* Status Indicator */}
+        {/* Status Toggle */}
         {displaySettings.showStatus && (
-          <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border/30">
-            <StatusBadge
-              label="ACTIVE"
-              active={status === "active"}
-              color="hsl(142, 76%, 50%)"
-            />
-            <StatusBadge
-              label="INACTIVE"
-              active={status !== "active"}
-              color="hsl(0, 85%, 55%)"
-            />
+          <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-border/30">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Status</span>
+            <StatusToggle active={status === "active"} />
           </div>
         )}
       </div>
@@ -143,21 +123,19 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
   );
 });
 
-interface InfoFieldProps {
-  label: string;
+interface IconFieldProps {
+  icon: React.ReactNode;
   value: string;
   valueColor?: string;
 }
 
-function InfoField({ label, value, valueColor }: InfoFieldProps) {
+function IconField({ icon, value, valueColor = "white" }: IconFieldProps) {
   return (
-    <div className="flex items-center gap-2 text-xs">
-      <span className="text-muted-foreground uppercase tracking-wider">
-        {label}:
-      </span>
+    <div className="flex items-center gap-2">
+      <span className="text-[hsl(195,100%,60%)]">{icon}</span>
       <span
-        className="border border-border/50 px-2 py-0.5 font-mono"
-        style={{ color: valueColor || "inherit" }}
+        className="font-mono text-sm font-medium"
+        style={{ color: valueColor }}
       >
         {value}
       </span>
@@ -165,24 +143,36 @@ function InfoField({ label, value, valueColor }: InfoFieldProps) {
   );
 }
 
-interface StatusBadgeProps {
-  label: string;
+interface StatusToggleProps {
   active: boolean;
-  color: string;
 }
 
-function StatusBadge({ label, active, color }: StatusBadgeProps) {
+function StatusToggle({ active }: StatusToggleProps) {
   return (
-    <div
-      className={`px-4 py-1.5 border font-mono text-xs uppercase tracking-wider transition-all ${
-        active ? "opacity-100" : "opacity-30"
-      }`}
-      style={{
-        borderColor: active ? color : "hsl(0, 0%, 30%)",
-        color: active ? color : "hsl(0, 0%, 50%)",
-      }}
-    >
-      [ {label} ]
+    <div className="flex items-center gap-2">
+      <div
+        className={`w-10 h-5 rounded-full relative transition-all ${
+          active ? "bg-[hsl(142,76%,40%)]" : "bg-[hsl(0,60%,35%)]"
+        }`}
+        style={{
+          boxShadow: active
+            ? "0 0 8px hsl(142, 76%, 50%)"
+            : "0 0 8px hsl(0, 85%, 50%)",
+        }}
+      >
+        <div
+          className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
+            active ? "left-5" : "left-0.5"
+          }`}
+        />
+      </div>
+      <span
+        className={`text-xs font-mono uppercase tracking-wider ${
+          active ? "text-[hsl(142,76%,60%)]" : "text-[hsl(0,85%,60%)]"
+        }`}
+      >
+        {active ? "Active" : "Inactive"}
+      </span>
     </div>
   );
 }
