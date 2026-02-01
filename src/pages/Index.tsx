@@ -28,10 +28,10 @@ export default function Index() {
         </div>
         
         <div className="space-y-2">
-          <p className="text-lg text-muted-foreground uppercase tracking-wider">
+          <p className="text-lg text-foreground uppercase tracking-wider">
             Wargame Campaign Tracker
           </p>
-          <div className="text-xs text-muted-foreground font-mono">
+          <div className="text-xs text-foreground/80 font-mono">
             // GM-First · Rules-Aware · Infinite Whiteboard
           </div>
         </div>
@@ -52,7 +52,7 @@ export default function Index() {
           )}
         </div>
 
-        <div className="pt-8 text-xs text-muted-foreground space-y-1">
+        <div className="pt-8 text-xs text-foreground/80 space-y-1">
           <p>[ System Status: <span className="text-primary">ONLINE</span> ]</p>
           <p>v1.0.0 - Powered by Lovable Cloud</p>
         </div>
