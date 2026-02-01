@@ -13,21 +13,21 @@ const TerminalCard = React.forwardRef<HTMLDivElement, TerminalCardProps>(
       <div
         ref={ref}
         className={cn(
-          "bg-card border border-primary/20 relative overflow-hidden",
-          "shadow-[inset_0_0_30px_rgba(0,0,0,0.5)]",
+          "bg-card border border-primary/30 relative overflow-hidden",
+          "shadow-[inset_0_0_30px_rgba(0,0,0,0.6),0_0_8px_hsl(var(--primary)/0.15)]",
           className
         )}
         {...props}
       >
-        {/* Subtle corner accents */}
-        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-primary/50" />
-        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r border-primary/50" />
-        <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-primary/50" />
-        <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-primary/50" />
+        {/* Neon corner accents */}
+        <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-primary/70" />
+        <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-primary/70" />
+        <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-primary/70" />
+        <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-primary/70" />
 
         {title && (
-          <div className="flex items-center justify-between px-4 py-2 border-b border-primary/20 bg-background/50">
-            <h3 className="text-xs uppercase tracking-widest text-primary font-medium">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-primary/30 bg-background/50">
+            <h3 className="text-xs uppercase tracking-widest text-primary font-semibold text-glow-primary">
               [{title}]
             </h3>
             {headerActions && (

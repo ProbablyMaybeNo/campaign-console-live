@@ -8,16 +8,16 @@ const terminalButtonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-primary/10 text-primary border-primary/50 hover:bg-primary/20 hover:border-primary hover:glow-primary",
+          "bg-primary/15 text-primary border-primary/60 hover:bg-primary/25 hover:border-primary hover:shadow-[0_0_12px_hsl(var(--primary)/0.4)] text-glow-primary",
         secondary:
-          "bg-secondary/10 text-secondary border-secondary/50 hover:bg-secondary/20 hover:border-secondary hover:glow-secondary",
+          "bg-secondary/15 text-secondary border-secondary/60 hover:bg-secondary/25 hover:border-secondary hover:shadow-[0_0_12px_hsl(var(--secondary)/0.4)] text-glow-secondary",
         destructive:
-          "bg-destructive/10 text-destructive border-destructive/50 hover:bg-destructive/20 hover:border-destructive hover:glow-destructive",
+          "bg-destructive/15 text-destructive border-destructive/60 hover:bg-destructive/25 hover:border-destructive hover:shadow-[0_0_12px_hsl(var(--destructive)/0.4)]",
         outline:
-          "bg-transparent text-foreground border-border hover:bg-accent hover:border-primary/50 hover:text-primary",
+          "bg-transparent text-foreground border-primary/40 hover:bg-primary/10 hover:border-primary hover:text-primary",
         ghost:
-          "bg-transparent text-muted-foreground border-transparent hover:bg-accent hover:text-foreground hover:border-border",
-        link: "text-primary underline-offset-4 hover:underline border-transparent",
+          "bg-transparent text-muted-foreground border-transparent hover:bg-accent hover:text-foreground hover:border-primary/30",
+        link: "text-primary underline-offset-4 hover:underline border-transparent text-glow-primary",
       },
       size: {
         default: "h-10 px-4 py-2",
