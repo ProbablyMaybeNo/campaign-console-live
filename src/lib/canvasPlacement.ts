@@ -14,7 +14,7 @@ const EDGE_PADDING = 100;
 export function getInitialTransform(
   viewportWidth: number,
   viewportHeight: number,
-  scale: number = 0.5
+  scale: number = 1.0
 ) {
   // Position so canvas top-left is at (0,0) initially, then center horizontally
   // We want the horizontal center of the canvas to be at the horizontal center of viewport
@@ -35,7 +35,7 @@ export function getTransformForComponent(
   componentY: number,
   componentWidth: number,
   componentHeight: number,
-  scale: number = 0.5
+  scale: number = 1.0
 ) {
   // Center horizontally on the component
   const componentCenterX = componentX + componentWidth / 2;

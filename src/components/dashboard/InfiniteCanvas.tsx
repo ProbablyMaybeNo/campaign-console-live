@@ -24,7 +24,7 @@ interface InfiniteCanvasProps {
 
 const ZOOM_STEP = 0.15;
 const GRID_SIZE = 20;
-const INITIAL_SCALE = 0.5;
+const INITIAL_SCALE = 1.0;
 
 export function InfiniteCanvas({
   components,
@@ -162,11 +162,15 @@ export function InfiniteCanvas({
   const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
-    if (!ref || !container || !ref.state) return;
+    if (!ref || !container) return;
     
-    const currentScale = ref.state.scale ?? scale;
-    const positionX = ref.state.positionX ?? 0;
-    const positionY = ref.state.positionY ?? 0;
+    // Access state through instance property
+    const state = ref.instance?.transformState;
+    if (!state) return;
+    
+    const currentScale = state.scale ?? scale;
+    const positionX = state.positionX ?? 0;
+    const positionY = state.positionY ?? 0;
     const newScale = Math.min(2, currentScale + ZOOM_STEP);
     
     const centerX = container.clientWidth / 2;
@@ -182,11 +186,15 @@ export function InfiniteCanvas({
   const handleZoomOut = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
-    if (!ref || !container || !ref.state) return;
+    if (!ref || !container) return;
     
-    const currentScale = ref.state.scale ?? scale;
-    const positionX = ref.state.positionX ?? 0;
-    const positionY = ref.state.positionY ?? 0;
+    // Access state through instance property
+    const state = ref.instance?.transformState;
+    if (!state) return;
+    
+    const currentScale = state.scale ?? scale;
+    const positionX = state.positionX ?? 0;
+    const positionY = state.positionY ?? 0;
     const newScale = Math.max(0.25, currentScale - ZOOM_STEP);
     
     const centerX = container.clientWidth / 2;
@@ -204,7 +212,10 @@ export function InfiniteCanvas({
   }, [handleRecenter]);
 
   const handleTransform = useCallback((ref: ReactZoomPanPinchRef) => {
-    setScale(ref.state.scale);
+    const state = ref.instance?.transformState;
+    if (state) {
+      setScale(state.scale);
+    }
   }, []);
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
@@ -215,19 +226,22 @@ export function InfiniteCanvas({
     
     const ref = transformRef.current;
     const container = containerRef.current;
-    if (!ref || !container || !ref.state) return;
+    if (!ref || !container) return;
+    
+    const state = ref.instance?.transformState;
+    if (!state) return;
     
     const { positionX, positionY } = clampTransform(
-      ref.state.positionX,
-      ref.state.positionY,
-      ref.state.scale,
+      state.positionX,
+      state.positionY,
+      state.scale,
       container.clientWidth,
       container.clientHeight
     );
     
     // Only update if position changed
-    if (positionX !== ref.state.positionX || positionY !== ref.state.positionY) {
-      ref.setTransform(positionX, positionY, ref.state.scale, 150, "easeOut");
+    if (positionX !== state.positionX || positionY !== state.positionY) {
+      ref.setTransform(positionX, positionY, state.scale, 150, "easeOut");
     }
   }, []);
 
@@ -243,7 +257,7 @@ export function InfiniteCanvas({
 
     // Wait for layout to stabilize
     const frame = requestAnimationFrame(() => {
-      if (!transformRef.current?.state) return;
+      if (!transformRef.current?.instance?.transformState) return;
       centeredCampaignRef.current = campaignId;
       handleRecenter();
     });
