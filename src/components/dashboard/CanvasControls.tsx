@@ -28,7 +28,12 @@ export function CanvasControls({
 }: CanvasControlsProps) {
   return (
     <TooltipProvider>
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-card/90 backdrop-blur-sm border-2 border-[hsl(142,76%,65%)] rounded px-2 py-1" style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.3)' }}>
+      <div 
+        className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-card/90 backdrop-blur-sm border-2 border-[hsl(142,76%,65%)] rounded px-2 py-1" 
+        style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.3)' }}
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <TerminalButton variant="ghost" size="sm" onClick={onZoomOut}>
