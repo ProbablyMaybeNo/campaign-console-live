@@ -1,5 +1,4 @@
 import { memo } from "react";
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from "@/lib/canvasPlacement";
 
 export const CanvasGrid = memo(function CanvasGrid() {
   return (
