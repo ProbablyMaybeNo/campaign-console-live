@@ -78,13 +78,10 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         className="flex-1 border border-dashed p-4"
         style={{ borderColor: `${borderColor}60` }}
       >
-        <div className="grid grid-cols-3 gap-x-6 gap-y-4">
-          {/* Row 1: ID, Points, Players */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+          {/* Row 1: ID, Players */}
           {displaySettings.showId && (
             <IconField icon={<Hash className="w-4 h-4" />} value={joinCode || "—"} valueColor="hsl(0, 85%, 60%)" />
-          )}
-          {displaySettings.showPoints && (
-            <IconField icon={<Target className="w-4 h-4" />} value={`${campaign.points_limit || 0} pts`} valueColor="hsl(195, 100%, 60%)" />
           )}
           {displaySettings.showPlayers && (
             <IconField icon={<Users className="w-4 h-4" />} value={`${players.length}/${maxPlayers}`} valueColor="hsl(195, 100%, 60%)" />
@@ -95,23 +92,26 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
             <IconField icon={<CalendarDays className="w-4 h-4" />} value={`${currentRound}/${totalRounds}`} valueColor="hsl(142, 76%, 60%)" />
           )}
           {displaySettings.showDates && (startDate || endDate) && (
-            <div className="col-span-2 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <span className="text-white font-mono text-sm font-medium">
                 {startDate ? formatDate(startDate) : "—"} → {endDate ? formatDate(endDate) : "—"}
               </span>
             </div>
           )}
 
-          {/* Row 3: Game System */}
+          {/* Row 3: Game System, Points */}
           {displaySettings.showGameSystem && gameSystem && (
-            <div className="col-span-3 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Swords className="w-4 h-4 text-[hsl(0,85%,60%)]" />
               <span className="text-white font-mono text-sm font-medium">{gameSystem}</span>
             </div>
           )}
+          {displaySettings.showPoints && (
+            <IconField icon={<Target className="w-4 h-4" />} value={`${campaign.points_limit || 0} pts`} valueColor="hsl(195, 100%, 60%)" />
+          )}
         </div>
 
-        {/* Status Toggle */}
+        {/* Status Toggle - Centered */}
         {displaySettings.showStatus && (
           <div className="flex items-center justify-center gap-3 mt-4 pt-4 border-t border-border/30">
             <span className="text-xs text-muted-foreground uppercase tracking-wider">Status</span>
