@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
 import { useDashboardComponents, DashboardComponent, useDeleteComponent, useUpdateComponent, useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,7 @@ import { KeyboardShortcutsModal } from "@/components/dashboard/KeyboardShortcuts
 import { CommandPalette } from "@/components/dashboard/CommandPalette";
 import { MultiSelectToolbar } from "@/components/dashboard/MultiSelectToolbar";
 import { CampaignExportModal } from "@/components/dashboard/CampaignExportModal";
+import { GettingStartedModal } from "@/components/help/GettingStartedModal";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
@@ -57,6 +58,7 @@ const sidebarItems: {
 
 export default function CampaignDashboard() {
   const { campaignId } = useParams<{ campaignId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useCampaign(campaignId);
   const { data: components = [], isLoading: componentsLoading } = useDashboardComponents(campaignId);
   const { user, signOut } = useAuth();
@@ -74,6 +76,7 @@ export default function CampaignDashboard() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showGettingStarted, setShowGettingStarted] = useState(false);
   
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -84,6 +87,16 @@ export default function CampaignDashboard() {
   
   // Player onboarding
   const { showOnboarding, closeOnboarding } = usePlayerOnboarding(campaignId!, !effectiveIsGM && !isGM);
+
+  // Getting Started modal for new campaigns
+  useEffect(() => {
+    if (searchParams.get("new") === "1" && isGM && !campaignLoading) {
+      setShowGettingStarted(true);
+      // Remove the query param without triggering a navigation
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isGM, campaignLoading]);
 
   // Handle component selection with multi-select support
   const handleComponentSelect = useCallback((component: DashboardComponent | null, shiftKey = false) => {
@@ -509,6 +522,7 @@ export default function CampaignDashboard() {
         onCopyJoinCode={handleCopyJoinCode}
         onSendAnnouncement={handleSendAnnouncement}
         onExportCampaign={handleExportCampaign}
+        onShowGettingStarted={() => setShowGettingStarted(true)}
       />
 
       {/* Export Modal */}
@@ -516,6 +530,14 @@ export default function CampaignDashboard() {
         open={showExportModal}
         onClose={() => setShowExportModal(false)}
         campaignId={campaignId!}
+      />
+
+      {/* Getting Started Modal for new campaigns */}
+      <GettingStartedModal
+        open={showGettingStarted}
+        onClose={() => setShowGettingStarted(false)}
+        joinCode={campaign?.join_code || undefined}
+        onCopyJoinCode={handleCopyJoinCode}
       />
     </div>
   );

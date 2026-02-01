@@ -27,6 +27,7 @@ import {
   Copy,
   LayoutGrid,
   Download,
+  Sparkles,
 } from "lucide-react";
 import { OverlayType } from "@/hooks/useOverlayState";
 
@@ -40,6 +41,7 @@ interface CommandPaletteProps {
   onCopyJoinCode: () => void;
   onSendAnnouncement: () => void;
   onExportCampaign?: () => void;
+  onShowGettingStarted?: () => void;
 }
 
 type CommandAction = {
@@ -60,6 +62,7 @@ export function CommandPalette({
   onCopyJoinCode,
   onSendAnnouncement,
   onExportCampaign,
+  onShowGettingStarted,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
 
@@ -83,6 +86,7 @@ export function CommandPalette({
     
     // Help
     { id: "shortcuts", label: "Show keyboard shortcuts", icon: Keyboard, shortcut: "Shift+?", category: "actions", action: () => { onShowShortcuts(); onClose(); } },
+    ...(onShowGettingStarted ? [{ id: "getting-started", label: "Getting started guide", icon: Sparkles, category: "actions" as const, action: () => { onShowGettingStarted(); onClose(); } }] : []),
   ];
 
   const filteredCommands = commands.filter(cmd => 
