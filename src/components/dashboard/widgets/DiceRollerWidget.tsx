@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
-import { Dices, Settings, Check, X } from "lucide-react";
+import { Dices } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
 import { useRecordRoll } from "@/hooks/useRollHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DiceRollerWidgetProps {
   component: DashboardComponent;
@@ -28,13 +34,21 @@ interface DiceRoll {
   rolled_at: string;
 }
 
-export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidgetProps) {
+const DICE_COUNTS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const DICE_TYPES = [
+  { value: 4, label: "d4" },
+  { value: 6, label: "d6" },
+  { value: 8, label: "d8" },
+  { value: 10, label: "d10" },
+  { value: 12, label: "d12" },
+  { value: 20, label: "d20" },
+  { value: 100, label: "d100" },
+];
+
+export function DiceRollerWidget({ component, campaignId }: DiceRollerWidgetProps) {
   const updateComponent = useUpdateComponent();
   const { recordRoll } = useRecordRoll(campaignId);
   const [isRolling, setIsRolling] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [tempSides, setTempSides] = useState(6);
-  const [tempCount, setTempCount] = useState(1);
   const [rollHistory, setRollHistory] = useState<DiceRoll[]>([]);
 
   const config = (component.config as DiceConfig) || {};
@@ -83,6 +97,22 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
     };
   }, [campaignId]);
 
+  const handleCountChange = (value: string) => {
+    const newCount = parseInt(value);
+    updateComponent.mutate({
+      id: component.id,
+      config: { ...config, count: newCount },
+    });
+  };
+
+  const handleSidesChange = (value: string) => {
+    const newSides = parseInt(value);
+    updateComponent.mutate({
+      id: component.id,
+      config: { ...config, sides: newSides },
+    });
+  };
+
   const rollDice = async () => {
     setIsRolling(true);
 
@@ -106,95 +136,49 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
     }, 500);
   };
 
-  const openSettings = () => {
-    setTempSides(sides);
-    setTempCount(count);
-    setShowSettings(true);
-  };
-
-  const saveSettings = () => {
-    updateComponent.mutate({
-      id: component.id,
-      config: { ...config, sides: tempSides, count: tempCount, lastRolls: [], lastTotal: 0 },
-    });
-    setShowSettings(false);
-  };
-
-  if (showSettings && isGM) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 p-4">
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">Configure Dice</p>
-        
-        <div className="space-y-3 w-full max-w-[150px]">
-          <div>
-            <label className="text-[10px] text-muted-foreground block mb-1">Number of Dice</label>
-            <input
-              type="number"
-              min={1}
-              max={20}
-              value={tempCount}
-              onChange={(e) => setTempCount(Math.max(1, Math.min(20, parseInt(e.target.value) || 1)))}
-              className="w-full bg-input border border-border rounded px-2 py-1 text-xs text-center"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-muted-foreground block mb-1">Sides per Die</label>
-            <select
-              value={tempSides}
-              onChange={(e) => setTempSides(parseInt(e.target.value))}
-              className="w-full bg-input border border-border rounded px-2 py-1 text-xs"
-            >
-              <option value={4}>d4</option>
-              <option value={6}>d6</option>
-              <option value={8}>d8</option>
-              <option value={10}>d10</option>
-              <option value={12}>d12</option>
-              <option value={20}>d20</option>
-              <option value={100}>d100</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={saveSettings}
-            className="flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            <Check className="w-3 h-3" /> Save
-          </button>
-          <button
-            onClick={() => setShowSettings(false)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            <X className="w-3 h-3" /> Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full">
       {/* Dice Roller Section */}
-      <div className="flex flex-col items-center gap-3 py-3 relative">
-        {isGM && (
-          <button
-            onClick={openSettings}
-            className="absolute top-1 right-1 p-1 text-muted-foreground hover:text-primary"
-            title="Configure dice"
-          >
-            <Settings className="w-3 h-3" />
-          </button>
-        )}
+      <div className="flex flex-col items-center gap-2 py-2 px-2">
+        {/* Inline dropdowns for dice configuration */}
+        <div className="flex items-center gap-2">
+          <Select value={count.toString()} onValueChange={handleCountChange}>
+            <SelectTrigger 
+              className="w-14 h-7 text-xs bg-background border-primary/50"
+              style={{ boxShadow: "0 0 6px hsl(142, 76%, 55%, 0.2)" }}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-background border-primary/50 z-50">
+              {DICE_COUNTS.map((n) => (
+                <SelectItem key={n} value={n.toString()} className="text-xs">
+                  {n}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <p className="text-xs text-muted-foreground uppercase tracking-wider">
-          {count}d{sides}
-        </p>
+          <Select value={sides.toString()} onValueChange={handleSidesChange}>
+            <SelectTrigger 
+              className="w-16 h-7 text-xs bg-background border-primary/50"
+              style={{ boxShadow: "0 0 6px hsl(142, 76%, 55%, 0.2)" }}
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-background border-primary/50 z-50">
+              {DICE_TYPES.map((d) => (
+                <SelectItem key={d.value} value={d.value.toString()} className="text-xs">
+                  {d.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
         <button
           onClick={rollDice}
           disabled={isRolling}
-          className={`w-16 h-16 rounded-lg border-2 border-primary bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-transform ${
+          className={`w-14 h-14 rounded-lg border-2 border-primary bg-primary/10 hover:bg-primary/20 flex items-center justify-center transition-transform ${
             isRolling ? "animate-bounce" : ""
           }`}
           style={{
@@ -202,7 +186,7 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
           }}
         >
           <Dices 
-            className={`w-8 h-8 text-primary ${isRolling ? "animate-spin" : ""}`}
+            className={`w-7 h-7 text-primary ${isRolling ? "animate-spin" : ""}`}
             style={{ filter: "drop-shadow(0 0 6px hsl(142, 76%, 55%))" }}
           />
         </button>
