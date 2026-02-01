@@ -28,16 +28,10 @@ export default function Index() {
         </div>
         
         <div className="space-y-2">
-          <p 
-            className="text-lg text-white uppercase tracking-wider"
-            style={{ textShadow: '0 0 10px rgba(255, 255, 255, 0.5)' }}
-          >
+          <p className="text-lg text-white uppercase tracking-wider text-glow-white">
             Table Top Campaign Tracker
           </p>
-          <div 
-            className="text-xs text-white/90 font-mono"
-            style={{ textShadow: '0 0 8px rgba(255, 255, 255, 0.4)' }}
-          >
+          <div className="text-xs text-white/90 font-mono text-glow-white">
             BOOT: CAMPAIGN OPTIMIZATION — INITIALIZING...
           </div>
         </div>

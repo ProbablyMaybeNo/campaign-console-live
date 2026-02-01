@@ -24,8 +24,8 @@ export default function Campaigns() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const getStatusColor = (campaign: Campaign) => {
-    return "text-green-400";
+  const getStatusColor = () => {
+    return "text-primary text-glow-primary";
   };
 
   const getStatusLabel = () => {
@@ -34,9 +34,9 @@ export default function Campaigns() {
 
   const getRoleIcon = (campaign: Campaign) => {
     if (campaign.owner_id === user?.id) {
-      return <Crown className="w-4 h-4 text-yellow-400" />;
+      return <Crown className="w-4 h-4 text-warning" />;
     }
-    return <User className="w-4 h-4 text-blue-400" />;
+    return <User className="w-4 h-4 text-secondary" />;
   };
 
   const getRoleLabel = (campaign: Campaign) => {
@@ -67,43 +67,36 @@ export default function Campaigns() {
 
   return (
     <div className="min-h-screen bg-background p-6 relative">
-      {/* Frame borders */}
-      <div className="absolute inset-4 pointer-events-none" style={{ border: '1px solid hsl(142, 76%, 65%, 0.4)' }} />
-      <div className="absolute inset-6 pointer-events-none" style={{ border: '1px solid hsl(142, 76%, 65%, 0.25)' }} />
+      {/* Frame borders with neon glow */}
+      <div className="absolute inset-4 pointer-events-none border border-primary/40 shadow-[0_0_15px_hsl(var(--primary)/0.15)]" />
+      <div className="absolute inset-6 pointer-events-none border border-primary/25" />
 
       {/* User icon and Help */}
       <div className="absolute top-8 right-8 flex items-center gap-3">
         <HelpButton variant="icon" />
-        <div className="p-3 border border-primary/40 text-primary">
+        <div className="p-3 border border-primary/50 text-primary glow-primary">
           <UserPlus className="w-6 h-6" />
         </div>
       </div>
 
       <div className="max-w-5xl mx-auto pt-8 relative z-10">
         {/* Back button */}
-        <Link to="/" className="inline-flex items-center gap-2 text-primary hover:underline mb-6">
-          <div className="w-8 h-8 border border-primary rounded-full flex items-center justify-center">
+        <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-glow-primary mb-6 transition-all">
+          <div className="w-8 h-8 border border-primary/60 rounded-full flex items-center justify-center hover:glow-primary transition-all">
             <ArrowLeft className="w-4 h-4" />
           </div>
         </Link>
 
         {/* Title */}
         <div className="text-center mb-8">
-          <h1 
-            className="text-3xl font-bold tracking-widest uppercase"
-            style={{ 
-              color: 'hsl(142, 76%, 65%)',
-              textShadow: '0 0 8px hsl(142, 76%, 50%, 0.6)',
-              fontFamily: '"IBM Plex Mono", monospace'
-            }}
-          >
+          <h1 className="text-3xl font-bold tracking-widest uppercase text-primary text-glow-primary">
             CAMPAIGN DIRECTORY
           </h1>
-          <div className="w-full h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent mt-4" />
+          <div className="w-full h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent mt-4" />
         </div>
 
         {/* Campaign Table */}
-        <div className="p-6 mb-6" style={{ border: '1px dashed hsl(142, 76%, 65%, 0.4)' }}>
+        <div className="p-6 mb-6 border border-dashed border-primary/40">
           {isLoading ? (
             <div className="flex justify-center py-12">
               <TerminalLoader text="Loading campaigns" />
@@ -117,13 +110,13 @@ export default function Campaigns() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid hsl(142, 76%, 65%, 0.4)' }}>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Role</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Campaign Name</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Players</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Campaign ID</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Start Date</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider">Status</th>
+                  <tr className="border-b border-primary/40">
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Role</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign Name</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Players</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign ID</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Start Date</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -132,17 +125,16 @@ export default function Campaigns() {
                       key={campaign.id}
                       onClick={() => handleRowClick(campaign.id)}
                       onDoubleClick={() => navigate(`/campaign/${campaign.id}`)}
-                      className={`cursor-pointer transition-colors ${
+                      className={`cursor-pointer transition-all border-b border-primary/20 ${
                         selectedCampaignId === campaign.id 
-                          ? "bg-primary/10" 
-                          : "hover:bg-accent/30"
+                          ? "bg-primary/15 shadow-[inset_0_0_20px_hsl(var(--primary)/0.1)]" 
+                          : "hover:bg-primary/5"
                       }`}
-                      style={{ borderBottom: '1px solid hsl(142, 76%, 65%, 0.25)' }}
                     >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           {getRoleIcon(campaign)}
-                          <span className={campaign.owner_id === user?.id ? "text-yellow-400" : "text-blue-400"}>
+                          <span className={campaign.owner_id === user?.id ? "text-warning" : "text-secondary"}>
                             {getRoleLabel(campaign)}
                           </span>
                         </div>
@@ -182,10 +174,10 @@ export default function Campaigns() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground">
+                      <td className="py-3 px-4 text-muted-foreground font-mono">
                         {new Date(campaign.created_at).toISOString().split('T')[0]}
                       </td>
-                      <td className={`py-3 px-4 ${getStatusColor(campaign)}`}>
+                      <td className={`py-3 px-4 ${getStatusColor()}`}>
                         {getStatusLabel()}
                       </td>
                     </tr>

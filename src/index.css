@@ -10,102 +10,104 @@
 
 @layer base {
   :root {
-    /* Terminal Dark Theme - Primary */
-    --background: 0 0% 4%;
-    --foreground: 0 0% 95%;
+    /* Terminal Dark Theme - Deep Black Background */
+    --background: 0 0% 3%;
+    --foreground: 0 0% 98%;
 
-    /* Card/Panels */
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 95%;
+    /* Card/Panels - Slightly lighter for depth */
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 98%;
 
     /* Popover/Dropdown */
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 98%;
 
-    /* Neon Green Primary */
-    --primary: 142 76% 50%;
-    --primary-foreground: 0 0% 4%;
-    --primary-glow: 142 76% 40%;
+    /* Neon Green Primary - BRIGHTER */
+    --primary: 142 76% 55%;
+    --primary-foreground: 0 0% 3%;
+    --primary-glow: 142 80% 45%;
+    --primary-bright: 142 85% 65%;
 
-    /* Neon Blue Secondary */
-    --secondary: 195 100% 50%;
-    --secondary-foreground: 0 0% 4%;
-    --secondary-glow: 195 100% 40%;
+    /* Neon Blue Secondary - MORE VIBRANT */
+    --secondary: 195 100% 60%;
+    --secondary-foreground: 0 0% 3%;
+    --secondary-glow: 195 100% 50%;
+    --secondary-bright: 195 100% 70%;
 
     /* Muted/Subdued */
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
 
     /* Accent (subtle highlight) */
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 98%;
 
-    /* Neon Red for Alerts/Warnings */
-    --destructive: 0 85% 55%;
-    --destructive-foreground: 0 0% 95%;
-    --destructive-glow: 0 85% 45%;
+    /* Neon Red for Alerts/Warnings - MORE VIBRANT */
+    --destructive: 0 90% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 0 90% 50%;
 
-    /* Warning Orange */
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 4%;
+    /* Warning Orange - BRIGHTER */
+    --warning: 38 95% 55%;
+    --warning-foreground: 0 0% 3%;
 
-    /* Success Green (same as primary) */
-    --success: 142 76% 50%;
-    --success-foreground: 0 0% 4%;
+    /* Success Green (brighter than primary) */
+    --success: 142 80% 60%;
+    --success-foreground: 0 0% 3%;
 
-    /* Border */
-    --border: 0 0% 20%;
-    --border-glow: 142 76% 50%;
+    /* Border - using neon green */
+    --border: 142 50% 20%;
+    --border-glow: 142 76% 55%;
 
     /* Input */
-    --input: 0 0% 15%;
-    --input-foreground: 0 0% 95%;
+    --input: 0 0% 8%;
+    --input-foreground: 0 0% 98%;
 
     /* Ring/Focus */
-    --ring: 142 76% 50%;
+    --ring: 142 76% 55%;
 
-    /* Radius */
-    --radius: 0.25rem;
+    /* Radius - sharper for terminal look */
+    --radius: 0.125rem;
 
     /* Sidebar */
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 142 76% 50%;
-    --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 142 76% 50%;
+    --sidebar-background: 0 0% 4%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 142 76% 55%;
+    --sidebar-primary-foreground: 0 0% 3%;
+    --sidebar-accent: 0 0% 8%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 142 50% 20%;
+    --sidebar-ring: 142 76% 55%;
 
-    /* Chart colors - terminal palette */
-    --chart-1: 142 76% 50%;
-    --chart-2: 195 100% 50%;
-    --chart-3: 0 85% 55%;
-    --chart-4: 38 92% 50%;
-    --chart-5: 280 80% 60%;
+    /* Chart colors - vibrant neon palette */
+    --chart-1: 142 76% 55%;
+    --chart-2: 195 100% 60%;
+    --chart-3: 0 90% 60%;
+    --chart-4: 38 95% 55%;
+    --chart-5: 280 85% 65%;
   }
 
   /* Dark mode is the same - terminal is always dark */
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 142 76% 50%;
-    --primary-foreground: 0 0% 4%;
-    --secondary: 195 100% 50%;
-    --secondary-foreground: 0 0% 4%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 95%;
-    --destructive: 0 85% 55%;
-    --destructive-foreground: 0 0% 95%;
-    --border: 0 0% 20%;
-    --input: 0 0% 15%;
-    --ring: 142 76% 50%;
+    --background: 0 0% 3%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 142 76% 55%;
+    --primary-foreground: 0 0% 3%;
+    --secondary: 195 100% 60%;
+    --secondary-foreground: 0 0% 3%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 90% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 142 50% 20%;
+    --input: 0 0% 8%;
+    --ring: 142 76% 55%;
   }
 }
 
@@ -150,38 +152,44 @@
 }
 
 @layer utilities {
-  /* Terminal glow effects */
+  /* Terminal glow effects - ENHANCED */
   .glow-primary {
-    box-shadow: 0 0 10px hsl(var(--primary) / 0.3),
-                0 0 20px hsl(var(--primary) / 0.2),
-                0 0 30px hsl(var(--primary) / 0.1);
+    box-shadow: 0 0 8px hsl(var(--primary) / 0.4),
+                0 0 16px hsl(var(--primary) / 0.25),
+                0 0 24px hsl(var(--primary) / 0.15);
   }
 
   .glow-primary-strong {
-    box-shadow: 0 0 5px hsl(var(--primary) / 0.5),
-                0 0 15px hsl(var(--primary) / 0.4),
-                0 0 30px hsl(var(--primary) / 0.3),
-                0 0 45px hsl(var(--primary) / 0.2);
+    box-shadow: 0 0 6px hsl(var(--primary) / 0.6),
+                0 0 12px hsl(var(--primary) / 0.5),
+                0 0 24px hsl(var(--primary) / 0.4),
+                0 0 36px hsl(var(--primary) / 0.25);
   }
 
   .glow-secondary {
-    box-shadow: 0 0 10px hsl(var(--secondary) / 0.3),
-                0 0 20px hsl(var(--secondary) / 0.2);
+    box-shadow: 0 0 8px hsl(var(--secondary) / 0.4),
+                0 0 16px hsl(var(--secondary) / 0.25),
+                0 0 24px hsl(var(--secondary) / 0.15);
   }
 
   .glow-destructive {
-    box-shadow: 0 0 10px hsl(var(--destructive) / 0.3),
-                0 0 20px hsl(var(--destructive) / 0.2);
+    box-shadow: 0 0 8px hsl(var(--destructive) / 0.4),
+                0 0 16px hsl(var(--destructive) / 0.25);
   }
 
   .text-glow-primary {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.5),
-                 0 0 20px hsl(var(--primary) / 0.3);
+    text-shadow: 0 0 8px hsl(var(--primary) / 0.6),
+                 0 0 16px hsl(var(--primary) / 0.4);
   }
 
   .text-glow-secondary {
-    text-shadow: 0 0 10px hsl(var(--secondary) / 0.5),
-                 0 0 20px hsl(var(--secondary) / 0.3);
+    text-shadow: 0 0 8px hsl(var(--secondary) / 0.6),
+                 0 0 16px hsl(var(--secondary) / 0.4);
+  }
+
+  .text-glow-white {
+    text-shadow: 0 0 8px rgba(255, 255, 255, 0.5),
+                 0 0 16px rgba(255, 255, 255, 0.3);
   }
 
   /* Terminal border styles */
