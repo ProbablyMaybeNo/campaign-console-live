@@ -62,7 +62,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         style={{ borderColor }}
       >
         <h1
-          className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-wide text-center"
+          className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-wide text-center"
           style={{
             color: titleColor,
             fontFamily: "'UnifrakturMaguntia', serif",
