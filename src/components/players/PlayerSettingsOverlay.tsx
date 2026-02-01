@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
@@ -7,25 +7,25 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   usePlayerSettings, 
-  useUpdatePlayerSettings, 
   usePlayerNarrativeEntries,
   useCreatePlayerNarrativeEntry,
   useDeletePlayerNarrativeEntry,
   useLeaveCampaign,
 } from "@/hooks/usePlayerSettings";
+import { useAutoSavePlayerSettings } from "@/hooks/useAutoSavePlayerSettings";
 import { useNavigate } from "react-router-dom";
 import { 
   User, 
   Swords, 
   Link2, 
-  Coins, 
   FileText, 
   BookOpen,
   Plus,
   Trash2,
-  Save,
   Loader2,
   LogOut,
+  ExternalLink,
+  CheckCircle2,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
@@ -44,11 +44,21 @@ interface PlayerSettingsOverlayProps {
   campaignId: string;
 }
 
+// Simple URL validation
+function isValidUrl(string: string): boolean {
+  try {
+    new URL(string);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps) {
   const navigate = useNavigate();
   const { data: settings, isLoading } = usePlayerSettings(campaignId);
   const { data: narrativeEntries, isLoading: narrativeLoading } = usePlayerNarrativeEntries(campaignId);
-  const updateSettings = useUpdatePlayerSettings(campaignId);
+  const { autoSave, isSaving } = useAutoSavePlayerSettings(campaignId);
   const createNarrativeEntry = useCreatePlayerNarrativeEntry(campaignId);
   const deleteNarrativeEntry = useDeletePlayerNarrativeEntry(campaignId);
   const leaveCampaign = useLeaveCampaign();
@@ -66,9 +76,6 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
   const [warbandLink, setWarbandLink] = useState("");
   const [additionalInfo, setAdditionalInfo] = useState("");
 
-  // Track if form has been modified
-  const [hasChanges, setHasChanges] = useState(false);
-
   // New narrative entry state
   const [showNewEntry, setShowNewEntry] = useState(false);
   const [newEntryTitle, setNewEntryTitle] = useState("");
@@ -83,17 +90,16 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
       setCurrentPoints(settings.current_points?.toString() || "");
       setWarbandLink(settings.warband_link || "");
       setAdditionalInfo(settings.additional_info || "");
-      setHasChanges(false);
     }
   }, [settings]);
 
-  const handleFieldChange = (setter: (val: string) => void) => (val: string) => {
-    setter(val);
-    setHasChanges(true);
-  };
+  const isGMPreview = settings?.id === "gm-preview";
 
-  const handleSave = async () => {
-    await updateSettings.mutateAsync({
+  // Auto-save whenever form fields change (debounced)
+  const triggerAutoSave = useCallback(() => {
+    if (isGMPreview) return; // Don't auto-save in GM preview mode
+    
+    autoSave({
       player_name: playerName.trim() || null,
       faction: faction.trim() || null,
       sub_faction: subFaction.trim() || null,
@@ -101,8 +107,15 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
       warband_link: warbandLink.trim() || null,
       additional_info: additionalInfo.trim() || null,
     });
-    setHasChanges(false);
-  };
+  }, [playerName, faction, subFaction, currentPoints, warbandLink, additionalInfo, autoSave, isGMPreview]);
+
+  // Trigger auto-save on field changes (after initial load)
+  useEffect(() => {
+    // Only trigger if we have settings loaded (not on initial mount)
+    if (settings && settings.id !== "gm-preview") {
+      triggerAutoSave();
+    }
+  }, [playerName, faction, subFaction, currentPoints, warbandLink, additionalInfo]);
 
   const handleAddNarrativeEntry = async () => {
     if (!newEntryTitle.trim()) return;
@@ -114,6 +127,8 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
     setNewEntryContent("");
     setShowNewEntry(false);
   };
+
+  const warbandLinkValid = !warbandLink.trim() || isValidUrl(warbandLink.trim());
 
   if (isLoading) {
     return (
@@ -134,8 +149,6 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
     );
   }
 
-  const isGMPreview = settings.id === "gm-preview";
-
   return (
     <ScrollArea className="h-full">
       <div className="space-y-6 p-1 pr-4">
@@ -147,6 +160,24 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
             </p>
           </div>
         )}
+
+        {/* Auto-save indicator */}
+        {!isGMPreview && (
+          <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+            {isSaving ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-3 h-3 text-green-500" />
+                <span>Auto-save enabled</span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Player Info Section */}
         <section className="space-y-4">
           <div className="flex items-center gap-2 text-primary">
@@ -158,14 +189,14 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
             <TerminalInput
               label="Name"
               value={playerName}
-              onChange={(e) => handleFieldChange(setPlayerName)(e.target.value)}
+              onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Your name or alias..."
             />
 
             <TerminalInput
               label="Current Points / Gold"
               value={currentPoints}
-              onChange={(e) => handleFieldChange(setCurrentPoints)(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) => setCurrentPoints(e.target.value.replace(/\D/g, ""))}
               placeholder="0"
               type="text"
             />
@@ -183,14 +214,14 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
             <TerminalInput
               label="Faction"
               value={faction}
-              onChange={(e) => handleFieldChange(setFaction)(e.target.value)}
+              onChange={(e) => setFaction(e.target.value)}
               placeholder="e.g., Space Marines"
             />
 
             <TerminalInput
               label="Sub-Faction"
               value={subFaction}
-              onChange={(e) => handleFieldChange(setSubFaction)(e.target.value)}
+              onChange={(e) => setSubFaction(e.target.value)}
               placeholder="e.g., Ultramarines"
             />
           </div>
@@ -203,14 +234,33 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
             <h3 className="text-xs font-mono uppercase tracking-wider">Warband Link</h3>
           </div>
 
-          <TerminalInput
-            value={warbandLink}
-            onChange={(e) => handleFieldChange(setWarbandLink)(e.target.value)}
-            placeholder="https://newrecruit.eu/..."
-          />
-          <p className="text-[10px] text-muted-foreground">
-            Link to your warband on New Recruit or another roster builder
-          </p>
+          <div className="space-y-2">
+            <TerminalInput
+              value={warbandLink}
+              onChange={(e) => setWarbandLink(e.target.value)}
+              placeholder="https://newrecruit.eu/..."
+              className={!warbandLinkValid ? "border-destructive" : ""}
+            />
+            {!warbandLinkValid && (
+              <p className="text-[10px] text-destructive">
+                Please enter a valid URL (starting with http:// or https://)
+              </p>
+            )}
+            {warbandLink.trim() && warbandLinkValid && (
+              <a
+                href={warbandLink.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open warband link
+              </a>
+            )}
+            <p className="text-[10px] text-muted-foreground">
+              Link to your warband on New Recruit or another roster builder
+            </p>
+          </div>
         </section>
 
         {/* Additional Info Section */}
@@ -222,33 +272,11 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
 
           <Textarea
             value={additionalInfo}
-            onChange={(e) => handleFieldChange(setAdditionalInfo)(e.target.value)}
+            onChange={(e) => setAdditionalInfo(e.target.value)}
             placeholder="Paste your warband list or any additional notes here..."
             className="min-h-[150px] font-mono text-sm bg-input border-border"
           />
         </section>
-
-        {/* Save Button - hidden in GM preview mode */}
-        {!isGMPreview && (
-          <div className="flex justify-end border-t border-border pt-4">
-            <TerminalButton
-              onClick={handleSave}
-              disabled={!hasChanges || updateSettings.isPending}
-            >
-              {updateSettings.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Settings
-                </>
-              )}
-            </TerminalButton>
-          </div>
-        )}
 
         {/* Narrative Section */}
         <section className="space-y-4 border-t border-border pt-6">

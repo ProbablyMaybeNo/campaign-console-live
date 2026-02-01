@@ -8,8 +8,20 @@ import {
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
+import { supabase } from "@/integrations/supabase/client";
 import { useJoinCampaign } from "@/hooks/useCampaigns";
 import { useNavigate } from "react-router-dom";
+import { Users, Info, Shield } from "lucide-react";
+
+interface CampaignPreview {
+  id: string;
+  name: string;
+  description: string | null;
+  game_system: string | null;
+  player_count: number;
+  max_players: number | null;
+  hasPassword: boolean;
+}
 
 interface JoinCampaignModalProps {
   open: boolean;
@@ -19,15 +31,65 @@ interface JoinCampaignModalProps {
 export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
   const [joinCode, setJoinCode] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [campaignPreview, setCampaignPreview] = useState<CampaignPreview | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const joinCampaign = useJoinCampaign();
   const navigate = useNavigate();
+
+  const handleCodeChange = async (code: string) => {
+    const upperCode = code.toUpperCase();
+    setJoinCode(upperCode);
+    setPreviewError(null);
+    setCampaignPreview(null);
+    setPassword("");
+
+    // Only lookup when we have a complete 6-character code
+    if (upperCode.length === 6) {
+      setIsLoadingPreview(true);
+      try {
+        // Lookup campaign by join code
+        const { data: campaign, error } = await supabase
+          .from("campaigns")
+          .select("id, name, description, game_system, max_players, password")
+          .eq("join_code", upperCode)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!campaign) {
+          setPreviewError("No campaign found with this code.");
+          setIsLoadingPreview(false);
+          return;
+        }
+
+        // Get player count
+        const { count } = await supabase
+          .from("campaign_players")
+          .select("id", { count: "exact", head: true })
+          .eq("campaign_id", campaign.id);
+
+        setCampaignPreview({
+          id: campaign.id,
+          name: campaign.name,
+          description: campaign.description,
+          game_system: campaign.game_system,
+          player_count: count || 0,
+          max_players: campaign.max_players,
+          hasPassword: !!campaign.password,
+        });
+      } catch (error) {
+        setPreviewError("Failed to lookup campaign.");
+      }
+      setIsLoadingPreview(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const trimmedCode = joinCode.trim().toUpperCase();
-    if (!trimmedCode) return;
+    if (!trimmedCode || !campaignPreview) return;
 
     try {
       const campaignId = await joinCampaign.mutateAsync({
@@ -36,20 +98,17 @@ export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
       });
       resetForm();
       onClose();
-      // Navigate to the campaign as a player
       navigate(`/campaign/${campaignId}`);
     } catch (error: any) {
-      // If password is required, show password field
-      if (error.message?.includes("password")) {
-        setShowPassword(true);
-      }
+      // Error is handled by the mutation
     }
   };
 
   const resetForm = () => {
     setJoinCode("");
     setPassword("");
-    setShowPassword(false);
+    setCampaignPreview(null);
+    setPreviewError(null);
   };
 
   const handleClose = () => {
@@ -71,37 +130,81 @@ export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
         <form onSubmit={handleSubmit} className="space-y-6 mt-4">
           <div className="space-y-2">
             <label className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
-              Campaign ID
+              Join Code
             </label>
             <TerminalInput
               value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+              onChange={(e) => handleCodeChange(e.target.value)}
               placeholder="Enter 6-character code (e.g., AB123C)"
               disabled={joinCampaign.isPending}
-              className="font-mono uppercase"
+              className="font-mono uppercase text-lg tracking-widest text-center"
               maxLength={6}
             />
             <p className="text-xs text-muted-foreground">
-              Ask your Games Master for the campaign ID to join their campaign.
+              Ask your Games Master for the campaign's join code.
             </p>
           </div>
 
-          {showPassword && (
-            <div className="space-y-2">
-              <label className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
-                Password
-              </label>
-              <TerminalInput
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter campaign password..."
-                disabled={joinCampaign.isPending}
-                className="font-mono"
-              />
-              <p className="text-xs text-destructive">
-                This campaign requires a password to join.
-              </p>
+          {/* Loading preview */}
+          {isLoadingPreview && (
+            <div className="flex items-center justify-center py-4">
+              <TerminalLoader text="Looking up campaign" size="sm" />
+            </div>
+          )}
+
+          {/* Preview error */}
+          {previewError && (
+            <div className="border border-destructive/50 bg-destructive/10 rounded p-3 text-center">
+              <p className="text-sm text-destructive font-mono">{previewError}</p>
+            </div>
+          )}
+
+          {/* Campaign Preview */}
+          {campaignPreview && (
+            <div className="border border-primary/50 bg-primary/5 rounded p-4 space-y-3 animate-fade-in">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-mono text-foreground font-medium text-base truncate">
+                    {campaignPreview.name}
+                  </h3>
+                  {campaignPreview.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {campaignPreview.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                {campaignPreview.game_system && (
+                  <span className="font-mono">🎮 {campaignPreview.game_system}</span>
+                )}
+                <span className="flex items-center gap-1 font-mono">
+                  <Users className="w-3 h-3" />
+                  {campaignPreview.player_count}
+                  {campaignPreview.max_players && ` / ${campaignPreview.max_players}`} players
+                </span>
+              </div>
+
+              {campaignPreview.hasPassword && (
+                <div className="border-t border-primary/30 pt-3 mt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-4 h-4 text-yellow-500" />
+                    <span className="text-xs text-yellow-500 font-mono uppercase">
+                      Password Required
+                    </span>
+                  </div>
+                  <TerminalInput
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter campaign password..."
+                    disabled={joinCampaign.isPending}
+                    className="font-mono"
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -116,7 +219,7 @@ export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
             </TerminalButton>
             <TerminalButton
               type="submit"
-              disabled={!joinCode.trim() || joinCampaign.isPending}
+              disabled={!campaignPreview || (campaignPreview.hasPassword && !password.trim()) || joinCampaign.isPending}
             >
               {joinCampaign.isPending ? (
                 <TerminalLoader text="Joining" size="sm" />
