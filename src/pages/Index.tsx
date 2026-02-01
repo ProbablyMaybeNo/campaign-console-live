@@ -28,10 +28,16 @@ export default function Index() {
         </div>
         
         <div className="space-y-2">
-          <p className="text-lg text-foreground uppercase tracking-wider">
+          <p 
+            className="text-lg text-white uppercase tracking-wider"
+            style={{ textShadow: '0 0 10px rgba(255, 255, 255, 0.5)' }}
+          >
             Wargame Campaign Tracker
           </p>
-          <div className="text-xs text-foreground/80 font-mono">
+          <div 
+            className="text-xs text-white/90 font-mono"
+            style={{ textShadow: '0 0 8px rgba(255, 255, 255, 0.4)' }}
+          >
             BOOT: CAMPAIGN OPTIMIZATION — INITIALIZING...
           </div>
         </div>
