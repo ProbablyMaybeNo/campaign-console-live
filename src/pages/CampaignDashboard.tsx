@@ -1,7 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
-import { useDashboardComponents, DashboardComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
+import { useDashboardComponents, DashboardComponent, useDeleteComponent, useUpdateComponent, useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
 import { useOverlayState, OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
@@ -13,8 +13,11 @@ import { PlayerFAB } from "@/components/dashboard/PlayerFAB";
 import { PlayerOnboardingModal, usePlayerOnboarding } from "@/components/players/PlayerOnboardingModal";
 import { KeyboardShortcutsModal } from "@/components/dashboard/KeyboardShortcutsModal";
 import { CommandPalette } from "@/components/dashboard/CommandPalette";
+import { MultiSelectToolbar } from "@/components/dashboard/MultiSelectToolbar";
+import { CampaignExportModal } from "@/components/dashboard/CampaignExportModal";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
+import { useMultiSelect } from "@/hooks/useMultiSelect";
 import { 
   ArrowLeft, 
   Settings, 
@@ -58,7 +61,10 @@ export default function CampaignDashboard() {
   const { user, signOut } = useAuth();
   const isGM = useIsGM(campaignId);
   const deleteComponent = useDeleteComponent();
+  const updateComponent = useUpdateComponent();
+  const createComponent = useCreateComponent();
   const { handleDeleteWithUndo } = useUndoDelete(campaignId!);
+  const multiSelect = useMultiSelect();
 
   const { activeOverlay, openOverlay, closeOverlay } = useOverlayState();
 
@@ -66,6 +72,7 @@ export default function CampaignDashboard() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -77,8 +84,58 @@ export default function CampaignDashboard() {
   // Player onboarding
   const { showOnboarding, closeOnboarding } = usePlayerOnboarding(campaignId!, !effectiveIsGM && !isGM);
 
+  // Handle component selection with multi-select support
+  const handleComponentSelect = useCallback((component: DashboardComponent | null, shiftKey = false) => {
+    if (!component) {
+      setSelectedComponent(null);
+      if (!shiftKey) {
+        multiSelect.clearSelection();
+      }
+      return;
+    }
+
+    if (shiftKey && effectiveIsGM) {
+      multiSelect.toggleSelect(component.id, true);
+      setSelectedComponent(component);
+    } else {
+      multiSelect.toggleSelect(component.id, false);
+      setSelectedComponent(component);
+    }
+  }, [effectiveIsGM, multiSelect]);
+
+  // Escape key clears multi-select
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && multiSelect.selectedIds.size > 0) {
+        multiSelect.clearSelection();
+        setSelectedComponent(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [multiSelect]);
+
   // GM Keyboard Shortcuts
   const handleDeleteSelected = useCallback(() => {
+    // Handle multi-select delete
+    if (multiSelect.selectedIds.size > 1) {
+      const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
+      const lockedCount = selectedComponents.filter((c) => (c.config as { locked?: boolean })?.locked).length;
+      if (lockedCount > 0) {
+        toast.error(`${lockedCount} widget(s) are locked. Unlock them first.`);
+        return;
+      }
+      selectedComponents.forEach((c) => {
+        handleDeleteWithUndo(c, () => {
+          deleteComponent.mutate({ id: c.id, campaignId: campaignId! });
+        });
+      });
+      multiSelect.clearSelection();
+      setSelectedComponent(null);
+      return;
+    }
+
+    // Handle single select delete
     if (selectedComponent) {
       const isLocked = (selectedComponent.config as { locked?: boolean })?.locked ?? false;
       if (isLocked) {
@@ -90,7 +147,7 @@ export default function CampaignDashboard() {
       });
       setSelectedComponent(null);
     }
-  }, [selectedComponent, handleDeleteWithUndo, deleteComponent, campaignId]);
+  }, [selectedComponent, multiSelect, components, handleDeleteWithUndo, deleteComponent, campaignId]);
 
   const handleCopyJoinCode = useCallback(() => {
     if (campaign?.join_code) {
@@ -104,12 +161,97 @@ export default function CampaignDashboard() {
     toast.info("Opening Messages to send an announcement");
   }, [openOverlay]);
 
+  const handleExportCampaign = useCallback(() => {
+    setShowExportModal(true);
+  }, []);
+
   useGMKeyboardShortcuts({
     isGM: effectiveIsGM,
     onOpenCommandPalette: () => setShowCommandPalette(true),
     onShowShortcuts: () => setShowShortcuts(true),
     onDeleteSelected: handleDeleteSelected,
   });
+
+  // Multi-select bulk operations
+  const handleBulkDelete = useCallback(() => {
+    const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
+    const lockedCount = selectedComponents.filter((c) => (c.config as { locked?: boolean })?.locked).length;
+    if (lockedCount > 0) {
+      toast.error(`${lockedCount} widget(s) are locked. Unlock them first.`);
+      return;
+    }
+    selectedComponents.forEach((c) => {
+      handleDeleteWithUndo(c, () => {
+        deleteComponent.mutate({ id: c.id, campaignId: campaignId! });
+      });
+    });
+    multiSelect.clearSelection();
+    setSelectedComponent(null);
+    toast.success(`Deleted ${selectedComponents.length} widgets`);
+  }, [components, multiSelect, handleDeleteWithUndo, deleteComponent, campaignId]);
+
+  const handleBulkLock = useCallback(() => {
+    const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
+    selectedComponents.forEach((c) => {
+      updateComponent.mutate({
+        id: c.id,
+        config: { ...(c.config as object), locked: true },
+      });
+    });
+    toast.success(`Locked ${selectedComponents.length} widgets`);
+  }, [components, multiSelect, updateComponent]);
+
+  const handleBulkUnlock = useCallback(() => {
+    const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
+    selectedComponents.forEach((c) => {
+      updateComponent.mutate({
+        id: c.id,
+        config: { ...(c.config as object), locked: false },
+      });
+    });
+    toast.success(`Unlocked ${selectedComponents.length} widgets`);
+  }, [components, multiSelect, updateComponent]);
+
+  const handleBulkShow = useCallback(() => {
+    const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
+    selectedComponents.forEach((c) => {
+      updateComponent.mutate({
+        id: c.id,
+        config: { ...(c.config as object), visibility: "all" },
+      });
+    });
+    toast.success(`${selectedComponents.length} widgets visible to players`);
+  }, [components, multiSelect, updateComponent]);
+
+  const handleBulkHide = useCallback(() => {
+    const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
+    selectedComponents.forEach((c) => {
+      updateComponent.mutate({
+        id: c.id,
+        config: { ...(c.config as object), visibility: "gm" },
+      });
+    });
+    toast.success(`${selectedComponents.length} widgets hidden from players`);
+  }, [components, multiSelect, updateComponent]);
+
+  const handleBulkDuplicate = useCallback(() => {
+    const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
+    selectedComponents.forEach((c, index) => {
+      createComponent.mutate({
+        campaign_id: campaignId!,
+        name: `${c.name} (Copy)`,
+        component_type: c.component_type,
+        data_source: c.data_source,
+        config: c.config,
+        position_x: c.position_x + 50 + index * 20,
+        position_y: c.position_y + 50 + index * 20,
+        width: c.width,
+        height: c.height,
+      });
+    });
+    multiSelect.clearSelection();
+    toast.success(`Duplicated ${selectedComponents.length} widgets`);
+  }, [components, multiSelect, createComponent, campaignId]);
 
   // Persist sidebar state to localStorage
   const handleSidebarToggle = (open: boolean) => {
@@ -283,7 +425,8 @@ export default function CampaignDashboard() {
             isGM={effectiveIsGM}
             campaignId={campaignId!}
             selectedComponentId={selectedComponent?.id || null}
-            onComponentSelect={setSelectedComponent}
+            multiSelectedIds={multiSelect.selectedIds}
+            onComponentSelect={handleComponentSelect}
           />
 
           {/* GM: Add component button */}
@@ -309,6 +452,20 @@ export default function CampaignDashboard() {
           )}
         </main>
       </div>
+
+      {/* Multi-select toolbar */}
+      {effectiveIsGM && (
+        <MultiSelectToolbar
+          selectedCount={multiSelect.selectedIds.size}
+          onDelete={handleBulkDelete}
+          onLockAll={handleBulkLock}
+          onUnlockAll={handleBulkUnlock}
+          onShowAll={handleBulkShow}
+          onHideAll={handleBulkHide}
+          onDuplicateAll={handleBulkDuplicate}
+          onClearSelection={multiSelect.clearSelection}
+        />
+      )}
 
       <CampaignOverlays
         activeOverlay={activeOverlay}
@@ -349,6 +506,14 @@ export default function CampaignDashboard() {
         onShowShortcuts={() => setShowShortcuts(true)}
         onCopyJoinCode={handleCopyJoinCode}
         onSendAnnouncement={handleSendAnnouncement}
+        onExportCampaign={handleExportCampaign}
+      />
+
+      {/* Export Modal */}
+      <CampaignExportModal
+        open={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        campaignId={campaignId!}
       />
     </div>
   );

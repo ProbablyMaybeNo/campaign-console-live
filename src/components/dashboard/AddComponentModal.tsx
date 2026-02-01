@@ -14,6 +14,7 @@ import {
   Map,
   Users,
   Calendar,
+  Activity,
 } from "lucide-react";
 
 interface AddComponentModalProps {
@@ -34,6 +35,7 @@ const COMPONENT_TYPES = [
   { type: "map", label: "Map", icon: Map, description: "Live campaign map with markers" },
   { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
+  { type: "activity_feed", label: "Activity Feed", icon: Activity, description: "Real-time campaign activity log" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -98,6 +100,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       config.columns = ["name", "faction", "current_points"];
     } else if (selectedType === "calendar") {
       width = 450;
+      height = 400;
+    } else if (selectedType === "activity_feed") {
+      width = 350;
       height = 400;
     }
 
@@ -233,6 +238,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "calendar" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   Displays a monthly calendar with rounds and events. Manage schedule via the Schedule overlay.
+                </p>
+              )}
+
+              {selectedType === "activity_feed" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Shows real-time campaign activity including player joins, messages, and warband updates.
                 </p>
               )}
 

@@ -18,8 +18,9 @@ interface InfiniteCanvasProps {
   components: DashboardComponent[];
   isGM: boolean;
   campaignId: string;
-  onComponentSelect: (component: DashboardComponent | null) => void;
+  onComponentSelect: (component: DashboardComponent | null, shiftKey?: boolean) => void;
   selectedComponentId: string | null;
+  multiSelectedIds?: Set<string>;
 }
 
 const ZOOM_STEP = 0.15;
@@ -32,6 +33,7 @@ export function InfiniteCanvas({
   campaignId,
   onComponentSelect,
   selectedComponentId,
+  multiSelectedIds = new Set(),
 }: InfiniteCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -395,7 +397,8 @@ export function InfiniteCanvas({
                 isGM={isGM}
                 isPanning={isPanning}
                 isSelected={selectedComponentId === component.id}
-                onSelect={() => onComponentSelect(component)}
+                isMultiSelected={multiSelectedIds.has(component.id) && multiSelectedIds.size > 1}
+                onSelect={(shiftKey: boolean) => onComponentSelect(component, shiftKey)}
                 campaignId={campaignId}
                 scale={scale}
                 onResize={handleComponentResize}

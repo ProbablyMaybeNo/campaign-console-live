@@ -26,6 +26,7 @@ import {
   Send,
   Copy,
   LayoutGrid,
+  Download,
 } from "lucide-react";
 import { OverlayType } from "@/hooks/useOverlayState";
 
@@ -38,6 +39,7 @@ interface CommandPaletteProps {
   onShowShortcuts: () => void;
   onCopyJoinCode: () => void;
   onSendAnnouncement: () => void;
+  onExportCampaign?: () => void;
 }
 
 type CommandAction = {
@@ -57,6 +59,7 @@ export function CommandPalette({
   onShowShortcuts,
   onCopyJoinCode,
   onSendAnnouncement,
+  onExportCampaign,
 }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
 
@@ -65,6 +68,7 @@ export function CommandPalette({
     { id: "add-widget", label: "Add new widget", icon: Plus, category: "quick", action: () => { onAddComponent(); onClose(); } },
     { id: "copy-join", label: "Copy join code", icon: Copy, category: "quick", action: () => { onCopyJoinCode(); onClose(); } },
     { id: "send-announcement", label: "Send announcement", icon: Send, category: "quick", action: () => { onSendAnnouncement(); onClose(); } },
+    ...(onExportCampaign ? [{ id: "export-campaign", label: "Export campaign backup", icon: Download, category: "quick" as const, action: () => { onExportCampaign(); onClose(); } }] : []),
     
     // Navigation
     { id: "home", label: "Go to Dashboard", icon: LayoutGrid, category: "navigation", action: () => { onClose(); } },

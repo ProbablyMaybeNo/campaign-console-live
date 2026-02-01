@@ -33,6 +33,8 @@ const shortcuts = [
       { keys: ["Drag title"], description: "Move widget" },
       { keys: ["Corner handle"], description: "Resize widget" },
       { keys: ["Del / Backspace"], description: "Delete selected widget" },
+      { keys: ["Shift", "Click"], description: "Multi-select widgets" },
+      { keys: ["Esc"], description: "Clear selection" },
     ],
   },
 ];
