@@ -84,7 +84,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
             <IconField icon={<Hash className="w-4 h-4" />} value={joinCode || "—"} valueColor="hsl(0, 85%, 60%)" />
           )}
           {displaySettings.showPlayers && (
-            <IconField icon={<Users className="w-4 h-4" />} value={`${players.length}/${maxPlayers}`} valueColor="hsl(195, 100%, 60%)" />
+            <IconField icon={<Users className="w-4 h-4" />} value={`${players.length}/${maxPlayers}`} valueColor="hsl(195, 100%, 60%)" alignRight />
           )}
 
           {/* Row 2: Round, Date Range */}
@@ -127,11 +127,12 @@ interface IconFieldProps {
   icon: React.ReactNode;
   value: string;
   valueColor?: string;
+  alignRight?: boolean;
 }
 
-function IconField({ icon, value, valueColor = "white" }: IconFieldProps) {
+function IconField({ icon, value, valueColor = "white", alignRight }: IconFieldProps) {
   return (
-    <div className="flex items-center gap-2">
+    <div className={`flex items-center gap-2 ${alignRight ? "justify-end" : ""}`}>
       <span className="text-[hsl(195,100%,60%)]">{icon}</span>
       <span
         className="font-mono text-sm font-medium"
