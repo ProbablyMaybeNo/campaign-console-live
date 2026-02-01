@@ -14,6 +14,7 @@ import { NarrativeTableWidget } from "./widgets/NarrativeTableWidget";
 import { CalendarWidget } from "./widgets/CalendarWidget";
 import { CampaignConsoleWidget } from "./widgets/CampaignConsoleWidget";
 import { ActivityFeedWidget } from "./widgets/ActivityFeedWidget";
+import { RollRecorderWidget } from "./widgets/RollRecorderWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -47,6 +48,7 @@ const COMPONENT_ICONS: Record<string, string> = {
   narrative_table: "📖",
   calendar: "📅",
   activity_feed: "⚡",
+  roll_recorder: "📜",
   "campaign-console": "⚔️",
 };
 
@@ -159,7 +161,9 @@ function DraggableComponentInner({
       case "counter":
         return <CounterWidget component={component} isGM={isGM} />;
       case "dice_roller":
-        return <DiceRollerWidget component={component} isGM={isGM} />;
+        return <DiceRollerWidget component={component} campaignId={campaignId} isGM={isGM} />;
+      case "roll_recorder":
+        return <RollRecorderWidget component={component} campaignId={campaignId} isGM={isGM} />;
       case "card":
       case "rules_card":
       case "custom_card":

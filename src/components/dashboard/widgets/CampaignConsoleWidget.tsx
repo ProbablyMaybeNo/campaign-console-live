@@ -1,5 +1,5 @@
 import { memo, useMemo } from "react";
-import { useCampaign, Campaign, DisplaySettings } from "@/hooks/useCampaigns";
+import { useCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCampaignPlayers } from "@/hooks/useCampaignPlayers";
 import { format } from "date-fns";
 import { Users, Swords, CalendarDays, Target, Hash } from "lucide-react";
@@ -11,7 +11,6 @@ interface CampaignConsoleWidgetProps {
 
 export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
   campaignId,
-  isGM,
 }: CampaignConsoleWidgetProps) {
   const { data: campaign } = useCampaign(campaignId);
   const { data: players = [] } = useCampaignPlayers(campaignId);
@@ -38,8 +37,8 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
     };
   }, [campaign]);
 
-  const titleColor = campaign?.title_color || "#22c55e";
-  const borderColor = campaign?.border_color || "#22c55e";
+  const titleColor = campaign?.title_color || "hsl(142, 76%, 55%)";
+  const borderColor = campaign?.border_color || "hsl(142, 76%, 55%)";
 
   if (!campaign) return null;
 
@@ -55,18 +54,79 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
   const formatDate = (date: string) => format(new Date(date), "dd/MM/yy");
 
   return (
-    <div className="w-full h-full flex flex-col p-3 gap-2 overflow-hidden select-none">
+    <div className="w-full h-full flex flex-col p-4 gap-3 overflow-hidden select-none relative">
+      {/* Decorative Frame with Corner Accents */}
+      <div className="absolute inset-3 pointer-events-none">
+        {/* Corner accents - Top Left */}
+        <div 
+          className="absolute top-0 left-0 w-6 h-6"
+          style={{
+            borderTop: `2px solid ${borderColor}`,
+            borderLeft: `2px solid ${borderColor}`,
+            boxShadow: `0 0 8px ${borderColor}40`,
+          }}
+        />
+        {/* Corner accents - Top Right */}
+        <div 
+          className="absolute top-0 right-0 w-6 h-6"
+          style={{
+            borderTop: `2px solid ${borderColor}`,
+            borderRight: `2px solid ${borderColor}`,
+            boxShadow: `0 0 8px ${borderColor}40`,
+          }}
+        />
+        {/* Corner accents - Bottom Left */}
+        <div 
+          className="absolute bottom-0 left-0 w-6 h-6"
+          style={{
+            borderBottom: `2px solid ${borderColor}`,
+            borderLeft: `2px solid ${borderColor}`,
+            boxShadow: `0 0 8px ${borderColor}40`,
+          }}
+        />
+        {/* Corner accents - Bottom Right */}
+        <div 
+          className="absolute bottom-0 right-0 w-6 h-6"
+          style={{
+            borderBottom: `2px solid ${borderColor}`,
+            borderRight: `2px solid ${borderColor}`,
+            boxShadow: `0 0 8px ${borderColor}40`,
+          }}
+        />
+        
+        {/* Outer frame lines */}
+        <div 
+          className="absolute top-0 left-8 right-8 h-px"
+          style={{ backgroundColor: borderColor, opacity: 0.4 }}
+        />
+        <div 
+          className="absolute bottom-0 left-8 right-8 h-px"
+          style={{ backgroundColor: borderColor, opacity: 0.4 }}
+        />
+        <div 
+          className="absolute left-0 top-8 bottom-8 w-px"
+          style={{ backgroundColor: borderColor, opacity: 0.4 }}
+        />
+        <div 
+          className="absolute right-0 top-8 bottom-8 w-px"
+          style={{ backgroundColor: borderColor, opacity: 0.4 }}
+        />
+      </div>
+
       {/* Campaign Title Box */}
       <div
-        className="border-2 px-6 py-4 flex items-center justify-center"
-        style={{ borderColor }}
+        className="border-2 px-6 py-4 flex items-center justify-center relative z-10"
+        style={{ 
+          borderColor,
+          boxShadow: `0 0 15px ${borderColor}30, inset 0 0 20px ${borderColor}10`,
+        }}
       >
         <h1
           className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-wide text-center"
           style={{
             color: titleColor,
             fontFamily: "'UnifrakturMaguntia', serif",
-            textShadow: `0 0 10px ${titleColor}40, 0 0 20px ${titleColor}20`,
+            textShadow: `0 0 15px ${titleColor}60, 0 0 30px ${titleColor}30, 0 0 45px ${titleColor}15`,
           }}
         >
           {campaign.name}
@@ -75,8 +135,11 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
 
       {/* Campaign Info Grid */}
       <div
-        className="border border-dashed px-4 py-2"
-        style={{ borderColor: `${borderColor}60` }}
+        className="border border-dashed px-4 py-2 relative z-10"
+        style={{ 
+          borderColor: `${borderColor}60`,
+          boxShadow: `0 0 10px ${borderColor}10`,
+        }}
       >
         <div className="flex items-center justify-evenly gap-6 flex-wrap">
           {displaySettings.showId && (
@@ -84,6 +147,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
               icon={<Hash className="w-4 h-4" />}
               value={joinCode || "—"}
               valueColor="hsl(0, 85%, 60%)"
+              iconColor="hsl(0, 85%, 60%)"
             />
           )}
 
@@ -92,31 +156,39 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
               icon={<CalendarDays className="w-4 h-4" />}
               value={`${currentRound}/${totalRounds}`}
               valueColor="hsl(142, 76%, 60%)"
+              iconColor="hsl(142, 76%, 60%)"
             />
           )}
 
           {displaySettings.showDates && (startDate || endDate) && (
             <div className="flex items-center gap-2 whitespace-nowrap">
-              <span className="text-white font-mono text-xs font-medium leading-none">
+              <span 
+                className="font-mono text-xs font-medium leading-none"
+                style={{ 
+                  color: "hsl(0, 0%, 95%)",
+                  textShadow: "0 0 8px hsla(0, 0%, 100%, 0.3)",
+                }}
+              >
                 {startDate ? formatDate(startDate) : "—"} → {endDate ? formatDate(endDate) : "—"}
               </span>
             </div>
           )}
 
           {displaySettings.showGameSystem && gameSystem && (
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              <Swords className="w-4 h-4 text-[hsl(0,85%,60%)]" />
-              <span className="text-white font-mono text-xs font-medium leading-none">
-                {gameSystem}
-              </span>
-            </div>
+            <IconField
+              icon={<Swords className="w-4 h-4" />}
+              value={gameSystem}
+              valueColor="hsl(0, 0%, 95%)"
+              iconColor="hsl(0, 85%, 60%)"
+            />
           )}
 
           {displaySettings.showPlayers && (
             <IconField
               icon={<Users className="w-4 h-4" />}
               value={`${players.length}/${maxPlayers}`}
-              valueColor="hsl(195, 100%, 60%)"
+              valueColor="hsl(195, 100%, 65%)"
+              iconColor="hsl(195, 100%, 65%)"
             />
           )}
 
@@ -124,7 +196,8 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
             <IconField
               icon={<Target className="w-4 h-4" />}
               value={`${campaign.points_limit || 0} pts`}
-              valueColor="hsl(195, 100%, 60%)"
+              valueColor="hsl(195, 100%, 65%)"
+              iconColor="hsl(195, 100%, 65%)"
             />
           )}
 
@@ -139,15 +212,19 @@ interface IconFieldProps {
   icon: React.ReactNode;
   value: string;
   valueColor?: string;
+  iconColor?: string;
 }
 
-function IconField({ icon, value, valueColor = "white" }: IconFieldProps) {
+function IconField({ icon, value, valueColor = "white", iconColor = "hsl(195,100%,65%)" }: IconFieldProps) {
   return (
     <div className="flex items-center gap-1.5 whitespace-nowrap">
-      <span className="text-[hsl(195,100%,60%)]">{icon}</span>
+      <span style={{ color: iconColor, filter: `drop-shadow(0 0 4px ${iconColor}50)` }}>{icon}</span>
       <span
         className="font-mono text-xs font-medium leading-none"
-        style={{ color: valueColor }}
+        style={{ 
+          color: valueColor,
+          textShadow: `0 0 6px ${valueColor}40`,
+        }}
       >
         {value}
       </span>
@@ -160,28 +237,35 @@ interface StatusToggleProps {
 }
 
 function StatusToggle({ active }: StatusToggleProps) {
+  const activeColor = "hsl(142, 76%, 55%)";
+  const inactiveColor = "hsl(0, 85%, 55%)";
+  
   return (
     <div className="flex items-center gap-2">
       <div
-        className={`w-8 h-4 rounded-full relative transition-all ${
-          active ? "bg-[hsl(142,76%,40%)]" : "bg-[hsl(0,60%,35%)]"
-        }`}
+        className="w-8 h-4 rounded-full relative transition-all"
         style={{
+          backgroundColor: active ? "hsl(142, 76%, 30%)" : "hsl(0, 60%, 30%)",
           boxShadow: active
-            ? "0 0 8px hsl(142, 76%, 50%)"
-            : "0 0 8px hsl(0, 85%, 50%)",
+            ? `0 0 12px ${activeColor}, 0 0 4px ${activeColor}`
+            : `0 0 12px ${inactiveColor}, 0 0 4px ${inactiveColor}`,
         }}
       >
         <div
-          className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${
-            active ? "left-4" : "left-0.5"
-          }`}
+          className={`absolute top-0.5 w-3 h-3 rounded-full transition-all`}
+          style={{
+            backgroundColor: active ? activeColor : inactiveColor,
+            left: active ? "1rem" : "0.125rem",
+            boxShadow: `0 0 6px ${active ? activeColor : inactiveColor}`,
+          }}
         />
       </div>
       <span
-        className={`text-[10px] font-mono uppercase tracking-wider leading-none ${
-          active ? "text-[hsl(142,76%,60%)]" : "text-[hsl(0,85%,60%)]"
-        }`}
+        className="text-[10px] font-mono uppercase tracking-wider leading-none"
+        style={{
+          color: active ? activeColor : inactiveColor,
+          textShadow: `0 0 8px ${active ? activeColor : inactiveColor}50`,
+        }}
       >
         {active ? "Active" : "Inactive"}
       </span>
