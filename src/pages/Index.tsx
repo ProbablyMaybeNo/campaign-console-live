@@ -19,7 +19,7 @@ export default function Index() {
 
       <div className="text-center space-y-2 relative z-10">
         {/* Header Image */}
-        <div className="flex justify-center">
+        <div className="flex justify-center -mb-4">
           <img 
             src={headerImage} 
             alt="Campaign Console" 
