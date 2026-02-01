@@ -192,8 +192,8 @@ function DraggableComponentInner({
         onClick={handleClick}
       >
         <div 
-          className="h-full flex flex-col bg-card border border-[hsl(142,76%,50%)]/40 rounded overflow-hidden relative"
-          style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.15), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
+          className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden relative"
+          style={{ boxShadow: '0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
         >
           {/* Corner Controls for Campaign Console (GM only) */}
           {isGM && (
@@ -236,8 +236,8 @@ function DraggableComponentInner({
       onClick={handleClick}
     >
       <div 
-        className="h-full flex flex-col bg-card border border-[hsl(142,76%,50%)]/40 rounded overflow-hidden"
-        style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.15), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
+        className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden"
+        style={{ boxShadow: '0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
       >
         {/* Component Header - entire bar is draggable for GM */}
         <div 
