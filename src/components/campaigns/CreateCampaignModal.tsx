@@ -88,7 +88,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
     
     // Campaign Console dimensions
     const CONSOLE_WIDTH = 560;
-    const CONSOLE_HEIGHT = 400;
+    const CONSOLE_HEIGHT = 280;
 
     // Spawn at top-center of canvas
     const { position_x, position_y } = getConsoleSpawnPosition(CONSOLE_WIDTH, CONSOLE_HEIGHT);
