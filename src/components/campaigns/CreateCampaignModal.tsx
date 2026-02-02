@@ -8,12 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useCreateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { getConsoleSpawnPosition } from "@/lib/canvasPlacement";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, CalendarIcon } from "lucide-react";
 import { HelpButton } from "@/components/help/HelpButton";
-
+import { format, parse, isValid } from "date-fns";
+import { cn } from "@/lib/utils";
 interface CreateCampaignModalProps {
   open: boolean;
   onClose: () => void;
@@ -234,18 +237,62 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <TerminalInput
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <TerminalInput
-              label="End Date"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                Start Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex h-10 w-full items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    {startDate ? format(parse(startDate, "yyyy-MM-dd", new Date()), "PPP") : <span>Pick a date</span>}
+                    <CalendarIcon className="h-4 w-4 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate && isValid(parse(startDate, "yyyy-MM-dd", new Date())) ? parse(startDate, "yyyy-MM-dd", new Date()) : undefined}
+                    onSelect={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                End Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex h-10 w-full items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    {endDate ? format(parse(endDate, "yyyy-MM-dd", new Date()), "PPP") : <span>Pick a date</span>}
+                    <CalendarIcon className="h-4 w-4 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate && isValid(parse(endDate, "yyyy-MM-dd", new Date())) ? parse(endDate, "yyyy-MM-dd", new Date()) : undefined}
+                    onSelect={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           {/* Status Toggle */}

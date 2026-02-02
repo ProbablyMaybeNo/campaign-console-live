@@ -1,4 +1,4 @@
-import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database, UserCog } from "lucide-react";
+import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database, UserCog, Mail } from "lucide-react";
 import { OverlayPanel, OverlayEmpty } from "@/components/ui/OverlayPanel";
 import { PlayersWidget } from "./widgets/PlayersWidget";
 import { PlayersManagerWidget } from "./widgets/PlayersManagerWidget";
@@ -10,6 +10,7 @@ import { MapManager } from "@/components/map/MapManager";
 import { ComponentsManager } from "./ComponentsManager";
 import { WarbandsWidget } from "./WarbandsWidget";
 import { PlayerSettingsOverlay } from "@/components/players/PlayerSettingsOverlay";
+import { PlayerMessagesOverlay } from "@/components/players/PlayerMessagesOverlay";
 import { RulesManager } from "@/components/rules/RulesManager";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
@@ -50,6 +51,12 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     icon: <UserCog className="w-4 h-4" />,
     size: "lg",
     playerOnly: true,
+  },
+  "player-messages": {
+    title: "Private Messages",
+    subtitle: "Direct messages with other players",
+    icon: <Mail className="w-4 h-4" />,
+    size: "md",
   },
   rules: {
     title: "Rules",
@@ -231,6 +238,13 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
       return (
         <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <PlayerSettingsOverlay campaignId={campaignId} />
+        </OverlayPanel>
+      );
+
+    case "player-messages":
+      return (
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+          <PlayerMessagesOverlay campaignId={campaignId} />
         </OverlayPanel>
       );
 

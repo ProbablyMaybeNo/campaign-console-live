@@ -29,12 +29,12 @@ interface FABItem {
 }
 
 const fabItems: FABItem[] = [
-  { id: "player-settings", label: "My Settings", icon: UserCog, color: "hsl(142, 76%, 50%)" },
-  { id: "messages", label: "Messages", icon: MessageSquare, color: "hsl(200, 100%, 65%)" },
-  { id: "rules", label: "Rules", icon: Scroll, color: "hsl(280, 80%, 60%)" },
-  { id: "schedule", label: "Schedule", icon: Calendar, color: "hsl(45, 100%, 50%)" },
-  { id: "map", label: "Map", icon: Map, color: "hsl(15, 90%, 55%)" },
-  { id: "narrative", label: "Narrative", icon: BookOpen, color: "hsl(330, 80%, 60%)" },
+  { id: "player-settings", label: "My Settings", icon: UserCog, color: "hsl(200, 100%, 70%)" },
+  { id: "player-messages", label: "Messages", icon: MessageSquare, color: "hsl(200, 100%, 70%)" },
+  { id: "rules", label: "Rules", icon: Scroll, color: "hsl(200, 100%, 70%)" },
+  { id: "schedule", label: "Schedule", icon: Calendar, color: "hsl(200, 100%, 70%)" },
+  { id: "map", label: "Map", icon: Map, color: "hsl(200, 100%, 70%)" },
+  { id: "narrative", label: "Narrative", icon: BookOpen, color: "hsl(200, 100%, 70%)" },
 ];
 
 export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
@@ -89,7 +89,7 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
     setIsExpanded(false);
 
     // Clear unread count when opening messages
-    if (id === "messages") {
+    if (id === "player-messages") {
       setUnreadCount(0);
       localStorage.setItem(`campaign-${campaignId}-last-visit`, new Date().toISOString());
     }
@@ -97,39 +97,48 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
 
   return (
     <div className="fixed bottom-8 right-8 z-40 flex flex-col items-end gap-3">
-      {/* Expanded menu items */}
+      {/* Expanded menu items - horizontal row layout */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="flex flex-col gap-2 mb-2"
+            className="flex flex-row-reverse flex-wrap justify-end gap-3 mb-2 max-w-[calc(100vw-4rem)]"
           >
             {fabItems.map((item, index) => (
               <motion.button
                 key={item.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ delay: index * 0.05 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ delay: index * 0.03 }}
                 onClick={() => handleItemClick(item.id)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card/95 border border-primary/30 backdrop-blur-sm transition-all hover:scale-105 hover:border-primary/60 group relative"
-                style={{ boxShadow: `0 0 15px ${item.color}30, 0 4px 12px rgba(0,0,0,0.3)` }}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-[hsl(200,100%,70%)]/40 backdrop-blur-sm transition-all hover:scale-105 hover:border-[hsl(200,100%,70%)]/80 group relative"
+                style={{ 
+                  boxShadow: `0 0 12px hsl(200 100% 70% / 0.2), 0 4px 12px rgba(0,0,0,0.4)`,
+                }}
               >
-                <span className="text-xs font-mono uppercase tracking-wider text-foreground whitespace-nowrap">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+                  style={{ 
+                    backgroundColor: "transparent",
+                    border: "2px solid hsl(200, 100%, 70%)",
+                    boxShadow: "0 0 8px hsl(200 100% 70% / 0.4)"
+                  }}
+                >
+                  <item.icon className="w-5 h-5" style={{ color: "hsl(200, 100%, 70%)" }} />
+                </div>
+                <span 
+                  className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap"
+                  style={{ color: "hsl(142, 76%, 65%)" }}
+                >
                   {item.label}
                 </span>
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ backgroundColor: item.color }}
-                >
-                  <item.icon className="w-5 h-5 text-black" />
-                </div>
                 {/* Badge for messages */}
                 {item.id === "messages" && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
                     {unreadCount > 99 ? "99+" : unreadCount}
                   </span>
                 )}
@@ -138,23 +147,32 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
             
             {/* Help button */}
             <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ delay: fabItems.length * 0.05 }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ delay: fabItems.length * 0.03 }}
               onClick={() => { setShowHelp(true); setIsExpanded(false); }}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card/95 border border-[hsl(200,100%,65%)]/30 backdrop-blur-sm transition-all hover:scale-105 hover:border-[hsl(200,100%,65%)]/60 group"
-              style={{ boxShadow: `0 0 15px hsl(200 100% 50% / 0.3), 0 4px 12px rgba(0,0,0,0.3)` }}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-[hsl(200,100%,70%)]/40 backdrop-blur-sm transition-all hover:scale-105 hover:border-[hsl(200,100%,70%)]/80 group"
+              style={{ 
+                boxShadow: `0 0 12px hsl(200 100% 70% / 0.2), 0 4px 12px rgba(0,0,0,0.4)`,
+              }}
             >
-              <span className="text-xs font-mono uppercase tracking-wider text-foreground whitespace-nowrap">
-                Help & FAQ
-              </span>
               <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                style={{ backgroundColor: "hsl(200, 100%, 50%)" }}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+                style={{ 
+                  backgroundColor: "transparent",
+                  border: "2px solid hsl(200, 100%, 70%)",
+                  boxShadow: "0 0 8px hsl(200 100% 70% / 0.4)"
+                }}
               >
-                <HelpCircle className="w-5 h-5 text-black" />
+                <HelpCircle className="w-5 h-5" style={{ color: "hsl(200, 100%, 70%)" }} />
               </div>
+              <span 
+                className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap"
+                style={{ color: "hsl(142, 76%, 65%)" }}
+              >
+                Help
+              </span>
             </motion.button>
           </motion.div>
         )}
@@ -167,10 +185,11 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
         onClick={() => setIsExpanded(!isExpanded)}
         className="h-14 w-14 rounded-full flex items-center justify-center transition-all relative"
         style={{ 
-          backgroundColor: isExpanded ? "hsl(0, 60%, 50%)" : "hsl(142, 76%, 50%)",
+          backgroundColor: isExpanded ? "hsl(0, 80%, 55%)" : "hsl(142, 76%, 50%)",
           boxShadow: isExpanded 
-            ? '0 0 20px hsl(0 60% 50% / 0.5), 0 0 40px hsl(0 60% 50% / 0.25)' 
-            : '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' 
+            ? '0 0 25px hsl(0 80% 55% / 0.6), 0 0 50px hsl(0 80% 55% / 0.3)' 
+            : '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)',
+          animation: isExpanded ? 'pulse-glow 1.5s ease-in-out infinite' : 'none'
         }}
       >
         <motion.div
@@ -194,6 +213,18 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
 
       {/* Help Modal */}
       <HelpFAQModal open={showHelp} onClose={() => setShowHelp(false)} />
+
+      {/* Keyframe animation for red glow pulse */}
+      <style>{`
+        @keyframes pulse-glow {
+          0%, 100% {
+            box-shadow: 0 0 25px hsl(0 80% 55% / 0.6), 0 0 50px hsl(0 80% 55% / 0.3);
+          }
+          50% {
+            box-shadow: 0 0 35px hsl(0 80% 55% / 0.8), 0 0 70px hsl(0 80% 55% / 0.4);
+          }
+        }
+      `}</style>
     </div>
   );
 }

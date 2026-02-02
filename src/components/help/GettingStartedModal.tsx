@@ -45,14 +45,14 @@ const STEPS: Step[] = [
   {
     icon: Plus,
     title: "Add Your First Components",
-    description: "Click the ➕ Add Component button (bottom-right) to place widgets on the board: maps, tables, notes, dice rollers, counters, and more.",
+    description: "Click the green ➕ Add Component button (bottom-right) to place widgets on the board. See the ? FAQ for details on each component type. Once created, manage components from the Components menu in the side panel.",
     tip: "Start with 6-12 components. You can always add more later.",
   },
   {
     icon: Map,
     title: "Set Up the Campaign Map",
-    description: "Upload a map image, place markers with custom legends, and use fog of war to control what players can see as the campaign unfolds.",
-    tip: "Access the Map panel from the sidebar to upload and configure.",
+    description: "Set up your map using the Map settings in the side panel. Deploy a Map component onto the dashboard via the ➕ component button.",
+    tip: "Place markers with custom legends and use fog of war to control what players can see.",
     optional: true,
   },
   {
@@ -64,14 +64,21 @@ const STEPS: Step[] = [
   {
     icon: BookOpen,
     title: "Post Your First Narrative",
-    description: "Use the Narrative panel to set the story, scenario, or campaign premise. All players can read these entries.",
+    description: "Manage, edit, and create narrative entries via the Narrative menu in the side panel. Add a Narrative tracker component to the dashboard via the ➕ button.",
     tip: "Add narrative entries early to set the tone and hook players.",
   },
   {
     icon: Calendar,
     title: "Schedule Sessions & Rounds",
-    description: "Add dates in the Schedule panel so everyone knows what's coming. Rounds appear as colored bars on the Calendar widget.",
+    description: "Add, edit, remove, and manage campaign schedule, rounds, events, and dates via the Schedule menu in the side panel. Add a Calendar component containing scheduled dates and rounds via the ➕ button.",
     tip: "Players see the Calendar widget but can't edit the schedule.",
+  },
+  {
+    icon: Users,
+    title: "Join as a Player",
+    description: "Want to take part in the campaign as a player? Use the Players panel in the side menu to add yourself as a player.",
+    tip: "GMs can also participate as players while maintaining GM controls.",
+    optional: true,
   },
   {
     icon: Eye,
