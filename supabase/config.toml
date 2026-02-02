@@ -2,3 +2,9 @@ project_id = "vcnodroausotjqabjqcf"
 
 [functions.convert-text-to-table]
 verify_jwt = false
+
+[functions.validate-campaign-password]
+verify_jwt = false
+
+[functions.hash-campaign-password]
+verify_jwt = false
