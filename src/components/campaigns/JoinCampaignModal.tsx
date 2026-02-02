@@ -49,35 +49,28 @@ export function JoinCampaignModal({ open, onClose }: JoinCampaignModalProps) {
     if (upperCode.length === 6) {
       setIsLoadingPreview(true);
       try {
-        // Lookup campaign by join code
-        const { data: campaign, error } = await supabase
-          .from("campaigns")
-          .select("id, name, description, game_system, max_players, password")
-          .eq("join_code", upperCode)
-          .maybeSingle();
+        // Use secure RPC function for campaign lookup (doesn't expose password)
+        const { data: campaigns, error } = await supabase
+          .rpc("lookup_campaign_by_code", { join_code_input: upperCode });
 
         if (error) throw error;
 
-        if (!campaign) {
+        if (!campaigns || campaigns.length === 0) {
           setPreviewError("No campaign found with this code.");
           setIsLoadingPreview(false);
           return;
         }
 
-        // Get player count
-        const { count } = await supabase
-          .from("campaign_players")
-          .select("id", { count: "exact", head: true })
-          .eq("campaign_id", campaign.id);
+        const campaign = campaigns[0];
 
         setCampaignPreview({
           id: campaign.id,
           name: campaign.name,
           description: campaign.description,
           game_system: campaign.game_system,
-          player_count: count || 0,
+          player_count: Number(campaign.player_count) || 0,
           max_players: campaign.max_players,
-          hasPassword: !!campaign.password,
+          hasPassword: campaign.has_password,
         });
       } catch (error) {
         setPreviewError("Failed to lookup campaign.");

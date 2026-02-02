@@ -53,6 +53,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaign_documents_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       campaign_maps: {
@@ -86,6 +93,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: true
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_maps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -136,6 +150,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_players_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -197,6 +218,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaign_units_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       campaigns: {
@@ -215,6 +243,7 @@ export type Database = {
           name: string
           owner_id: string
           password: string | null
+          password_hash: string | null
           points_limit: number | null
           round_length: string | null
           rules_repo_ref: string | null
@@ -240,6 +269,7 @@ export type Database = {
           name: string
           owner_id: string
           password?: string | null
+          password_hash?: string | null
           points_limit?: number | null
           round_length?: string | null
           rules_repo_ref?: string | null
@@ -265,6 +295,7 @@ export type Database = {
           name?: string
           owner_id?: string
           password?: string | null
+          password_hash?: string | null
           points_limit?: number | null
           round_length?: string | null
           rules_repo_ref?: string | null
@@ -339,6 +370,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dashboard_components_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       dice_roll_history: {
@@ -378,6 +416,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dice_roll_history_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -479,6 +524,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_jobs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -849,6 +901,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       narrative_events: {
@@ -896,6 +955,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "narrative_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       player_narrative_entries: {
@@ -932,6 +998,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_narrative_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -1011,6 +1084,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "schedule_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -1082,6 +1162,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "warbands_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       wargame_rules: {
@@ -1136,6 +1223,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "wargame_rules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "wargame_rules_extraction_job_id_fkey"
             columns: ["extraction_job_id"]
             isOneToOne: false
@@ -1146,7 +1240,92 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      campaigns_safe: {
+        Row: {
+          border_color: string | null
+          created_at: string | null
+          current_round: number | null
+          description: string | null
+          display_settings: Json | null
+          end_date: string | null
+          game_system: string | null
+          game_system_id: string | null
+          has_password: boolean | null
+          id: string | null
+          join_code: string | null
+          max_players: number | null
+          name: string | null
+          owner_id: string | null
+          points_limit: number | null
+          round_length: string | null
+          rules_repo_ref: string | null
+          rules_repo_url: string | null
+          start_date: string | null
+          status: string | null
+          title_color: string | null
+          total_rounds: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          border_color?: string | null
+          created_at?: string | null
+          current_round?: number | null
+          description?: string | null
+          display_settings?: Json | null
+          end_date?: string | null
+          game_system?: string | null
+          game_system_id?: string | null
+          has_password?: never
+          id?: string | null
+          join_code?: never
+          max_players?: number | null
+          name?: string | null
+          owner_id?: string | null
+          points_limit?: number | null
+          round_length?: string | null
+          rules_repo_ref?: string | null
+          rules_repo_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          title_color?: string | null
+          total_rounds?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          border_color?: string | null
+          created_at?: string | null
+          current_round?: number | null
+          description?: string | null
+          display_settings?: Json | null
+          end_date?: string | null
+          game_system?: string | null
+          game_system_id?: string | null
+          has_password?: never
+          id?: string | null
+          join_code?: never
+          max_players?: number | null
+          name?: string | null
+          owner_id?: string | null
+          points_limit?: number | null
+          round_length?: string | null
+          rules_repo_ref?: string | null
+          rules_repo_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          title_color?: string | null
+          total_rounds?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_game_system_id_fkey"
+            columns: ["game_system_id"]
+            isOneToOne: false
+            referencedRelation: "game_systems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_join_code: { Args: never; Returns: string }
@@ -1155,6 +1334,26 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      lookup_campaign_by_code: {
+        Args: { join_code_input: string }
+        Returns: {
+          description: string
+          game_system: string
+          has_password: boolean
+          id: string
+          max_players: number
+          name: string
+          player_count: number
+        }[]
+      }
+      set_campaign_password: {
+        Args: { campaign_id: string; new_password: string }
+        Returns: undefined
+      }
+      verify_campaign_password: {
+        Args: { campaign_id: string; input_password: string }
         Returns: boolean
       }
     }
