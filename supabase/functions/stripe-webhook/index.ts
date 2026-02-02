@@ -47,7 +47,8 @@ serve(async (req) => {
       if (!signature) {
         throw new Error("No Stripe signature found");
       }
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      // Use async version for Deno/Edge Functions
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
       logStep("Webhook signature verified");
     } else {
       // For development without webhook secret
