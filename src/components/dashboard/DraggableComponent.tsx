@@ -15,6 +15,7 @@ import { CalendarWidget } from "./widgets/CalendarWidget";
 import { CampaignConsoleWidget } from "./widgets/CampaignConsoleWidget";
 import { ActivityFeedWidget } from "./widgets/ActivityFeedWidget";
 import { RollRecorderWidget } from "./widgets/RollRecorderWidget";
+import { AnnouncementsWidget } from "./widgets/AnnouncementsWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -49,6 +50,7 @@ const COMPONENT_ICONS: Record<string, string> = {
   calendar: "📅",
   activity_feed: "⚡",
   roll_recorder: "📜",
+  announcements: "📢",
   "campaign-console": "⚔️",
 };
 
@@ -182,6 +184,8 @@ function DraggableComponentInner({
         return <CampaignConsoleWidget campaignId={campaignId} isGM={isGM} />;
       case "activity_feed":
         return <ActivityFeedWidget campaignId={campaignId} isGM={isGM} />;
+      case "announcements":
+        return <AnnouncementsWidget campaignId={campaignId} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">
