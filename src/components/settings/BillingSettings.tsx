@@ -151,6 +151,15 @@ export function BillingSettings() {
 
   return (
     <div className="space-y-6">
+      {/* About Blurb */}
+      <TerminalCard className="p-6">
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Campaign Console is a solo-dev project built for people who love narrative campaigns. 
+          Your subscription helps keep it online, supports ongoing development, and unlocks more 
+          customization as the app grows. You're not just upgrading—you're helping shape what gets built next.
+        </p>
+      </TerminalCard>
+
       {/* Current Plan */}
       <TerminalCard className="p-6">
         <div className="flex items-center gap-3 mb-4">
