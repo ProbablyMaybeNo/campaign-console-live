@@ -1336,6 +1336,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_campaign_member: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_campaign_owner: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
       lookup_campaign_by_code: {
         Args: { join_code_input: string }
         Returns: {
