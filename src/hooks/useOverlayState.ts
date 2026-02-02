@@ -6,6 +6,7 @@ export type OverlayType =
   | "warbands" 
   | "players" 
   | "player-settings"
+  | "player-messages"
   | "rules" 
   | "map" 
   | "narrative" 

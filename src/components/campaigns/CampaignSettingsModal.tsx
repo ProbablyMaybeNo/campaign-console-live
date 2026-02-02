@@ -7,23 +7,21 @@ import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useCampaign, useUpdateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
-import { useSyncRepoRules, useDiscoverRepoRules } from "@/hooks/useWargameRules";
 import { 
-  GitBranch, 
-  CheckCircle, 
-  AlertCircle, 
-  RefreshCw, 
   Settings2, 
   Copy, 
   Check,
   Palette,
   Shield,
-  Wrench,
   Info,
+  CalendarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
-
+import { format, parse, isValid } from "date-fns";
+import { cn } from "@/lib/utils";
 interface CampaignSettingsModalProps {
   open: boolean;
   onClose: () => void;
@@ -50,8 +48,6 @@ const COLOR_PRESETS = [
 export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSettingsModalProps) {
   const { data: campaign, isLoading } = useCampaign(campaignId);
   const updateCampaign = useUpdateCampaign();
-  const syncRules = useSyncRepoRules();
-  const discoverRules = useDiscoverRepoRules();
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -77,9 +73,6 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
     showStatus: true,
     showGameSystem: true,
   });
-  const [repoUrl, setRepoUrl] = useState("");
-  const [repoValidated, setRepoValidated] = useState<boolean | null>(null);
-  const [repoCategories, setRepoCategories] = useState<string[]>([]);
   const [copiedJoinCode, setCopiedJoinCode] = useState(false);
 
   // Populate form when campaign loads
@@ -113,35 +106,8 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
           showGameSystem: ds.showGameSystem ?? true,
         });
       }
-      setRepoUrl(campaign.rules_repo_url || "");
-      if (campaign.rules_repo_url) {
-        setRepoValidated(true);
-      }
     }
   }, [campaign]);
-
-  const handleValidateRepo = async () => {
-    if (!repoUrl.trim()) return;
-    
-    setRepoValidated(null);
-    try {
-      const categories = await discoverRules.mutateAsync(repoUrl);
-      setRepoCategories(categories.map(c => c.category));
-      setRepoValidated(true);
-    } catch {
-      setRepoValidated(false);
-      setRepoCategories([]);
-    }
-  };
-
-  const handleSyncRules = async () => {
-    if (!repoUrl.trim() || !repoValidated) return;
-    
-    await syncRules.mutateAsync({
-      repoUrl,
-      campaignId,
-    });
-  };
 
   const handleSave = async () => {
     await updateCampaign.mutateAsync({
@@ -162,16 +128,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       title_color: titleColor,
       border_color: borderColor,
       display_settings: displaySettings,
-      rules_repo_url: repoValidated ? repoUrl : undefined,
     });
-    
-    // If repo is validated but hasn't been synced yet, sync it
-    if (repoValidated && repoUrl && repoUrl !== campaign?.rules_repo_url) {
-      await syncRules.mutateAsync({
-        repoUrl,
-        campaignId,
-      });
-    }
     
     onClose();
   };
@@ -213,7 +170,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
         </DialogHeader>
 
         <Tabs defaultValue="general" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-4 mb-4">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="general" className="text-xs">
               <Info className="w-3 h-3 mr-1.5" />
               General
@@ -225,10 +182,6 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
             <TabsTrigger value="security" className="text-xs">
               <Shield className="w-3 h-3 mr-1.5" />
               Security
-            </TabsTrigger>
-            <TabsTrigger value="advanced" className="text-xs">
-              <Wrench className="w-3 h-3 mr-1.5" />
-              Advanced
             </TabsTrigger>
           </TabsList>
 
@@ -324,18 +277,66 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
               />
 
               <div className="grid grid-cols-2 gap-3">
-                <TerminalInput
-                  label="Start Date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-                <TerminalInput
-                  label="End Date"
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                />
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Start Date
+                  </label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "flex h-10 w-full items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all",
+                          !startDate && "text-muted-foreground"
+                        )}
+                      >
+                        {startDate && isValid(parse(startDate, "yyyy-MM-dd", new Date())) 
+                          ? format(parse(startDate, "yyyy-MM-dd", new Date()), "PPP") 
+                          : <span>Pick a date</span>}
+                        <CalendarIcon className="h-4 w-4 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={startDate && isValid(parse(startDate, "yyyy-MM-dd", new Date())) ? parse(startDate, "yyyy-MM-dd", new Date()) : undefined}
+                        onSelect={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    End Date
+                  </label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          "flex h-10 w-full items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all",
+                          !endDate && "text-muted-foreground"
+                        )}
+                      >
+                        {endDate && isValid(parse(endDate, "yyyy-MM-dd", new Date())) 
+                          ? format(parse(endDate, "yyyy-MM-dd", new Date()), "PPP") 
+                          : <span>Pick a date</span>}
+                        <CalendarIcon className="h-4 w-4 opacity-50" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={endDate && isValid(parse(endDate, "yyyy-MM-dd", new Date())) ? parse(endDate, "yyyy-MM-dd", new Date()) : undefined}
+                        onSelect={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
 
               {/* Status Toggle */}
@@ -474,87 +475,6 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
                 {password ? "Password will be securely hashed when saved." : "If set, players will need to enter this password when joining."}
               </p>
             </TabsContent>
-
-            {/* Advanced Tab */}
-            <TabsContent value="advanced" className="mt-0 space-y-4">
-              <div className="border border-border/50 p-4 bg-muted/20 rounded space-y-3">
-                <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-                  <GitBranch className="w-4 h-4" />
-                  Rules Repository
-                </div>
-                
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <TerminalInput
-                      placeholder="https://github.com/username/repo"
-                      value={repoUrl}
-                      onChange={(e) => {
-                        setRepoUrl(e.target.value);
-                        if (e.target.value !== campaign?.rules_repo_url) {
-                          setRepoValidated(null);
-                          setRepoCategories([]);
-                        }
-                      }}
-                    />
-                  </div>
-                  <TerminalButton
-                    type="button"
-                    variant="outline"
-                    onClick={handleValidateRepo}
-                    disabled={!repoUrl.trim() || discoverRules.isPending}
-                    className="shrink-0"
-                  >
-                    {discoverRules.isPending ? (
-                      <TerminalLoader text="" size="sm" />
-                    ) : (
-                      "Validate"
-                    )}
-                  </TerminalButton>
-                </div>
-
-                {repoValidated === true && (
-                  <div className="space-y-2">
-                    <div className="flex items-start gap-2 text-xs text-green-400 bg-green-400/10 p-2 border border-green-400/30">
-                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div>
-                        <p className="font-medium">Repository validated!</p>
-                        {repoCategories.length > 0 && (
-                          <p className="text-green-400/70 mt-1">
-                            Categories: {repoCategories.join(", ")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {campaign?.rules_repo_url === repoUrl && (
-                      <TerminalButton
-                        type="button"
-                        variant="outline"
-                        onClick={handleSyncRules}
-                        disabled={syncRules.isPending}
-                        className="w-full"
-                      >
-                        {syncRules.isPending ? (
-                          <TerminalLoader text="Syncing" size="sm" />
-                        ) : (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Re-sync Rules from Repository
-                          </>
-                        )}
-                      </TerminalButton>
-                    )}
-                  </div>
-                )}
-                
-                {repoValidated === false && (
-                  <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 border border-destructive/30">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>Could not access repository. Check the URL and try again.</span>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
           </div>
         </Tabs>
 
@@ -570,9 +490,9 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
           <TerminalButton
             onClick={handleSave}
             className="flex-1"
-            disabled={!name.trim() || updateCampaign.isPending || syncRules.isPending}
+            disabled={!name.trim() || updateCampaign.isPending}
           >
-            {updateCampaign.isPending || syncRules.isPending ? (
+            {updateCampaign.isPending ? (
               <TerminalLoader text="Saving" size="sm" />
             ) : (
               "Save Settings"

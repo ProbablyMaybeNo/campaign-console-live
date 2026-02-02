@@ -875,7 +875,9 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_read: boolean | null
           priority: string | null
+          recipient_id: string | null
         }
         Insert: {
           author_id: string
@@ -883,7 +885,9 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           priority?: string | null
+          recipient_id?: string | null
         }
         Update: {
           author_id?: string
@@ -891,7 +895,9 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           priority?: string | null
+          recipient_id?: string | null
         }
         Relationships: [
           {

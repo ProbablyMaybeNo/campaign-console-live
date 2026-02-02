@@ -308,7 +308,7 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="bg-card border-[hsl(142,76%,65%)] max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="bg-card border-[hsl(142,76%,65%)] max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 font-mono text-[hsl(142,76%,50%)] uppercase tracking-wider">
             <HelpCircle className="w-5 h-5" />
@@ -328,7 +328,7 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
         </div>
 
         {/* Content */}
-        <ScrollArea className="flex-1 pr-4" data-scrollable="true">
+        <ScrollArea className="flex-1 pr-4 overflow-y-auto" data-scrollable="true" style={{ maxHeight: "calc(85vh - 200px)" }}>
           {filteredSections.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <HelpCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
