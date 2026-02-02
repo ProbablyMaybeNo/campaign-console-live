@@ -4,6 +4,23 @@
 @import "@fontsource/ibm-plex-mono/700.css";
 @import "@fontsource/uncial-antiqua/400.css";
 
+/* Custom Augusta fonts */
+@font-face {
+  font-family: 'Augusta';
+  src: url('/fonts/Augusta.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Augusta Shadow';
+  src: url('/fonts/Augusta-Shadow.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
