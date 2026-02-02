@@ -16,6 +16,7 @@ import {
   Calendar,
   Activity,
   History,
+  Megaphone,
 } from "lucide-react";
 
 interface AddComponentModalProps {
@@ -38,6 +39,7 @@ const COMPONENT_TYPES = [
   { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
   { type: "activity_feed", label: "Activity Feed", icon: Activity, description: "Real-time campaign activity log" },
+  { type: "announcements", label: "Announcements", icon: Megaphone, description: "GM notice board for campaign updates" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -109,6 +111,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "roll_recorder") {
       width = 320;
       height = 350;
+    } else if (selectedType === "announcements") {
+      width = 380;
+      height = 400;
     }
 
     // Spawn at canvas center with slight offset to not overlap existing components
@@ -255,6 +260,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "roll_recorder" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   Displays a real-time log of all dice rolls from Dice Roller widgets, showing player name, roll results, and timestamp.
+                </p>
+              )}
+
+              {selectedType === "announcements" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  GM notice board for campaign updates. Optionally send announcements as private messages to selected players.
                 </p>
               )}
 
