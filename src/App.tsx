@@ -12,6 +12,7 @@ import CampaignDashboard from "./pages/CampaignDashboard";
 import WarbandBuilder from "./pages/WarbandBuilder";
 import NotFound from "./pages/NotFound";
 import ErrorReports from "./pages/ErrorReports";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
           <Route path="/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
           <Route path="/campaign/:campaignId" element={<ProtectedRoute><CampaignDashboard /></ProtectedRoute>} />
           <Route path="/campaign/:campaignId/warband-builder" element={<ProtectedRoute><WarbandBuilder /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path="/admin/errors" element={<ProtectedRoute><ErrorReports /></ProtectedRoute>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
