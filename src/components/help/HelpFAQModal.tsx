@@ -13,6 +13,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 import {
   Search,
   LogIn,
@@ -26,6 +27,7 @@ import {
   AlertTriangle,
   Lightbulb,
   HelpCircle,
+  Heart,
 } from "lucide-react";
 
 interface HelpFAQModalProps {
@@ -367,10 +369,23 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
         </ScrollArea>
 
         {/* Footer */}
-        <div className="pt-4 border-t border-border text-center">
-          <p className="text-xs text-muted-foreground">
+        <div className="pt-4 border-t border-border space-y-4">
+          <p className="text-xs text-muted-foreground text-center">
             Can't find what you're looking for? Contact your Games Master or check back for updates.
           </p>
+          
+          <Link
+            to="/settings?tab=billing"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-sm font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
+            style={{
+              color: 'hsl(200, 100%, 70%)',
+              boxShadow: '0 0 15px hsl(200 100% 60% / 0.3), 0 0 30px hsl(200 100% 50% / 0.15)',
+              textShadow: '0 0 10px hsl(200 100% 60% / 0.6)'
+            }}
+          >
+            <Heart className="w-4 h-4" />
+            Support Campaign Console
+          </Link>
         </div>
       </DialogContent>
     </Dialog>
