@@ -382,6 +382,60 @@ export type Database = {
           },
         ]
       }
+      error_reports: {
+        Row: {
+          component_stack: string | null
+          created_at: string
+          error_message: string
+          error_type: string
+          fingerprint: string
+          id: string
+          last_occurred_at: string
+          metadata: Json | null
+          occurrence_count: number
+          route: string | null
+          stack_trace: string | null
+          status: string
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component_stack?: string | null
+          created_at?: string
+          error_message: string
+          error_type?: string
+          fingerprint: string
+          id?: string
+          last_occurred_at?: string
+          metadata?: Json | null
+          occurrence_count?: number
+          route?: string | null
+          stack_trace?: string | null
+          status?: string
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component_stack?: string | null
+          created_at?: string
+          error_message?: string
+          error_type?: string
+          fingerprint?: string
+          id?: string
+          last_occurred_at?: string
+          metadata?: Json | null
+          occurrence_count?: number
+          route?: string | null
+          stack_trace?: string | null
+          status?: string
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       extraction_jobs: {
         Row: {
           campaign_id: string
