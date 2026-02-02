@@ -74,7 +74,11 @@ serve(async (req) => {
       const subscription = subscriptions.data[0];
       plan = 'supporter';
       subscriptionStatus = subscription.status;
-      currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      // Safely parse the timestamp
+      const endTimestamp = subscription.current_period_end;
+      if (endTimestamp && typeof endTimestamp === 'number') {
+        currentPeriodEnd = new Date(endTimestamp * 1000).toISOString();
+      }
       logStep("Active subscription found", { 
         subscriptionId: subscription.id, 
         status: subscriptionStatus,
@@ -87,10 +91,14 @@ serve(async (req) => {
         limit: 1,
       });
       if (allSubs.data.length > 0) {
-        subscriptionStatus = allSubs.data[0].status;
-        if (allSubs.data[0].status === 'trialing') {
+        const latestSub = allSubs.data[0];
+        subscriptionStatus = latestSub.status;
+        if (latestSub.status === 'trialing') {
           plan = 'supporter';
-          currentPeriodEnd = new Date(allSubs.data[0].current_period_end * 1000).toISOString();
+          const endTimestamp = latestSub.current_period_end;
+          if (endTimestamp && typeof endTimestamp === 'number') {
+            currentPeriodEnd = new Date(endTimestamp * 1000).toISOString();
+          }
         }
       }
       logStep("No active subscription", { latestStatus: subscriptionStatus });
