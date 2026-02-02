@@ -427,6 +427,36 @@ export type Database = {
           },
         ]
       }
+      donations: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          stripe_checkout_session_id: string
+          stripe_payment_intent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_checkout_session_id: string
+          stripe_payment_intent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_checkout_session_id?: string
+          stripe_payment_intent_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       error_reports: {
         Row: {
           component_stack: string | null
@@ -1019,22 +1049,34 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          current_period_end: string | null
           display_name: string | null
           id: string
+          plan: string
+          stripe_customer_id: string | null
+          subscription_status: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          current_period_end?: string | null
           display_name?: string | null
           id: string
+          plan?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          current_period_end?: string | null
           display_name?: string | null
           id?: string
+          plan?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string
           updated_at?: string
         }
         Relationships: []

@@ -8,7 +8,7 @@ import { JoinCampaignModal } from "@/components/campaigns/JoinCampaignModal";
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Copy, Check, Users } from "lucide-react";
+import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Copy, Check, Users, Settings } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { HelpButton } from "@/components/help/HelpButton";
@@ -74,6 +74,19 @@ export default function Campaigns() {
       {/* User icon and Help */}
       <div className="absolute top-8 right-8 flex items-center gap-3">
         <HelpButton variant="icon" />
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => navigate("/settings")}
+              className="p-3 border border-primary/50 text-primary hover:glow-primary transition-all"
+            >
+              <Settings className="w-6 h-6" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs">Settings</p>
+          </TooltipContent>
+        </Tooltip>
         <div className="p-3 border border-primary/50 text-primary glow-primary">
           <UserPlus className="w-6 h-6" />
         </div>
