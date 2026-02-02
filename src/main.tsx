@@ -2,5 +2,14 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import "@fontsource/unifrakturmaguntia";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { initializeErrorReporting } from "./lib/errorReporter";
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Initialize global error handlers
+initializeErrorReporting();
+
+createRoot(document.getElementById("root")!).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
