@@ -4,7 +4,7 @@ import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, stripe-signature, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const logStep = (step: string, details?: unknown) => {
@@ -38,7 +38,10 @@ serve(async (req) => {
   );
 
   try {
-    const body = await req.text();
+    // IMPORTANT: Stripe signature verification requires the exact raw request payload.
+    // Using req.text() can subtly change the bytes and cause signature mismatches.
+    const rawBody = new Uint8Array(await req.arrayBuffer());
+    const bodyText = new TextDecoder().decode(rawBody);
     let event: Stripe.Event;
 
     // Verify webhook signature if secret is configured
@@ -48,11 +51,11 @@ serve(async (req) => {
         throw new Error("No Stripe signature found");
       }
       // Use async version for Deno/Edge Functions
-      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(rawBody, signature, webhookSecret);
       logStep("Webhook signature verified");
     } else {
       // For development without webhook secret
-      event = JSON.parse(body) as Stripe.Event;
+      event = JSON.parse(bodyText) as Stripe.Event;
       logStep("WARNING: Processing webhook without signature verification");
     }
 
