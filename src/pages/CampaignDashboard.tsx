@@ -34,7 +34,8 @@ import {
   BookOpen,
   UserCog,
   PanelLeftOpen,
-  PanelLeftClose
+  PanelLeftClose,
+  Heart
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -410,6 +411,22 @@ export default function CampaignDashboard() {
                   onClick={() => openOverlay("settings")}
                 />
               </nav>
+              
+              {/* Support Button at bottom of sidebar */}
+              <div className="mt-auto pt-4">
+                <Link
+                  to="/settings?tab=billing"
+                  className="flex items-center gap-2 w-full py-2 px-3 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-xs font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
+                  style={{
+                    color: 'hsl(200, 100%, 70%)',
+                    boxShadow: '0 0 12px hsl(200 100% 60% / 0.3), 0 0 25px hsl(200 100% 50% / 0.15)',
+                    textShadow: '0 0 8px hsl(200 100% 60% / 0.6)'
+                  }}
+                >
+                  <Heart className="w-4 h-4" />
+                  Support
+                </Link>
+              </div>
             </div>
           </aside>
         )}
