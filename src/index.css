@@ -61,9 +61,9 @@
     --secondary-glow: 195 100% 50%;
     --secondary-bright: 195 100% 70%;
 
-    /* Muted/Subdued */
+    /* Muted/Subdued - Bright white for readability */
     --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;
+    --muted-foreground: 0 0% 85%;
 
     /* Accent (subtle highlight) */
     --accent: 0 0% 10%;
@@ -127,7 +127,7 @@
     --secondary: 195 100% 60%;
     --secondary-foreground: 0 0% 3%;
     --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;
+    --muted-foreground: 0 0% 85%;
     --accent: 0 0% 10%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 90% 60%;
