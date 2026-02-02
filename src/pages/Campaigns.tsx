@@ -8,7 +8,7 @@ import { JoinCampaignModal } from "@/components/campaigns/JoinCampaignModal";
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, UserPlus, Crown, User, AlertCircle, Copy, Check, Users, Settings } from "lucide-react";
+import { ArrowLeft, Crown, User, AlertCircle, Copy, Check, Users, Settings } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { HelpButton } from "@/components/help/HelpButton";
@@ -87,9 +87,6 @@ export default function Campaigns() {
             <p className="text-xs">Settings</p>
           </TooltipContent>
         </Tooltip>
-        <div className="p-3 border border-primary/50 text-primary glow-primary">
-          <UserPlus className="w-6 h-6" />
-        </div>
       </div>
 
       <div className="max-w-5xl mx-auto pt-8 relative z-10">
