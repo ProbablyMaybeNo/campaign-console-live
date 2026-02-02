@@ -12,6 +12,20 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[STRIPE-WEBHOOK] ${step}${detailsStr}`);
 };
 
+function unixSecondsToIso(value: unknown): string | null {
+  const seconds =
+    typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+
+  if (!Number.isFinite(seconds)) return null;
+  const ms = seconds * 1000;
+  if (!Number.isFinite(ms)) return null;
+
+  // new Date(NaN) is valid object, but toISOString() throws RangeError("Invalid time value")
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -164,11 +178,18 @@ async function handleSubscriptionCheckout(
 
   if (subscriptions.data.length > 0) {
     const subscription = subscriptions.data[0];
+    const currentPeriodEndIso = unixSecondsToIso(subscription.current_period_end);
+    if (!currentPeriodEndIso) {
+      logStep("Warning: invalid current_period_end on subscription", {
+        subscriptionId: subscription.id,
+        current_period_end: subscription.current_period_end,
+      });
+    }
     const updateData = {
       stripe_customer_id: customerId,
       plan: 'supporter',
       subscription_status: subscription.status,
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+      current_period_end: currentPeriodEndIso,
     };
 
     if (userId) {
@@ -216,11 +237,20 @@ async function syncSubscriptionStatus(
   subscription: Stripe.Subscription
 ) {
   const customerId = subscription.customer as string;
-  
+
+  const currentPeriodEndIso = unixSecondsToIso(subscription.current_period_end);
+  if (!currentPeriodEndIso) {
+    logStep("Warning: invalid current_period_end on subscription sync", {
+      subscriptionId: subscription.id,
+      current_period_end: subscription.current_period_end,
+      status: subscription.status,
+    });
+  }
+
   const updateData = {
     subscription_status: subscription.status,
     plan: ['active', 'trialing'].includes(subscription.status) ? 'supporter' : 'free',
-    current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+    current_period_end: currentPeriodEndIso,
   };
 
   const { error } = await supabase
