@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Heart } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
@@ -419,6 +420,21 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
           <p className="text-xs text-muted-foreground">
             A unique Campaign ID will be auto-generated for players to join.
           </p>
+
+          {/* Support Button */}
+          <Link
+            to="/settings?tab=billing"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-sm font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
+            style={{
+              color: 'hsl(200, 100%, 70%)',
+              boxShadow: '0 0 15px hsl(200 100% 60% / 0.3), 0 0 30px hsl(200 100% 50% / 0.15)',
+              textShadow: '0 0 10px hsl(200 100% 60% / 0.6)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Heart className="w-4 h-4" />
+            Support Campaign Console
+          </Link>
 
           <div className="flex gap-3 pt-2">
             <TerminalButton
