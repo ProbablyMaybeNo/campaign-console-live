@@ -61,6 +61,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
   const [currentRound, setCurrentRound] = useState("");
   const [roundLength, setRoundLength] = useState("weekly");
   const [password, setPassword] = useState("");
+  const [hasExistingPassword, setHasExistingPassword] = useState(false);
   const [gameSystem, setGameSystem] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -91,8 +92,10 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       setTotalRounds(String(campaign.total_rounds || 10));
       setCurrentRound(String(campaign.current_round || 1));
       setRoundLength(campaign.round_length || "weekly");
-      setPassword(campaign.password || "");
-      setGameSystem(campaign.game_system || "");
+      // Don't populate password - we can't read hashed passwords
+      setPassword("");
+      // Check if campaign has a password set (password_hash exists)
+      setHasExistingPassword(!!(campaign as any).password_hash);
       setStartDate(campaign.start_date || "");
       setEndDate(campaign.end_date || "");
       setStatus(campaign.status === "active");
@@ -150,7 +153,8 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       total_rounds: parseInt(totalRounds) || 10,
       current_round: parseInt(currentRound) || 1,
       round_length: roundLength,
-      password: password || undefined,
+      // Only send password if user entered a new one
+      password: password.trim() ? password : undefined,
       game_system: gameSystem || undefined,
       start_date: startDate || undefined,
       end_date: endDate || undefined,
@@ -448,15 +452,26 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
                 </p>
               </div>
 
+              {hasExistingPassword && !password && (
+                <div className="p-3 bg-primary/10 border border-primary/30 rounded">
+                  <p className="text-xs text-primary uppercase tracking-wider">
+                    🔒 Password protection is enabled
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter a new password below to change it, or leave empty to keep the current password.
+                  </p>
+                </div>
+              )}
+
               <TerminalInput
-                label="Campaign Password (Optional)"
+                label={hasExistingPassword ? "New Password (leave empty to keep current)" : "Campaign Password (Optional)"}
                 type="password"
-                placeholder="Leave empty for no password"
+                placeholder={hasExistingPassword ? "Enter new password to change..." : "Leave empty for no password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
               <p className="text-xs text-muted-foreground -mt-2">
-                If set, players will need to enter this password when joining.
+                {password ? "Password will be securely hashed when saved." : "If set, players will need to enter this password when joining."}
               </p>
             </TabsContent>
 
