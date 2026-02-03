@@ -103,35 +103,46 @@ export function SupporterHub({
   const isLocked = !isSupporter;
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={setOpen} modal={false}>
       <SheetTrigger asChild>
         {isSupporter ? (
           <button
             className="relative flex items-center gap-2 w-full py-2.5 px-3 rounded-md transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
             style={{
-              background: 'linear-gradient(135deg, hsl(280, 80%, 45%) 0%, hsl(320, 70%, 50%) 50%, hsl(280, 80%, 45%) 100%)',
-              boxShadow: '0 0 20px hsl(280 80% 50% / 0.4), 0 0 40px hsl(320 70% 50% / 0.2), inset 0 1px 0 hsl(280 80% 70% / 0.3)',
+              background: 'linear-gradient(135deg, hsl(270, 100%, 60%) 0%, hsl(290, 100%, 65%) 50%, hsl(310, 100%, 60%) 100%)',
+              boxShadow: '0 0 25px hsl(280 100% 65% / 0.6), 0 0 50px hsl(300 100% 60% / 0.4), inset 0 1px 0 hsl(280 100% 80% / 0.4)',
             }}
           >
             <div 
-              className="absolute inset-0 opacity-30"
+              className="absolute inset-0 opacity-40"
               style={{
-                background: 'linear-gradient(45deg, transparent 30%, hsl(280, 80%, 70%) 50%, transparent 70%)',
-                animation: 'shimmer 3s ease-in-out infinite',
+                background: 'linear-gradient(45deg, transparent 30%, hsl(280, 100%, 75%) 50%, transparent 70%)',
+                animation: 'shimmer 2.5s ease-in-out infinite',
               }}
             />
-            <Crown className="w-4 h-4 text-amber-300 relative z-10" style={{ filter: 'drop-shadow(0 0 4px hsl(45, 100%, 50%))' }} />
-            <span className="font-mono text-xs font-bold uppercase tracking-wider text-white relative z-10">
+            <Crown className="w-4 h-4 text-amber-300 relative z-10" style={{ filter: 'drop-shadow(0 0 6px hsl(45, 100%, 60%))' }} />
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-white relative z-10" style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
               Supporter Hub
             </span>
-            <Zap className="w-3 h-3 text-amber-200/80 ml-auto relative z-10" />
+            <Zap className="w-3 h-3 text-amber-200 ml-auto relative z-10" style={{ filter: 'drop-shadow(0 0 4px hsl(45, 100%, 50%))' }} />
           </button>
         ) : (
           <button
-            className="flex items-center gap-2 w-full py-2.5 px-3 rounded-md border border-muted/40 bg-muted/5 transition-all hover:bg-muted/15 hover:border-primary/30 group"
+            className="relative flex items-center gap-2 w-full py-2.5 px-3 rounded-md transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden group"
+            style={{
+              background: 'linear-gradient(135deg, hsl(270, 60%, 35%) 0%, hsl(290, 50%, 40%) 50%, hsl(310, 50%, 35%) 100%)',
+              boxShadow: '0 0 15px hsl(280 60% 45% / 0.3), 0 0 30px hsl(300 50% 40% / 0.2)',
+              border: '1px solid hsl(280, 50%, 50% / 0.4)'
+            }}
           >
-            <Heart className="w-4 h-4 text-muted-foreground group-hover:text-primary/70 transition-colors" />
-            <span className="font-mono text-xs font-medium uppercase tracking-wider text-muted-foreground group-hover:text-foreground/80 transition-colors">
+            <div 
+              className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity"
+              style={{
+                background: 'linear-gradient(45deg, transparent 30%, hsl(280, 80%, 60%) 50%, transparent 70%)',
+              }}
+            />
+            <Heart className="w-4 h-4 relative z-10 transition-all" style={{ color: 'hsl(280, 70%, 70%)', filter: 'drop-shadow(0 0 4px hsl(280, 70%, 60%))' }} />
+            <span className="font-mono text-xs font-medium uppercase tracking-wider relative z-10 transition-colors" style={{ color: 'hsl(280, 50%, 80%)' }}>
               Support
             </span>
           </button>
@@ -140,8 +151,11 @@ export function SupporterHub({
 
       <SheetContent 
         side="left" 
-        className="w-[380px] sm:w-[420px] p-0 border-r-2 border-primary/60 bg-background/98 backdrop-blur-md"
-        style={{ boxShadow: '4px 0 40px hsl(var(--primary) / 0.25)' }}
+        className="w-[380px] sm:w-[420px] p-0 border-r-2 bg-background/98 backdrop-blur-xl z-50"
+        style={{ 
+          boxShadow: '4px 0 60px hsl(280 80% 50% / 0.3), 8px 0 100px hsl(var(--primary) / 0.15)',
+          borderColor: 'hsl(280, 70%, 55%)'
+        }}
       >
         {/* Header with gradient accent */}
         <SheetHeader className="relative p-4 border-b border-primary/30 overflow-hidden">
