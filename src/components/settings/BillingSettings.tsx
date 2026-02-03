@@ -185,10 +185,11 @@ export function BillingSettings() {
 
   const isSupporter = plan === "supporter" && subscriptionStatus === "active";
 
-  // Neon blue color for consistency
+  // Neon colors
   const neonBlue = "hsl(200, 100%, 70%)";
   const neonBlueGlow = "hsla(200, 100%, 70%, 0.3)";
-  const neonBlueFaint = "hsla(200, 100%, 70%, 0.4)";
+  const neonGreen = "hsl(142, 76%, 65%)";
+  const neonGreenFaint = "hsla(142, 76%, 65%, 0.4)";
 
   return (
     <div className="space-y-6">
@@ -196,8 +197,8 @@ export function BillingSettings() {
       <div
         className="rounded-lg p-6 space-y-6 font-mono"
         style={{
-          border: `2px solid ${neonBlue}`,
-          boxShadow: `0 0 20px ${neonBlueGlow}, inset 0 0 20px hsla(200, 100%, 70%, 0.05)`,
+          border: `2px solid ${neonGreen}`,
+          boxShadow: `0 0 20px hsla(142, 76%, 65%, 0.3), inset 0 0 20px hsla(142, 76%, 65%, 0.05)`,
           backgroundColor: "hsl(var(--card))",
         }}
       >
@@ -207,13 +208,13 @@ export function BillingSettings() {
           ship new features faster, and continue offering the major tools free for everyone.
         </p>
 
-        {/* Divider */}
+        {/* Section Header - Pipeline Features */}
         <div 
           className="text-center text-xs tracking-widest py-2"
           style={{ 
-            borderTop: `1px dashed ${neonBlueFaint}`,
-            borderBottom: `1px dashed ${neonBlueFaint}`,
-            color: neonBlue 
+            borderTop: `1px dashed ${neonGreenFaint}`,
+            borderBottom: `1px dashed ${neonGreenFaint}`,
+            color: neonGreen 
           }}
         >
           PIPELINE FEATURES // IN DEVELOPMENT
@@ -261,12 +262,13 @@ export function BillingSettings() {
         </div>
 
         {/* Subscribe Section */}
+        {/* Section Header - Subscribe */}
         <div 
           className="text-center text-xs tracking-widest py-2"
           style={{ 
-            borderTop: `1px dashed ${neonBlueFaint}`,
-            borderBottom: `1px dashed ${neonBlueFaint}`,
-            color: neonBlue 
+            borderTop: `1px dashed ${neonGreenFaint}`,
+            borderBottom: `1px dashed ${neonGreenFaint}`,
+            color: neonGreen 
           }}
         >
           SUBSCRIBE // $2.99 / MONTH
@@ -365,12 +367,13 @@ export function BillingSettings() {
         </div>
 
         {/* One-Time Support Section */}
+        {/* Section Header - One-Time Support */}
         <div 
           className="text-center text-xs tracking-widest py-2"
           style={{ 
-            borderTop: `1px dashed ${neonBlueFaint}`,
-            borderBottom: `1px dashed ${neonBlueFaint}`,
-            color: neonBlue 
+            borderTop: `1px dashed ${neonGreenFaint}`,
+            borderBottom: `1px dashed ${neonGreenFaint}`,
+            color: neonGreen 
           }}
         >
           ONE-TIME SUPPORT // OPTIONAL
@@ -431,12 +434,13 @@ export function BillingSettings() {
         </div>
 
         {/* Community Support Section */}
+        {/* Section Header - Community */}
         <div 
           className="text-center text-xs tracking-widest py-2"
           style={{ 
-            borderTop: `1px dashed ${neonBlueFaint}`,
-            borderBottom: `1px dashed ${neonBlueFaint}`,
-            color: neonBlue 
+            borderTop: `1px dashed ${neonGreenFaint}`,
+            borderBottom: `1px dashed ${neonGreenFaint}`,
+            color: neonGreen 
           }}
         >
           SUPPORT WITHOUT $$$
