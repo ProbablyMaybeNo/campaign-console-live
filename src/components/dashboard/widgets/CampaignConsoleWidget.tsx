@@ -67,9 +67,10 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
           <img 
             src={donatorBadge} 
             alt="Supporter Badge" 
-            className="w-12 h-12 object-contain"
+            className="w-14 h-14 object-contain"
             style={{ 
-              filter: 'drop-shadow(0 0 8px hsl(200, 100%, 60%))',
+              filter: 'drop-shadow(0 0 8px hsl(200, 100%, 60%)) drop-shadow(0 0 3px hsl(200, 100%, 80%)) brightness(1.1) contrast(1.2)',
+              mixBlendMode: 'screen',
             }}
           />
         </div>

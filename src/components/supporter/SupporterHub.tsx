@@ -121,7 +121,7 @@ export function SupporterHub({
                 animation: 'shimmer 2.5s ease-in-out infinite',
               }}
             />
-            <img src={supporterIcon} alt="Supporter" className="w-5 h-5 relative z-10" style={{ filter: 'drop-shadow(0 0 4px hsl(200, 100%, 70%))' }} />
+            <img src={supporterIcon} alt="Supporter" className="w-5 h-5 relative z-10" style={{ filter: 'drop-shadow(0 0 6px hsl(200, 100%, 70%)) drop-shadow(0 0 2px hsl(200, 100%, 90%)) brightness(1.1) contrast(1.2)', mixBlendMode: 'screen' }} />
             <span className="font-mono text-xs font-bold uppercase tracking-wider text-white relative z-10" style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
               Supporter Hub
             </span>
@@ -142,7 +142,7 @@ export function SupporterHub({
                 background: 'linear-gradient(45deg, transparent 30%, hsl(200, 80%, 60%) 50%, transparent 70%)',
               }}
             />
-            <img src={supporterIcon} alt="Supporter" className="w-5 h-5 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
+            <img src={supporterIcon} alt="Supporter" className="w-5 h-5 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" style={{ filter: 'drop-shadow(0 0 4px hsl(200, 100%, 60%)) brightness(1.1) contrast(1.2)', mixBlendMode: 'screen' }} />
             <span className="font-mono text-xs font-medium uppercase tracking-wider relative z-10 transition-colors" style={{ color: 'hsl(200, 70%, 70%)' }}>
               Support
             </span>
