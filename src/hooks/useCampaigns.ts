@@ -82,6 +82,9 @@ export interface UpdateCampaignInput {
   title_color?: string;
   border_color?: string;
   display_settings?: DisplaySettings;
+  // Supporter features
+  theme_id?: string;
+  banner_url?: string;
 }
 
 export function useCampaigns() {
