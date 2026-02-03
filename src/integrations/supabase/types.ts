@@ -1454,6 +1454,14 @@ export type Database = {
       can_create_campaign: { Args: { _user_id: string }; Returns: boolean }
       count_active_campaigns: { Args: { _user_id: string }; Returns: number }
       generate_join_code: { Args: never; Returns: string }
+      get_public_profiles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+        }[]
+      }
       get_user_entitlements: { Args: { _user_id: string }; Returns: Json }
       has_role: {
         Args: {
