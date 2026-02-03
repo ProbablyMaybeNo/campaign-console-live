@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Crown, CreditCard, Heart, Check, ExternalLink, Loader2, Gift } from "lucide-react";
+import { Crown, CreditCard, Heart, Check, ExternalLink, Loader2, Gift, ChevronDown } from "lucide-react";
 import { TerminalCard } from "@/components/ui/TerminalCard";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -36,6 +37,7 @@ export function BillingSettings() {
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [isManaging, setIsManaging] = useState(false);
   const [isDonating, setIsDonating] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // Handle success/cancel URL params
   useEffect(() => {
@@ -151,193 +153,237 @@ export function BillingSettings() {
 
   return (
     <div className="space-y-6">
-      {/* About Blurb */}
-      <TerminalCard className="p-6">
-        <p className="text-sm text-muted-foreground leading-relaxed">
+      {/* Unified Billing Card */}
+      <div
+        className="rounded-lg p-6 space-y-8"
+        style={{
+          border: "2px solid hsl(142, 76%, 65%)",
+          boxShadow: "0 0 20px hsla(142, 76%, 65%, 0.3), inset 0 0 20px hsla(142, 76%, 65%, 0.05)",
+          backgroundColor: "hsl(var(--card))",
+        }}
+      >
+        {/* About Blurb */}
+        <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 95%)" }}>
           Campaign Console is a solo-dev project built for people who love narrative campaigns. 
           Your subscription helps keep it online, supports ongoing development, and unlocks more 
           customization as the app grows. You're not just upgrading—you're helping shape what gets built next.
         </p>
-      </TerminalCard>
 
-      {/* Current Plan */}
-      <TerminalCard className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Crown className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-mono font-semibold text-primary">
-            Current Plan
-          </h3>
-        </div>
+        {/* Divider */}
+        <div className="border-t" style={{ borderColor: "hsla(142, 76%, 65%, 0.3)" }} />
 
-        {isLoading ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Loading subscription status...</span>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xl font-semibold" style={{ color: isSupporter ? "hsl(142, 76%, 55%)" : "hsl(0, 0%, 70%)" }}>
-                  {isSupporter ? "Supporter" : "Free"}
-                </p>
-                {isSupporter && currentPeriodEnd && (
-                  <p className="text-sm text-muted-foreground">
-                    Renews on {format(new Date(currentPeriodEnd), "MMM d, yyyy")}
-                  </p>
-                )}
-                {subscriptionStatus === "past_due" && (
-                  <p className="text-sm text-destructive">Payment past due</p>
-                )}
-                {subscriptionStatus === "canceled" && (
-                  <p className="text-sm text-warning">Subscription canceled</p>
-                )}
-              </div>
-
-              {isSupporter && (
-                <div className="flex items-center gap-2 px-3 py-1 rounded bg-primary/20 border border-primary/40">
-                  <Check className="h-4 w-4 text-primary" />
-                  <span className="text-sm text-primary font-mono">Active</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-3 flex-wrap">
-              {!isSupporter && (
-                <TerminalButton
-                  onClick={handleUpgrade}
-                  disabled={isUpgrading}
-                  className="gap-2"
-                >
-                  {isUpgrading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <CreditCard className="h-4 w-4" />
-                  )}
-                  Upgrade to Supporter ($2.99/mo)
-                </TerminalButton>
-              )}
-
-              {stripeCustomerId && (
-                <TerminalButton
-                  variant="secondary"
-                  onClick={handleManageSubscription}
-                  disabled={isManaging}
-                  className="gap-2"
-                >
-                  {isManaging ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="h-4 w-4" />
-                  )}
-                  Manage Subscription
-                </TerminalButton>
-              )}
-            </div>
-          </div>
-        )}
-      </TerminalCard>
-
-      {/* One-Time Donation */}
-      <TerminalCard className="p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Heart className="h-5 w-5" style={{ color: "hsl(0, 80%, 60%)" }} />
-          <h3 className="text-lg font-mono font-semibold" style={{ color: "hsl(0, 80%, 60%)" }}>
-            Support with a One-Time Donation
-          </h3>
-        </div>
-
-        <p className="text-sm text-muted-foreground mb-4">
-          Help keep Campaign Console running with a one-time contribution.
-        </p>
-
-        <div className="space-y-4">
-          {/* Preset Buttons */}
-          <div className="flex gap-2 flex-wrap">
-            {PRESET_AMOUNTS.map((amount) => (
-              <TerminalButton
-                key={amount}
-                variant={donationAmount === amount.toString() ? "default" : "secondary"}
-                onClick={() => handlePresetClick(amount)}
-                className="min-w-[70px]"
-              >
-                ${amount}
-              </TerminalButton>
-            ))}
-          </div>
-
-          {/* Custom Amount Input */}
-          <div className="flex gap-3 items-start">
-            <div className="flex-1">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  $
-                </span>
-                <TerminalInput
-                  type="text"
-                  placeholder="Custom amount"
-                  value={donationAmount}
-                  onChange={(e) => handleDonationInputChange(e.target.value)}
-                  className="pl-7"
-                />
-              </div>
-              {donationError && (
-                <p className="text-sm text-destructive mt-1">{donationError}</p>
-              )}
-              <p className="text-xs text-muted-foreground mt-1">
-                Min: ${MIN_DONATION} · Max: ${MAX_DONATION}
-              </p>
-            </div>
-
-            <TerminalButton
-              onClick={handleDonate}
-              disabled={isDonating || !donationAmount || !!donationError}
-              className="gap-2"
-            >
-              {isDonating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Gift className="h-4 w-4" />
-              )}
-              Donate
-            </TerminalButton>
-          </div>
-        </div>
-      </TerminalCard>
-
-      {/* Donation History */}
-      {donations.length > 0 && (
-        <TerminalCard className="p-6">
+        {/* Current Plan Section */}
+        <div>
           <div className="flex items-center gap-3 mb-4">
-            <Gift className="h-5 w-5 text-secondary" />
-            <h3 className="text-lg font-mono font-semibold text-secondary">
-              Donation History
+            <Crown className="h-5 w-5" style={{ color: "hsl(142, 76%, 65%)" }} />
+            <h3 className="text-lg font-mono font-semibold" style={{ color: "hsl(142, 76%, 65%)" }}>
+              Current Plan
             </h3>
           </div>
 
-          {donationsLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
+          {isLoading ? (
+            <div className="flex items-center gap-2" style={{ color: "hsl(0, 0%, 85%)" }}>
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading donations...</span>
+              <span>Loading subscription status...</span>
             </div>
           ) : (
-            <div className="space-y-2">
-              {donations.map((donation) => (
-                <div
-                  key={donation.id}
-                  className="flex justify-between items-center py-2 border-b border-border/50 last:border-0"
-                >
-                  <span className="font-mono text-primary">
-                    ${(donation.amount_cents / 100).toFixed(2)} {donation.currency.toUpperCase()}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {format(new Date(donation.created_at), "MMM d, yyyy")}
-                  </span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xl font-semibold" style={{ color: isSupporter ? "hsl(142, 76%, 55%)" : "hsl(0, 0%, 90%)" }}>
+                    {isSupporter ? "Supporter" : "Free"}
+                  </p>
+                  {isSupporter && currentPeriodEnd && (
+                    <p className="text-sm" style={{ color: "hsl(0, 0%, 75%)" }}>
+                      Renews on {format(new Date(currentPeriodEnd), "MMM d, yyyy")}
+                    </p>
+                  )}
+                  {subscriptionStatus === "past_due" && (
+                    <p className="text-sm text-destructive">Payment past due</p>
+                  )}
+                  {subscriptionStatus === "canceled" && (
+                    <p className="text-sm text-warning">Subscription canceled</p>
+                  )}
                 </div>
-              ))}
+
+                {isSupporter && (
+                  <div 
+                    className="flex items-center gap-2 px-3 py-1 rounded"
+                    style={{ 
+                      backgroundColor: "hsla(142, 76%, 65%, 0.2)", 
+                      border: "1px solid hsla(142, 76%, 65%, 0.4)" 
+                    }}
+                  >
+                    <Check className="h-4 w-4" style={{ color: "hsl(142, 76%, 65%)" }} />
+                    <span className="text-sm font-mono" style={{ color: "hsl(142, 76%, 65%)" }}>Active</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 flex-wrap">
+                {!isSupporter && (
+                  <TerminalButton
+                    onClick={handleUpgrade}
+                    disabled={isUpgrading}
+                    className="gap-2"
+                  >
+                    {isUpgrading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="h-4 w-4" />
+                    )}
+                    Upgrade to Supporter ($2.99/mo)
+                  </TerminalButton>
+                )}
+
+                {stripeCustomerId && (
+                  <TerminalButton
+                    variant="secondary"
+                    onClick={handleManageSubscription}
+                    disabled={isManaging}
+                    className="gap-2"
+                  >
+                    {isManaging ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <ExternalLink className="h-4 w-4" />
+                    )}
+                    Manage Subscription
+                  </TerminalButton>
+                )}
+              </div>
             </div>
           )}
-        </TerminalCard>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t" style={{ borderColor: "hsla(142, 76%, 65%, 0.3)" }} />
+
+        {/* One-Time Donation Section */}
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <Heart className="h-5 w-5" style={{ color: "hsl(0, 80%, 60%)" }} />
+            <h3 className="text-lg font-mono font-semibold" style={{ color: "hsl(0, 80%, 60%)" }}>
+              Help keep Campaign Console running with a one-time contribution.
+            </h3>
+          </div>
+
+          <div className="space-y-4">
+            {/* Preset Buttons */}
+            <div className="flex gap-2 flex-wrap">
+              {PRESET_AMOUNTS.map((amount) => (
+                <TerminalButton
+                  key={amount}
+                  variant={donationAmount === amount.toString() ? "default" : "secondary"}
+                  onClick={() => handlePresetClick(amount)}
+                  className="min-w-[70px]"
+                >
+                  ${amount}
+                </TerminalButton>
+              ))}
+            </div>
+
+            {/* Custom Amount Input */}
+            <div className="flex gap-3 items-start">
+              <div className="flex-1">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "hsl(0, 0%, 70%)" }}>
+                    $
+                  </span>
+                  <TerminalInput
+                    type="text"
+                    placeholder="Custom amount"
+                    value={donationAmount}
+                    onChange={(e) => handleDonationInputChange(e.target.value)}
+                    className="pl-7"
+                  />
+                </div>
+                {donationError && (
+                  <p className="text-sm text-destructive mt-1">{donationError}</p>
+                )}
+                <p className="text-xs mt-1" style={{ color: "hsl(0, 0%, 70%)" }}>
+                  Min: ${MIN_DONATION} · Max: ${MAX_DONATION}
+                </p>
+              </div>
+
+              <TerminalButton
+                onClick={handleDonate}
+                disabled={isDonating || !donationAmount || !!donationError}
+                className="gap-2"
+              >
+                {isDonating ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Gift className="h-4 w-4" />
+                )}
+                Donate
+              </TerminalButton>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Donation History - Collapsible */}
+      {donations.length > 0 && (
+        <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              className="w-full flex items-center justify-between p-4 rounded-lg transition-colors hover:bg-card/80"
+              style={{
+                border: "1px solid hsla(142, 76%, 65%, 0.4)",
+                backgroundColor: "hsl(var(--card))",
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <Gift className="h-5 w-5" style={{ color: "hsl(200, 100%, 70%)" }} />
+                <span className="text-lg font-mono font-semibold" style={{ color: "hsl(200, 100%, 70%)" }}>
+                  Donation History ({donations.length})
+                </span>
+              </div>
+              <ChevronDown
+                className="h-5 w-5 transition-transform duration-200"
+                style={{ 
+                  color: "hsl(200, 100%, 70%)",
+                  transform: historyOpen ? "rotate(180deg)" : "rotate(0deg)"
+                }}
+              />
+            </button>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent>
+            <div
+              className="mt-2 p-4 rounded-lg"
+              style={{
+                border: "1px solid hsla(142, 76%, 65%, 0.3)",
+                backgroundColor: "hsl(var(--card))",
+              }}
+            >
+              {donationsLoading ? (
+                <div className="flex items-center gap-2" style={{ color: "hsl(0, 0%, 85%)" }}>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading donations...</span>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {donations.map((donation) => (
+                    <div
+                      key={donation.id}
+                      className="flex justify-between items-center py-2 border-b last:border-0"
+                      style={{ borderColor: "hsla(142, 76%, 65%, 0.2)" }}
+                    >
+                      <span className="font-mono" style={{ color: "hsl(142, 76%, 65%)" }}>
+                        ${(donation.amount_cents / 100).toFixed(2)} {donation.currency.toUpperCase()}
+                      </span>
+                      <span className="text-sm" style={{ color: "hsl(0, 0%, 75%)" }}>
+                        {format(new Date(donation.created_at), "MMM d, yyyy")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );
