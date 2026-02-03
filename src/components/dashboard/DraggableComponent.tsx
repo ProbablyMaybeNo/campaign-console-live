@@ -16,6 +16,8 @@ import { CampaignConsoleWidget } from "./widgets/CampaignConsoleWidget";
 import { ActivityFeedWidget } from "./widgets/ActivityFeedWidget";
 import { RollRecorderWidget } from "./widgets/RollRecorderWidget";
 import { AnnouncementsWidget } from "./widgets/AnnouncementsWidget";
+import { TextWidget } from "./widgets/TextWidget";
+import { StickerWidget } from "./widgets/StickerWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -52,6 +54,8 @@ const COMPONENT_ICONS: Record<string, string> = {
   roll_recorder: "📜",
   announcements: "📢",
   "campaign-console": "⚔️",
+  text: "📝",
+  sticker: "⭐",
 };
 
 function DraggableComponentInner({
@@ -186,6 +190,10 @@ function DraggableComponentInner({
         return <ActivityFeedWidget campaignId={campaignId} isGM={isGM} />;
       case "announcements":
         return <AnnouncementsWidget campaignId={campaignId} isGM={isGM} />;
+      case "text":
+        return <TextWidget component={component} isGM={isGM} />;
+      case "sticker":
+        return <StickerWidget component={component} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">

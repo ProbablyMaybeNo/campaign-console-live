@@ -3,8 +3,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { useEntitlements, isFeatureLocked } from "@/hooks/useEntitlements";
 import { getSpawnPosition } from "@/lib/canvasPlacement";
 import { PasteWizardOverlay } from "./PasteWizardOverlay";
+import { LockedFeature } from "@/components/ui/LockedFeature";
 import { 
   Table, 
   LayoutList, 
@@ -17,6 +19,8 @@ import {
   Activity,
   History,
   Megaphone,
+  FileText,
+  Sticker,
 } from "lucide-react";
 
 interface AddComponentModalProps {
@@ -26,8 +30,8 @@ interface AddComponentModalProps {
 }
 
 const COMPONENT_TYPES = [
-  { type: "rules_table", label: "Rules Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
-  { type: "rules_card", label: "Rules Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
+  { type: "rules_table", label: "Rules Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true, requiresSmartPaste: true },
+  { type: "rules_card", label: "Rules Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true, requiresSmartPaste: true },
   { type: "custom_table", label: "Custom Table", icon: Table, description: "Blank table for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "custom_card", label: "Custom Card", icon: LayoutList, description: "Blank card for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "narrative_table", label: "Narrative", icon: LayoutList, description: "Display narrative events" },
@@ -40,6 +44,8 @@ const COMPONENT_TYPES = [
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
   { type: "activity_feed", label: "Activity Feed", icon: Activity, description: "Real-time campaign activity log" },
   { type: "announcements", label: "Announcements", icon: Megaphone, description: "GM notice board for campaign updates" },
+  { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget", supporterFeature: "text_widget" as const },
+  { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker", supporterFeature: "stickers" as const },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -48,6 +54,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
   const [showPasteWizard, setShowPasteWizard] = useState(false);
   
   const createComponent = useCreateComponent();
+  const { entitlements } = useEntitlements();
 
   const selectedTypeData = useMemo(() => 
     COMPONENT_TYPES.find(v => v.type === selectedType), 
@@ -56,6 +63,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
 
   const handleTypeSelect = (type: string) => {
     const typeData = COMPONENT_TYPES.find(v => v.type === type);
+    
+    // Check if feature is locked
+    if (typeData?.supporterFeature && isFeatureLocked(entitlements, typeData.supporterFeature)) {
+      // Don't proceed - LockedFeature wrapper handles navigation
+      return;
+    }
     
     // If type uses paste wizard, open it immediately
     if (typeData?.usesPasteWizard) {
@@ -89,6 +102,16 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       config.count = 1;
     }
 
+    if (selectedType === "text") {
+      config.content = "";
+    }
+
+    if (selectedType === "sticker") {
+      config.icon = "Star";
+      config.size = "md";
+      config.color = "hsl(142, 76%, 55%)";
+    }
+
     // Determine component size based on type
     let width = 350;
     let height = 300;
@@ -114,6 +137,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "announcements") {
       width = 380;
       height = 400;
+    } else if (selectedType === "text") {
+      width = 300;
+      height = 250;
+    } else if (selectedType === "sticker") {
+      width = 120;
+      height = 120;
     }
 
     // Spawn at canvas center with slight offset to not overlap existing components
@@ -186,20 +215,44 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               Select Component Type
             </label>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {COMPONENT_TYPES.map(({ type, label, icon: Icon, description }) => (
-                <button
-                  key={type}
-                  onClick={() => handleTypeSelect(type)}
-                  className={`p-3 border rounded text-center transition-all ${
-                    selectedType === type
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/50 hover:bg-accent"
-                  }`}
-                >
-                  <Icon className={`w-6 h-6 mx-auto mb-2 ${selectedType === type ? "text-primary" : "text-muted-foreground"}`} />
-                  <p className="text-xs font-mono uppercase">{label}</p>
-                </button>
-              ))}
+              {COMPONENT_TYPES.map(({ type, label, icon: Icon, description, supporterFeature }) => {
+                const isLocked = supporterFeature && isFeatureLocked(entitlements, supporterFeature);
+                
+                const buttonContent = (
+                  <button
+                    key={type}
+                    onClick={() => !isLocked && handleTypeSelect(type)}
+                    className={`p-3 border rounded text-center transition-all relative ${
+                      selectedType === type
+                        ? "border-primary bg-primary/10 text-primary"
+                        : isLocked
+                          ? "border-border/50 opacity-60 cursor-not-allowed"
+                          : "border-border hover:border-primary/50 hover:bg-accent"
+                    }`}
+                    disabled={isLocked}
+                  >
+                    <Icon className={`w-6 h-6 mx-auto mb-2 ${
+                      selectedType === type ? "text-primary" : 
+                      isLocked ? "text-muted-foreground/50" : "text-muted-foreground"
+                    }`} />
+                    <p className="text-xs font-mono uppercase">{label}</p>
+                  </button>
+                );
+
+                if (isLocked) {
+                  return (
+                    <LockedFeature 
+                      key={type} 
+                      isLocked={true}
+                      featureName={label}
+                    >
+                      {buttonContent}
+                    </LockedFeature>
+                  );
+                }
+
+                return buttonContent;
+              })}
             </div>
           </div>
 
@@ -266,6 +319,18 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "announcements" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   GM notice board for campaign updates. Optionally send announcements as private messages to selected players.
+                </p>
+              )}
+
+              {selectedType === "text" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  A text widget for notes and markdown content. Perfect for house rules, session notes, or any custom text.
+                </p>
+              )}
+
+              {selectedType === "sticker" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  A decorative icon marker. Choose from dozens of icons to mark objectives, danger zones, or points of interest.
                 </p>
               )}
 
