@@ -82,7 +82,7 @@ export default function Campaigns() {
   return (
     <div className="min-h-screen bg-background p-6 relative">
       {/* Frame borders with neon glow */}
-      <div className="absolute inset-4 pointer-events-none border border-primary/40 shadow-[0_0_15px_hsl(var(--primary)/0.15)]" />
+      <div className="absolute inset-4 pointer-events-none border border-primary/40 shadow-[0_0_20px_hsl(var(--primary)/0.15)]" />
       <div className="absolute inset-6 pointer-events-none border border-primary/25" />
 
       {/* User icon and Help */}
@@ -92,7 +92,7 @@ export default function Campaigns() {
           <TooltipTrigger asChild>
             <button
               onClick={() => navigate("/settings")}
-              className="p-3 border border-primary/50 text-primary hover:glow-primary transition-all"
+              className="p-3 border border-primary/50 text-primary transition-all duration-200 hover:bg-primary/10 hover:border-primary hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)] active:scale-95"
             >
               <Unlock className="w-6 h-6" />
             </button>
@@ -105,9 +105,9 @@ export default function Campaigns() {
 
       <div className="max-w-5xl mx-auto pt-8 relative z-10">
         {/* Back button */}
-        <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-glow-primary mb-6 transition-all">
-          <div className="w-8 h-8 border border-primary/60 rounded-full flex items-center justify-center hover:glow-primary transition-all">
-            <ArrowLeft className="w-4 h-4" />
+        <Link to="/" className="inline-flex items-center gap-2 text-primary hover:text-primary-bright mb-6 transition-all duration-200 group">
+          <div className="w-8 h-8 border border-primary/60 rounded-full flex items-center justify-center transition-all duration-200 group-hover:border-primary group-hover:shadow-[0_0_12px_hsl(var(--primary)/0.4)] group-hover:scale-105">
+            <ArrowLeft className="w-4 h-4 transition-transform duration-200 group-hover:-translate-x-0.5" />
           </div>
         </Link>
 
@@ -165,17 +165,17 @@ export default function Campaigns() {
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedCampaigns.map((campaign) => (
-                    <tr 
-                      key={campaign.id}
-                      onClick={() => handleRowClick(campaign.id)}
-                      onDoubleClick={() => navigate(`/campaign/${campaign.id}`)}
-                      className={`cursor-pointer transition-all border-b border-primary/20 ${
-                        selectedCampaignId === campaign.id 
-                          ? "bg-primary/15 shadow-[inset_0_0_20px_hsl(var(--primary)/0.1)]" 
-                          : "hover:bg-primary/5"
-                      }`}
-                    >
+                    {displayedCampaigns.map((campaign) => (
+                      <tr 
+                        key={campaign.id}
+                        onClick={() => handleRowClick(campaign.id)}
+                        onDoubleClick={() => navigate(`/campaign/${campaign.id}`)}
+                        className={`cursor-pointer transition-all duration-200 border-b border-primary/20 ${
+                          selectedCampaignId === campaign.id 
+                            ? "bg-primary/15 shadow-[inset_0_0_25px_hsl(var(--primary)/0.15)]" 
+                            : "hover:bg-primary/5 hover:shadow-[inset_0_0_15px_hsl(var(--primary)/0.05)]"
+                        }`}
+                      >
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2">
                           {getRoleIcon(campaign)}

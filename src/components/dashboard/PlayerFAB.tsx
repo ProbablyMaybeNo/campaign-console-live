@@ -25,16 +25,16 @@ interface FABItem {
   id: OverlayType;
   label: string;
   icon: React.ElementType;
-  color: string;
 }
 
+// Unified icon mapping - matches sidebar nav icons
 const fabItems: FABItem[] = [
-  { id: "player-settings", label: "My Settings", icon: UserCog, color: "hsl(200, 100%, 70%)" },
-  { id: "player-messages", label: "Messages", icon: MessageSquare, color: "hsl(200, 100%, 70%)" },
-  { id: "rules", label: "Rules", icon: Scroll, color: "hsl(200, 100%, 70%)" },
-  { id: "schedule", label: "Schedule", icon: Calendar, color: "hsl(200, 100%, 70%)" },
-  { id: "map", label: "Map", icon: Map, color: "hsl(200, 100%, 70%)" },
-  { id: "narrative", label: "Narrative", icon: BookOpen, color: "hsl(200, 100%, 70%)" },
+  { id: "player-settings", label: "My Settings", icon: UserCog },
+  { id: "player-messages", label: "Messages", icon: MessageSquare },
+  { id: "rules", label: "Rules", icon: Scroll },
+  { id: "schedule", label: "Schedule", icon: Calendar },
+  { id: "map", label: "Map", icon: Map },
+  { id: "narrative", label: "Narrative", icon: BookOpen },
 ];
 
 export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
@@ -101,76 +101,74 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-row-reverse flex-wrap justify-end gap-3 mb-2 max-w-[calc(100vw-4rem)]"
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="flex flex-row-reverse flex-wrap justify-end gap-2.5 mb-2 max-w-[calc(100vw-4rem)]"
           >
             {fabItems.map((item, index) => (
               <motion.button
                 key={item.id}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ delay: index * 0.03 }}
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                transition={{ delay: index * 0.04, duration: 0.15 }}
                 onClick={() => handleItemClick(item.id)}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-[hsl(200,100%,70%)]/40 backdrop-blur-sm transition-all hover:scale-105 hover:border-[hsl(200,100%,70%)]/80 group relative"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-secondary/40 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-secondary hover:bg-secondary/10 group relative"
                 style={{ 
-                  boxShadow: `0 0 12px hsl(200 100% 70% / 0.2), 0 4px 12px rgba(0,0,0,0.4)`,
+                  boxShadow: `0 0 15px hsl(200 100% 70% / 0.15), 0 4px 12px rgba(0,0,0,0.4)`,
                 }}
               >
                 <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-hover:shadow-[0_0_15px_hsl(200_100%_70%/0.5)]"
                   style={{ 
                     backgroundColor: "transparent",
                     border: "2px solid hsl(200, 100%, 70%)",
-                    boxShadow: "0 0 8px hsl(200 100% 70% / 0.4)"
+                    boxShadow: "0 0 8px hsl(200 100% 70% / 0.3)"
                   }}
                 >
-                  <item.icon className="w-5 h-5" style={{ color: "hsl(200, 100%, 70%)" }} />
+                  <item.icon className="w-5 h-5 text-secondary transition-all duration-200 group-hover:text-secondary-bright" />
                 </div>
-                <span 
-                  className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap"
-                  style={{ color: "hsl(142, 76%, 65%)" }}
-                >
+                <span className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap text-primary transition-colors duration-200 group-hover:text-primary-bright">
                   {item.label}
                 </span>
                 {/* Badge for messages */}
-                {item.id === "messages" && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+                {item.id === "player-messages" && unreadCount > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-[0_0_10px_hsl(0_80%_55%/0.5)]"
+                  >
                     {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
+                  </motion.span>
                 )}
               </motion.button>
             ))}
             
             {/* Help button */}
             <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              transition={{ delay: fabItems.length * 0.03 }}
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+              transition={{ delay: fabItems.length * 0.04, duration: 0.15 }}
               onClick={() => { setShowHelp(true); setIsExpanded(false); }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-[hsl(200,100%,70%)]/40 backdrop-blur-sm transition-all hover:scale-105 hover:border-[hsl(200,100%,70%)]/80 group"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-secondary/40 backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-secondary hover:bg-secondary/10 group"
               style={{ 
-                boxShadow: `0 0 12px hsl(200 100% 70% / 0.2), 0 4px 12px rgba(0,0,0,0.4)`,
+                boxShadow: `0 0 15px hsl(200 100% 70% / 0.15), 0 4px 12px rgba(0,0,0,0.4)`,
               }}
             >
               <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 group-hover:shadow-[0_0_15px_hsl(200_100%_70%/0.5)]"
                 style={{ 
                   backgroundColor: "transparent",
                   border: "2px solid hsl(200, 100%, 70%)",
-                  boxShadow: "0 0 8px hsl(200 100% 70% / 0.4)"
+                  boxShadow: "0 0 8px hsl(200 100% 70% / 0.3)"
                 }}
               >
-                <HelpCircle className="w-5 h-5" style={{ color: "hsl(200, 100%, 70%)" }} />
+                <HelpCircle className="w-5 h-5 text-secondary transition-all duration-200 group-hover:text-secondary-bright" />
               </div>
-              <span 
-                className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap"
-                style={{ color: "hsl(142, 76%, 65%)" }}
-              >
+              <span className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap text-primary transition-colors duration-200 group-hover:text-primary-bright">
                 Help
               </span>
             </motion.button>

@@ -868,4 +868,78 @@
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
   }
+
+  /* Pulse glow animation */
+  @keyframes pulse-glow {
+    0%, 100% { 
+      box-shadow: 0 0 15px hsl(var(--primary) / 0.4), 0 0 30px hsl(var(--primary) / 0.2);
+    }
+    50% { 
+      box-shadow: 0 0 25px hsl(var(--primary) / 0.6), 0 0 50px hsl(var(--primary) / 0.3);
+    }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Subtle float animation for FABs */
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Glow on hover transition utility */
+  .hover-glow-primary {
+    @apply transition-all duration-200;
+  }
+  .hover-glow-primary:hover {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.4), 0 0 40px hsl(var(--primary) / 0.2);
+  }
+
+  .hover-glow-secondary {
+    @apply transition-all duration-200;
+  }
+  .hover-glow-secondary:hover {
+    box-shadow: 0 0 20px hsl(var(--secondary) / 0.4), 0 0 40px hsl(var(--secondary) / 0.2);
+  }
+
+  /* Standardized neon text glow */
+  .text-glow-primary {
+    text-shadow: 0 0 10px hsl(var(--primary) / 0.6), 0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  .text-glow-secondary {
+    text-shadow: 0 0 10px hsl(var(--secondary) / 0.6), 0 0 20px hsl(var(--secondary) / 0.3);
+  }
+
+  .text-glow-white {
+    text-shadow: 0 0 10px rgba(255,255,255,0.5), 0 0 20px rgba(255,255,255,0.3);
+  }
+
+  /* Card/button lift on hover */
+  .hover-lift {
+    @apply transition-all duration-200;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px hsl(0 0% 0% / 0.3);
+  }
+
+  /* Scale on hover */
+  .hover-scale {
+    @apply transition-transform duration-200;
+  }
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+
+  /* Active press effect */
+  .active-press:active {
+    transform: scale(0.98);
+  }
 }

@@ -21,11 +21,11 @@ export function ThemePreviewCard({
     <div
       data-theme={theme.id}
       className={cn(
-        "relative rounded-md overflow-hidden border-2 transition-all cursor-pointer group",
+        "relative rounded-md overflow-hidden border-2 transition-all duration-200 cursor-pointer group",
         isActive 
-          ? "border-primary ring-2 ring-primary/30" 
-          : "border-border hover:border-primary/50",
-        isLocked && "opacity-60 cursor-not-allowed"
+          ? "border-primary ring-2 ring-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.3)]" 
+          : "border-border hover:border-primary/50 hover:shadow-[0_0_15px_hsl(var(--primary)/0.15)]",
+        isLocked && "opacity-50 cursor-not-allowed"
       )}
       onClick={() => !isLocked && onSelect?.(theme.id)}
     >

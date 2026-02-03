@@ -238,21 +238,23 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                   <button
                     key={type}
                     onClick={() => !isLocked && handleTypeSelect(type)}
-                    className={`p-2 border rounded text-center transition-all relative ${
+                    className={`p-2.5 border rounded text-center transition-all duration-200 relative group ${
                       selectedType === type
-                        ? "border-primary bg-primary/10 text-primary"
+                        ? "border-primary bg-primary/15 text-primary shadow-[0_0_15px_hsl(var(--primary)/0.3)]"
                         : isLocked
-                          ? "border-border/30 bg-muted/20"
-                          : "border-border hover:border-primary/50 hover:bg-accent"
+                          ? "border-border/30 bg-muted/20 cursor-not-allowed"
+                          : "border-border hover:border-primary/60 hover:bg-primary/10 hover:scale-105 hover:shadow-[0_0_12px_hsl(var(--primary)/0.2)]"
                     }`}
                     disabled={isLocked}
                   >
-                    <div className={isLocked ? "opacity-40" : ""}>
-                      <Icon className={`w-5 h-5 mx-auto mb-1 ${
+                    <div className={`transition-all duration-200 ${isLocked ? "opacity-40" : "group-hover:scale-110"}`}>
+                      <Icon className={`w-5 h-5 mx-auto mb-1 transition-colors duration-200 ${
                         selectedType === type ? "text-primary" : 
-                        isLocked ? "text-muted-foreground" : "text-muted-foreground"
+                        isLocked ? "text-muted-foreground" : "text-muted-foreground group-hover:text-primary"
                       }`} />
-                      <p className="text-[10px] font-mono uppercase leading-tight">{label}</p>
+                      <p className={`text-[10px] font-mono uppercase leading-tight transition-colors duration-200 ${
+                        !isLocked && "group-hover:text-foreground"
+                      }`}>{label}</p>
                     </div>
                     {isLocked && (
                       <div className="flex flex-col items-center mt-1">
