@@ -399,6 +399,7 @@ export function BillingSettings() {
             </div>
           </div>
         </div>
+      )}
 
       {/* Donation History - Collapsible */}
       {donations.length > 0 && (
