@@ -446,3 +446,144 @@ This architecture sets up well for future PWA:
 └──────────────────────┘
 ```
 
+---
+
+## Phase 7: Mobile Campaign Directory
+
+**File: `src/pages/Campaigns.tsx`**
+
+The Campaign Directory table needs responsive adjustments for phone screens. Keep the same component but conditionally hide columns and stack action buttons.
+
+### Mobile Table Strategy
+
+| Column | Desktop | Phone |
+|--------|---------|-------|
+| Role | ✅ Show (icon + label) | ✅ Show (icon only) |
+| Campaign Name | ✅ Show | ✅ Show (full width) |
+| Players | ✅ Show | ✅ Show |
+| Campaign ID | ✅ Show | ❌ Hide |
+| Start Date | ✅ Show | ❌ Hide |
+| Status | ✅ Show | ❌ Hide |
+
+### Visual Layout - Phone
+
+```
+┌──────────────────────────────────────┐
+│ ←                          [?] [⚙️]  │  ← Simplified header
+├──────────────────────────────────────┤
+│       CAMPAIGN DIRECTORY             │
+│ ═══════════════════════════════════  │
+│                                      │
+│ [Active (3)] [Archived (1)]          │  ← Toggle stays same
+│                                      │
+│ ┌──────────────────────────────────┐ │
+│ │ 👑  Crusade of Golden Sun    3 👥│ │  ← Role + Name + Players
+│ ├──────────────────────────────────┤ │
+│ │ 👤  Blood & Iron Campaign    5 👥│ │
+│ ├──────────────────────────────────┤ │
+│ │ 👤  Necromunda Uprising      8 👥│ │
+│ └──────────────────────────────────┘ │
+│                                      │
+│ ─────────────────────────────────    │
+│                                      │
+│         ┌──────────────────┐         │
+│         │    [ Create ]    │         │  ← Stacked buttons
+│         └──────────────────┘         │
+│         ┌──────────────────┐         │
+│         │     [ Join ]     │         │
+│         └──────────────────┘         │
+│         ┌──────────────────┐         │
+│         │     [ Open ]     │         │
+│         └──────────────────┘         │
+│         ┌──────────────────┐         │
+│         │    [ Remove ]    │         │
+│         └──────────────────┘         │
+│                                      │
+│ Operative: user@email.com   [Logout] │
+└──────────────────────────────────────┘
+```
+
+### Implementation Details
+
+1. **Responsive Table Headers**
+   - Use `hidden md:table-cell` on Campaign ID, Start Date, Status columns
+   - Role column: hide text on mobile, keep icon via `hidden sm:inline`
+
+2. **Mobile Row Layout**
+   - Campaign Name spans more width on mobile
+   - Player count stays visible (compact)
+   - Tap row to select, double-tap to open (same as desktop)
+
+3. **Stacked Action Buttons**
+   - Use `flex flex-col sm:flex-row` on button container
+   - Full-width buttons on mobile with `w-full sm:w-auto`
+   - Consistent spacing with `gap-3`
+
+4. **Font Size Adjustments**
+   - Campaign name: `text-base` (readable on small screens)
+   - Keep monospace styling for terminal aesthetic
+
+### Code Changes
+
+```tsx
+// In Campaigns.tsx table header
+<thead>
+  <tr className="border-b border-primary/40">
+    <th className="text-left py-3 px-4 ...">Role</th>
+    <th className="text-left py-3 px-4 ...">Campaign Name</th>
+    <th className="text-left py-3 px-4 ...">Players</th>
+    <th className="hidden md:table-cell text-left py-3 px-4 ...">Campaign ID</th>
+    <th className="hidden md:table-cell text-left py-3 px-4 ...">Start Date</th>
+    <th className="hidden md:table-cell text-left py-3 px-4 ...">Status</th>
+  </tr>
+</thead>
+
+// In table body cells
+<td className="hidden md:table-cell py-3 px-4">
+  {/* Campaign ID content */}
+</td>
+
+// Action buttons container
+<div className="flex flex-col sm:flex-row justify-center gap-3">
+  <TerminalButton className="w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
+    [ Create ]
+  </TerminalButton>
+  {/* ... other buttons with same pattern */}
+</div>
+```
+
+### Mobile-Specific UX
+
+1. **Selection feedback** - Selected row gets stronger highlight on touch
+2. **Swipe hint** - Optional horizontal scroll indicator if needed
+3. **Touch targets** - Rows have adequate height (48px min)
+4. **Archive toggle** - Stays horizontal, pills are touch-friendly
+
+---
+
+## Updated Files Summary
+
+| File | Action |
+|------|--------|
+| `src/hooks/use-mobile.tsx` | Extend with `useDeviceType()` |
+| `src/components/dashboard/MobileDashboard.tsx` | **Create** - Phone-only view |
+| `src/components/dashboard/MobileGMMenu.tsx` | **Create** - GM action FAB + sheet |
+| `src/components/dashboard/MobileWidgetCard.tsx` | **Create** - Compact widget card |
+| `src/components/dashboard/MobileWidgetSheet.tsx` | **Create** - Expanded widget view |
+| `src/pages/CampaignDashboard.tsx` | Modify - Add device routing |
+| `src/pages/Campaigns.tsx` | Modify - Responsive table + stacked buttons |
+
+---
+
+## Updated Implementation Order
+
+1. **Phase 1**: Update `use-mobile.tsx` with device detection
+2. **Phase 2**: Create `MobileWidgetCard` (reusable component)
+3. **Phase 3**: Create `MobileWidgetSheet` (expanded view)
+4. **Phase 4**: Create `MobileGMMenu` (FAB + bottom sheet)
+5. **Phase 5**: Create `MobileDashboard` (main container)
+6. **Phase 6**: Integrate into `CampaignDashboard` with routing
+7. **Phase 7**: Update `Campaigns.tsx` for responsive table + buttons
+8. **Phase 8**: Tablet touch optimizations (CSS only)
+9. **Phase 9**: Testing and polish
+
