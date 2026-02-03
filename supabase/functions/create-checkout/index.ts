@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SUPPORTER_PRICE_ID = "price_1SwVdSFXQJp4yOUWDTnjo6lp";
+const SUPPORTER_PRICE_ID = "price_1SwXAEFS2uB43JlMrMHoUmO5";
 
 const logStep = (step: string, details?: unknown) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
