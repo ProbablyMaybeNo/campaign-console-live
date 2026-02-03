@@ -381,7 +381,8 @@ export function BillingSettings() {
 
         <div className="space-y-4">
           <p className="text-sm" style={{ color: "hsl(0, 0%, 85%)" }}>
-            Keep the dream alive with a one-off contribution.
+            Keep the dream alive with a one-off contribution.<br />
+            Help shape the future of Campaign Console with a direct message to its creator.
           </p>
 
           {/* Preset Buttons */}
