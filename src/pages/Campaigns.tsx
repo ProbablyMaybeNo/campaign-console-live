@@ -156,12 +156,12 @@ export default function Campaigns() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-primary/40">
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Role</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign Name</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Players</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign ID</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Start Date</th>
-                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Status</th>
+                    <th className="text-left py-3 px-2 sm:px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Role</th>
+                    <th className="text-left py-3 px-2 sm:px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign Name</th>
+                    <th className="text-left py-3 px-2 sm:px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Players</th>
+                    <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign ID</th>
+                    <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Start Date</th>
+                    <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,24 +176,24 @@ export default function Campaigns() {
                             : "hover:bg-primary/5 hover:shadow-[inset_0_0_15px_hsl(var(--primary)/0.05)]"
                         }`}
                       >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
+                      <td className="py-3 px-2 sm:px-4">
+                        <div className="flex items-center gap-1 sm:gap-2">
                           {getRoleIcon(campaign)}
-                          <span className={campaign.owner_id === user?.id ? "text-warning" : "text-secondary"}>
+                          <span className={`hidden sm:inline ${campaign.owner_id === user?.id ? "text-warning" : "text-secondary"}`}>
                             {getRoleLabel(campaign)}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-foreground">
+                      <td className="py-3 px-2 sm:px-4 text-foreground text-base sm:text-sm">
                         {campaign.name}
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <td className="py-3 px-2 sm:px-4">
+                        <div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
                           <Users className="w-3.5 h-3.5" />
                           <span className="font-mono">{campaign.player_count ?? 0}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="hidden md:table-cell py-3 px-4">
                         <div className="flex items-center gap-2">
                           <code className="text-xs text-muted-foreground font-mono bg-muted/30 px-2 py-1 rounded">
                             {campaign.id.slice(0, 8)}...
@@ -219,10 +219,10 @@ export default function Campaigns() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground font-mono">
+                      <td className="hidden md:table-cell py-3 px-4 text-muted-foreground font-mono">
                         {new Date(campaign.created_at).toISOString().split('T')[0]}
                       </td>
-                      <td className={`py-3 px-4 ${getStatusColor()}`}>
+                      <td className={`hidden md:table-cell py-3 px-4 ${getStatusColor()}`}>
                         {getStatusLabel()}
                       </td>
                     </tr>
@@ -239,17 +239,18 @@ export default function Campaigns() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-center gap-4">
-          <TerminalButton onClick={() => setShowCreateModal(true)}>
+        <div className="flex flex-col sm:flex-row justify-center gap-3">
+          <TerminalButton className="w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
             [ Create ]
           </TerminalButton>
-          <TerminalButton variant="secondary" onClick={() => setShowJoinModal(true)}>
+          <TerminalButton className="w-full sm:w-auto" variant="secondary" onClick={() => setShowJoinModal(true)}>
             [ Join ]
           </TerminalButton>
-          <TerminalButton variant="outline" onClick={handleOpenCampaign} disabled={!selectedCampaignId}>
+          <TerminalButton className="w-full sm:w-auto" variant="outline" onClick={handleOpenCampaign} disabled={!selectedCampaignId}>
             [ Open ]
           </TerminalButton>
           <TerminalButton 
+            className="w-full sm:w-auto"
             variant="destructive" 
             onClick={() => {
               const campaign = campaigns?.find(c => c.id === selectedCampaignId);
@@ -259,7 +260,7 @@ export default function Campaigns() {
             }}
             disabled={!selectedCampaignId || campaigns?.find(c => c.id === selectedCampaignId)?.owner_id !== user?.id}
           >
-            [ Remove Campaign ]
+            [ Remove ]
           </TerminalButton>
         </div>
 

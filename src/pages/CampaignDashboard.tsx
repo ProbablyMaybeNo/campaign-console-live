@@ -5,6 +5,7 @@ import { useDashboardComponents, DashboardComponent, useDeleteComponent, useUpda
 import { useAuth } from "@/hooks/useAuth";
 import { useOverlayState, OverlayType } from "@/hooks/useOverlayState";
 import { useEntitlements } from "@/hooks/useEntitlements";
+import { useDeviceType } from "@/hooks/use-mobile";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
@@ -19,6 +20,7 @@ import { CampaignExportModal } from "@/components/dashboard/CampaignExportModal"
 import { GettingStartedModal } from "@/components/help/GettingStartedModal";
 import { SupporterWelcomeModal } from "@/components/settings/SupporterWelcomeModal";
 import { SupporterHub } from "@/components/supporter/SupporterHub";
+import { MobileDashboard } from "@/components/dashboard/MobileDashboard";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
@@ -72,6 +74,7 @@ export default function CampaignDashboard() {
   const updateCampaign = useUpdateCampaign();
   const { handleDeleteWithUndo } = useUndoDelete(campaignId!);
   const multiSelect = useMultiSelect();
+  const { isPhone } = useDeviceType();
 
   const { activeOverlay, openOverlay, closeOverlay } = useOverlayState();
 
@@ -82,6 +85,7 @@ export default function CampaignDashboard() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
   const [showSupporterWelcome, setShowSupporterWelcome] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   
   const { isSupporter } = useEntitlements();
   
@@ -329,6 +333,62 @@ export default function CampaignDashboard() {
   // Apply theme
   const themeId = campaign?.theme_id || "dark";
 
+  // Phone: Use mobile dashboard
+  if (isPhone) {
+    return (
+      <div data-theme={themeId}>
+        <MobileDashboard
+          campaign={campaign}
+          components={visibleComponents}
+          isGM={effectiveIsGM}
+          campaignId={campaignId!}
+          onOpenOverlay={openOverlay}
+          onSignOut={signOut}
+          onAddWidget={() => setShowAddModal(true)}
+          onExport={() => setShowExportModal(true)}
+          onTheme={() => setShowThemePicker(true)}
+        />
+
+        {/* Overlays still work the same */}
+        <CampaignOverlays
+          activeOverlay={activeOverlay}
+          onClose={closeOverlay}
+          campaignId={campaignId!}
+          isGM={effectiveIsGM}
+        />
+
+        <AddComponentModal
+          open={showAddModal}
+          onOpenChange={setShowAddModal}
+          campaignId={campaignId!}
+        />
+
+        <CampaignExportModal
+          open={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          campaignId={campaignId!}
+        />
+
+        {/* Supporter Hub for theme picker on mobile */}
+        <SupporterHub
+          isSupporter={isSupporter}
+          currentThemeId={campaign?.theme_id || "dark"}
+          onThemeSelect={(themeId) => {
+            updateCampaign.mutate({
+              id: campaignId!,
+              theme_id: themeId,
+            });
+            toast.success(`Theme changed to ${themeId}`);
+          }}
+          onAddSmartPaste={() => openOverlay("rules")}
+          onAddSticker={() => setShowAddModal(true)}
+          onAddText={() => setShowAddModal(true)}
+        />
+      </div>
+    );
+  }
+
+  // Tablet/Desktop: Use infinite canvas
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" data-theme={themeId}>
       {/* Fixed Header */}
