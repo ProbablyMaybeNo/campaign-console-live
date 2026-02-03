@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
+import { useCampaign, useIsGM, useUpdateCampaign } from "@/hooks/useCampaigns";
 import { useDashboardComponents, DashboardComponent, useDeleteComponent, useUpdateComponent, useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
 import { useOverlayState, OverlayType } from "@/hooks/useOverlayState";
@@ -18,6 +18,7 @@ import { MultiSelectToolbar } from "@/components/dashboard/MultiSelectToolbar";
 import { CampaignExportModal } from "@/components/dashboard/CampaignExportModal";
 import { GettingStartedModal } from "@/components/help/GettingStartedModal";
 import { SupporterWelcomeModal } from "@/components/settings/SupporterWelcomeModal";
+import { SupporterHub } from "@/components/supporter/SupporterHub";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
@@ -36,8 +37,6 @@ import {
   UserCog,
   PanelLeftOpen,
   PanelLeftClose,
-  Heart,
-  Crown,
   Command
 } from "lucide-react";
 import { toast } from "sonner";
@@ -70,6 +69,7 @@ export default function CampaignDashboard() {
   const deleteComponent = useDeleteComponent();
   const updateComponent = useUpdateComponent();
   const createComponent = useCreateComponent();
+  const updateCampaign = useUpdateCampaign();
   const { handleDeleteWithUndo } = useUndoDelete(campaignId!);
   const multiSelect = useMultiSelect();
 
@@ -430,44 +430,31 @@ export default function CampaignDashboard() {
                 />
               </nav>
               
-              {/* Supporter Badge & Perks - only for supporters */}
-              {isSupporter && (
-                <>
-                  <div className="h-px bg-border my-3" />
-                  <Link
-                    to="/settings?tab=billing"
-                    className="flex items-center gap-2 w-full py-2 px-3 rounded transition-all hover:bg-primary/10"
-                    style={{
-                      background: 'linear-gradient(90deg, hsl(280, 80%, 50%) 0%, hsl(200, 100%, 50%) 100%)',
-                      backgroundClip: 'text',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >
-                    <Crown className="w-4 h-4 text-amber-400" style={{ filter: 'drop-shadow(0 0 4px hsl(45, 100%, 50%))' }} />
-                    <span className="font-mono text-xs font-bold uppercase tracking-wider">
-                      Supporter
-                    </span>
-                  </Link>
-                </>
-              )}
-              
-              {/* Support Button at bottom of sidebar - for non-supporters */}
-              <div className="mt-auto pt-4">
-                {!isSupporter && (
-                  <Link
-                    to="/settings?tab=billing"
-                    className="flex items-center gap-2 w-full py-2 px-3 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-xs font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
-                    style={{
-                      color: 'hsl(200, 100%, 70%)',
-                      boxShadow: '0 0 12px hsl(200 100% 60% / 0.3), 0 0 25px hsl(200 100% 50% / 0.15)',
-                      textShadow: '0 0 8px hsl(200 100% 60% / 0.6)'
-                    }}
-                  >
-                    <Heart className="w-4 h-4" />
-                    Support
-                  </Link>
-                )}
+              {/* Supporter Hub - unified access point for all supporter features */}
+              <div className="mt-auto pt-4 border-t border-border">
+                <SupporterHub
+                  isSupporter={isSupporter}
+                  currentThemeId={campaign?.theme_id || "dark"}
+                  onThemeSelect={(themeId) => {
+                    updateCampaign.mutate({
+                      id: campaignId!,
+                      theme_id: themeId,
+                    });
+                    toast.success(`Theme changed to ${themeId}`);
+                  }}
+                  onAddSmartPaste={() => {
+                    openOverlay("rules");
+                    toast.info("Opening Rules to use Smart Paste");
+                  }}
+                  onAddSticker={() => {
+                    setShowAddModal(true);
+                    toast.info("Opening widget picker for Sticker");
+                  }}
+                  onAddText={() => {
+                    setShowAddModal(true);
+                    toast.info("Opening widget picker for Text");
+                  }}
+                />
               </div>
             </div>
           </aside>
