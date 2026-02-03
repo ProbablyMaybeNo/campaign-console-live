@@ -138,7 +138,7 @@ export default function Auth() {
               />
               {mode === "signup" && (
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Password must be at least 6 characters
+                  Must be 6+ characters with uppercase, lowercase, and a number
                 </p>
               )}
             </div>
