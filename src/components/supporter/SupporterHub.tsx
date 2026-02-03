@@ -151,7 +151,7 @@ export function SupporterHub({
 
       <SheetContent 
         side="left" 
-        className="w-[380px] sm:w-[420px] p-0 border-r-2 bg-background/98 backdrop-blur-xl z-50"
+        className="w-[380px] sm:w-[420px] p-0 border-r-2 bg-background z-50"
         style={{ 
           boxShadow: '4px 0 60px hsl(280 80% 50% / 0.3), 8px 0 100px hsl(var(--primary) / 0.15)',
           borderColor: 'hsl(280, 70%, 55%)'
