@@ -589,6 +589,181 @@
 
 ---
 
+## 15. Authentication UI Updates
+
+### 15.1 Login/Signup Button Styling
+**Start State**: Logged out, on `/auth` page
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/auth` | Login page loads | Login form visible |
+| 2 | Check "Login" button styling | Button has box/border styling | Matches Google OAuth button style |
+| 3 | Click "Create Account" link | Switch to signup form | Display Name field appears |
+| 4 | Check "Create Account" button | Same boxed style as Login button | Consistent button styling |
+| 5 | Compare with Google OAuth button | All three buttons match visually | Same border, padding, weight |
+
+### 15.2 Auto-Login After Account Creation
+**Start State**: Logged out, on `/auth` page
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click "Create Account" link | Signup form visible | Display Name field present |
+| 2 | Enter email: `newuser-test@testcampaign.com` | Email field populated | Text visible |
+| 3 | Enter password: `TestPassword123!` | Password field populated | Dots visible |
+| 4 | Enter display name: `New Test User` | Name field populated | Text visible |
+| 5 | Click "Create Account" | Account created, auto-redirects | URL changes to `/campaigns` |
+| 6 | Verify no login prompt | User is logged in automatically | Campaigns page loads, no auth page |
+| 7 | Refresh page | Still logged in | Session persisted |
+
+---
+
+## 16. Locked Component Display
+
+### 16.1 Locked Components in Add Modal
+**Start State**: Logged in as Free user (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget grid visible |
+| 2 | Find "Text" component | Text option visible | FileText icon present |
+| 3 | Check Text styling | Greyed out with "Locked" text | Dimmed appearance, "Locked" label |
+| 4 | Find "Sticker" component | Sticker option visible | Sparkles icon present |
+| 5 | Check Sticker styling | Greyed out with "Locked" text | Dimmed appearance, "Locked" label |
+| 6 | Find "Rules Table" component | Rules Table option visible | Table icon present |
+| 7 | Check Rules Table styling | Greyed out with "Locked" text | Dimmed, requires subscription |
+| 8 | Find "Rules Card" component | Rules Card option visible | IdCard icon present |
+| 9 | Check Rules Card styling | Greyed out with "Locked" text | Dimmed, requires subscription |
+| 10 | Click a locked component | Nothing happens (or shows upgrade CTA) | Cannot add locked widgets |
+
+### 16.2 Unlocked Components Display
+**Start State**: Logged in as Supporter (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget grid visible |
+| 2 | Check "Text" component | Full color, no "Locked" text | Normal clickable appearance |
+| 3 | Check "Sticker" component | Full color, no "Locked" text | Normal clickable appearance |
+| 4 | Check "Rules Table" component | Full color, no "Locked" text | Normal clickable appearance |
+| 5 | Click Text | Text widget created | Widget appears on canvas |
+| 6 | Click Sticker | Sticker widget created | Widget appears on canvas |
+
+### 16.3 Component Naming/Fit
+**Start State**: Add Component modal open
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find Announcements component | Shows as "Announce" | Shorter name fits in box |
+| 2 | Find Roll Recorder component | Shows as "Roll History" | Shorter name fits in box |
+| 3 | Check all component names | All fit within grid cells | No text overflow |
+
+---
+
+## 17. Getting Started Onboarding Updates
+
+### 17.1 Activity Feed Step
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Press Ctrl+K (Cmd+K on Mac) | Command palette opens | Search input visible |
+| 2 | Type "Getting Started" | Getting Started option appears | Option in results list |
+| 3 | Click "Getting Started" | Onboarding modal opens | Step-by-step guide visible |
+| 4 | Click through steps until Activity Feed | Activity Feed step appears | Title: "Track Campaign Activity" |
+| 5 | Read Activity Feed description | Explains real-time updates | Mentions dice rolls, messages, etc. |
+| 6 | Verify Activity icon shown | Activity icon visible | Clock or Activity icon present |
+| 7 | Continue through remaining steps | All steps complete | Guide finishes |
+
+### 17.2 Complete Onboarding Flow
+**Start State**: Getting Started modal open
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Read Step 1: Share Campaign | Explains join codes | Join code info visible |
+| 2 | Click Next | Step 2 appears | Progress indicator updates |
+| 3 | Read Step 2: Place Widgets | Explains + button | Green + icon mentioned |
+| 4 | Click Next | Step 3 appears | Progress updates |
+| 5 | Read Step 3: Activity Feed | Explains real-time tracking | New step content visible |
+| 6 | Click Next | Step 4 appears | Progress updates |
+| 7 | Read remaining steps | Map, Narrative, Schedule info | All content displays |
+| 8 | Click "Let's Get Started" | Modal closes | Back to dashboard |
+
+---
+
+## 18. Subscriber Experience
+
+### 18.1 Supporter Badge Display
+**Start State**: Logged in as Supporter on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard loads | Canvas visible |
+| 2 | Check sidebar at bottom | "Supporter" badge visible | Crown icon + "Supporter" text |
+| 3 | Badge styling | Amber/gold highlight color | Distinctive supporter color |
+| 4 | Hover over badge (if applicable) | Tooltip or visual feedback | Badge is clearly visible |
+
+### 18.2 Supporter Badge Hidden for Free Users
+**Start State**: Logged in as Free user on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard loads | Canvas visible |
+| 2 | Check sidebar at bottom | No "Supporter" badge visible | Badge not present |
+| 3 | Check for upgrade prompts | "Support Campaign Console" link visible | Glowing blue button in sidebar |
+
+### 18.3 Supporter Welcome Modal
+**Start State**: Logged in as Supporter (testing welcome flow)
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to campaign with `?supporter=welcome` param | Dashboard loads with modal | Welcome modal appears |
+| 2 | Check modal title | "Welcome, Supporter!" text | Title with sparkles icon |
+| 3 | Check unlocked features list | Lists all supporter features | Dashboard Themes, Text Widget, etc. |
+| 4 | Verify feature explanations | Each feature has description | How to access each feature |
+| 5 | Check for Campaign Themes info | Themes mentioned | Settings → Appearance path noted |
+| 6 | Check for Text Widget info | Text widget mentioned | Add Component modal path noted |
+| 7 | Check for Sticker Widget info | Stickers mentioned | Add Component modal path noted |
+| 8 | Check for Campaign Limit info | 5 campaigns mentioned | Increased limit noted |
+| 9 | Check for Smart Paste info | AI conversion mentioned | Rules Table/Card path noted |
+| 10 | Click "Start Exploring" | Modal closes | Back to dashboard |
+| 11 | URL no longer has `?supporter=welcome` | Parameter removed | Clean URL |
+| 12 | Refresh page | Modal does NOT reappear | Only shows once per redirect |
+
+### 18.4 Supporter Redirect After Subscription
+**Start State**: Billing settings page, about to subscribe
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to Settings → Billing | Billing page loads | Subscription options visible |
+| 2 | Click "Support – $2.99/mo" button | Stripe checkout opens | Stripe payment page |
+| 3 | Complete test payment | Success, redirects back | Returns to app |
+| 4 | Check redirect URL | Returns to dashboard with `?supporter=welcome` | URL parameter present |
+| 5 | Welcome modal auto-opens | Supporter Welcome modal visible | Feature list displayed |
+
+---
+
+## 19. Sidebar Support Link
+
+### 19.1 Support CTA for Free Users
+**Start State**: Logged in as Free user on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard with sidebar | Sidebar visible |
+| 2 | Scroll to bottom of sidebar | Support CTA visible | Glowing blue button |
+| 3 | Check CTA styling | Neon blue glow effect | Distinctive glowing button |
+| 4 | Click "Support Campaign Console" | Navigates to Settings/Billing | Settings page with billing tab |
+
+### 19.2 Support CTA Hidden for Supporters
+**Start State**: Logged in as Supporter on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard with sidebar | Sidebar visible |
+| 2 | Scroll to bottom of sidebar | "Supporter" badge visible instead | No "Support" button |
+| 3 | Support CTA not present | Only badge shows | CTA replaced with badge |
+
+---
+
 ## Test Completion Checklist
 
 | Section | Status | Notes |
@@ -607,6 +782,11 @@
 | 12. Text Widget | [ ] Pass / [ ] Fail | |
 | 13. Sticker Widget | [ ] Pass / [ ] Fail | |
 | 14. Smart Paste Gating | [ ] Pass / [ ] Fail | |
+| 15. Authentication UI Updates | [ ] Pass / [ ] Fail | |
+| 16. Locked Component Display | [ ] Pass / [ ] Fail | |
+| 17. Getting Started Onboarding | [ ] Pass / [ ] Fail | |
+| 18. Subscriber Experience | [ ] Pass / [ ] Fail | |
+| 19. Sidebar Support Link | [ ] Pass / [ ] Fail | |
 
 ---
 
