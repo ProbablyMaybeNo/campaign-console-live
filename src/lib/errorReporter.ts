@@ -17,6 +17,100 @@ interface ErrorReport {
   context: ErrorContext;
 }
 
+// ============ Input Sanitization Functions ============
+
+/**
+ * Sanitize user-agent string to prevent XSS in exports/logs
+ * Removes HTML-sensitive characters
+ */
+function sanitizeUserAgent(userAgent: string): string {
+  return userAgent
+    .replace(/[<>"'&]/g, '') // Remove HTML-sensitive chars
+    .substring(0, 500);
+}
+
+/**
+ * Sanitize URL to prevent XSS payloads in stored URLs
+ * Returns origin + pathname only (strips query params which may contain XSS)
+ */
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Only keep safe parts: origin and pathname (no query/hash)
+    return `${parsed.origin}${parsed.pathname}`.substring(0, 2000);
+  } catch {
+    return '<invalid-url>';
+  }
+}
+
+/**
+ * Sanitize route string (already normalized, but ensure no injection)
+ */
+function sanitizeRoute(route: string): string {
+  return route
+    .replace(/[<>"'&]/g, '')
+    .substring(0, 500);
+}
+
+/**
+ * Sanitize metadata object - only allow primitive values
+ * Prevents nested objects that could contain XSS payloads
+ */
+function sanitizeMetadata(metadata: unknown): Json {
+  if (!metadata || typeof metadata !== 'object') return {};
+  
+  const safe: Record<string, string | number | boolean | null> = {};
+  
+  for (const [key, value] of Object.entries(metadata as Record<string, unknown>)) {
+    // Only allow safe key names (alphanumeric + underscore)
+    const safeKey = key.replace(/[^a-zA-Z0-9_]/g, '').substring(0, 50);
+    if (!safeKey) continue;
+    
+    // Only allow primitive values
+    if (typeof value === 'string') {
+      safe[safeKey] = value.replace(/[<>"'&]/g, '').substring(0, 500);
+    } else if (typeof value === 'number' && isFinite(value)) {
+      safe[safeKey] = value;
+    } else if (typeof value === 'boolean') {
+      safe[safeKey] = value;
+    } else if (value === null) {
+      safe[safeKey] = null;
+    }
+    // Skip objects, arrays, functions, undefined, etc.
+  }
+  
+  return safe as Json;
+}
+
+/**
+ * Sanitize error message - limit length and remove dangerous chars
+ */
+function sanitizeErrorMessage(message: string): string {
+  return message
+    .replace(/[<>"'&]/g, '')
+    .substring(0, 1000);
+}
+
+/**
+ * Sanitize stack trace - limit length, keep useful debugging info
+ */
+function sanitizeStackTrace(stack: string | undefined): string | undefined {
+  if (!stack) return undefined;
+  return stack
+    .replace(/[<>"'&]/g, '')
+    .substring(0, 5000);
+}
+
+/**
+ * Sanitize component stack - limit length
+ */
+function sanitizeComponentStack(stack: string | undefined): string | undefined {
+  if (!stack) return undefined;
+  return stack
+    .replace(/[<>"'&]/g, '')
+    .substring(0, 2000);
+}
+
 // Rate limiting
 const MAX_ERRORS_PER_MINUTE = 10;
 const errorTimestamps: number[] = [];
@@ -120,19 +214,19 @@ export async function reportError(report: ErrorReport): Promise<void> {
         })
         .eq('id', existing.id);
     } else {
-      // Insert new error report
+      // Insert new error report with sanitized inputs
       await supabase
         .from('error_reports')
         .insert([{
-          error_message: report.errorMessage.substring(0, 1000), // Limit length
-          stack_trace: report.stackTrace?.substring(0, 5000),
-          component_stack: report.componentStack?.substring(0, 2000),
-          url: report.context.url,
-          route: report.context.route,
+          error_message: sanitizeErrorMessage(report.errorMessage),
+          stack_trace: sanitizeStackTrace(report.stackTrace),
+          component_stack: sanitizeComponentStack(report.componentStack),
+          url: sanitizeUrl(report.context.url),
+          route: sanitizeRoute(report.context.route),
           user_id: report.context.userId,
-          user_agent: report.context.userAgent.substring(0, 500),
+          user_agent: sanitizeUserAgent(report.context.userAgent),
           error_type: report.errorType,
-          metadata: (report.context.metadata || {}) as Json,
+          metadata: sanitizeMetadata(report.context.metadata),
           fingerprint,
         }]);
     }
