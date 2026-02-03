@@ -10,9 +10,44 @@ import {
   Calendar, 
   BookOpen, 
   RefreshCw,
-  Activity 
+  Activity,
+  Info
 } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+/**
+ * ACTIVITY FEED WIDGET
+ * 
+ * This widget tracks and displays the following campaign events:
+ * 
+ * 1. PLAYER_JOIN - When a new player joins the campaign
+ *    - Source: campaign_players table
+ *    - Trigger: New row inserted
+ * 
+ * 2. MESSAGE - When a new message is sent in the campaign
+ *    - Source: messages table  
+ *    - Trigger: New row inserted
+ * 
+ * 3. WARBAND - When a warband is created or updated
+ *    - Source: warbands table
+ *    - Trigger: New row inserted or existing row updated
+ * 
+ * 4. SCHEDULE - When a schedule entry is added
+ *    - Source: schedule_entries table
+ *    - Trigger: New row inserted
+ * 
+ * 5. NARRATIVE - When a narrative event is posted
+ *    - Source: narrative_events table
+ *    - Trigger: New row inserted
+ * 
+ * Realtime subscriptions are set up for messages, campaign_players, and warbands
+ * to provide instant updates when these events occur.
+ */
 
 interface ActivityEvent {
   id: string;
@@ -205,9 +240,23 @@ export function ActivityFeedWidget({ campaignId, isGM }: ActivityFeedWidgetProps
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-1 pb-2 border-b border-border">
-        <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
-          Recent Activity
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+            Recent Activity
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="text-muted-foreground/50 hover:text-muted-foreground">
+                <Info className="w-3 h-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[200px]">
+              <p className="text-[10px]">
+                Tracks: Player Joins, Messages, Warband Updates, Schedule Events, and Narrative Entries
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <TerminalButton 
           variant="ghost" 
           size="sm" 

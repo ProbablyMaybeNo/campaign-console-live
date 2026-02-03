@@ -13,6 +13,7 @@ import {
   Zap,
   Rocket
 } from "lucide-react";
+import supporterIcon from "@/assets/supporter-icon.png";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -109,40 +110,40 @@ export function SupporterHub({
           <button
             className="relative flex items-center gap-2 w-full py-2.5 px-3 rounded-md transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden"
             style={{
-              background: 'linear-gradient(135deg, hsl(270, 100%, 60%) 0%, hsl(290, 100%, 65%) 50%, hsl(310, 100%, 60%) 100%)',
-              boxShadow: '0 0 25px hsl(280 100% 65% / 0.6), 0 0 50px hsl(300 100% 60% / 0.4), inset 0 1px 0 hsl(280 100% 80% / 0.4)',
+              background: 'linear-gradient(135deg, hsl(200, 100%, 45%) 0%, hsl(210, 100%, 55%) 50%, hsl(220, 100%, 50%) 100%)',
+              boxShadow: '0 0 25px hsl(200 100% 65% / 0.6), 0 0 50px hsl(210 100% 60% / 0.4), inset 0 1px 0 hsl(200 100% 80% / 0.4)',
             }}
           >
             <div 
               className="absolute inset-0 opacity-40"
               style={{
-                background: 'linear-gradient(45deg, transparent 30%, hsl(280, 100%, 75%) 50%, transparent 70%)',
+                background: 'linear-gradient(45deg, transparent 30%, hsl(200, 100%, 75%) 50%, transparent 70%)',
                 animation: 'shimmer 2.5s ease-in-out infinite',
               }}
             />
-            <Crown className="w-4 h-4 text-amber-300 relative z-10" style={{ filter: 'drop-shadow(0 0 6px hsl(45, 100%, 60%))' }} />
+            <img src={supporterIcon} alt="Supporter" className="w-5 h-5 relative z-10" style={{ filter: 'drop-shadow(0 0 4px hsl(200, 100%, 70%))' }} />
             <span className="font-mono text-xs font-bold uppercase tracking-wider text-white relative z-10" style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
               Supporter Hub
             </span>
-            <Zap className="w-3 h-3 text-amber-200 ml-auto relative z-10" style={{ filter: 'drop-shadow(0 0 4px hsl(45, 100%, 50%))' }} />
+            <Zap className="w-3 h-3 text-cyan-200 ml-auto relative z-10" style={{ filter: 'drop-shadow(0 0 4px hsl(200, 100%, 50%))' }} />
           </button>
         ) : (
           <button
             className="relative flex items-center gap-2 w-full py-2.5 px-3 rounded-md transition-all hover:scale-[1.02] active:scale-[0.98] overflow-hidden group"
             style={{
-              background: 'linear-gradient(135deg, hsl(270, 60%, 35%) 0%, hsl(290, 50%, 40%) 50%, hsl(310, 50%, 35%) 100%)',
-              boxShadow: '0 0 15px hsl(280 60% 45% / 0.3), 0 0 30px hsl(300 50% 40% / 0.2)',
-              border: '1px solid hsl(280, 50%, 50% / 0.4)'
+              background: 'linear-gradient(135deg, hsl(200, 60%, 25%) 0%, hsl(210, 50%, 30%) 50%, hsl(220, 50%, 25%) 100%)',
+              boxShadow: '0 0 15px hsl(200 60% 45% / 0.3), 0 0 30px hsl(210 50% 40% / 0.2)',
+              border: '1px solid hsl(200, 50%, 50% / 0.4)'
             }}
           >
             <div 
               className="absolute inset-0 opacity-0 group-hover:opacity-30 transition-opacity"
               style={{
-                background: 'linear-gradient(45deg, transparent 30%, hsl(280, 80%, 60%) 50%, transparent 70%)',
+                background: 'linear-gradient(45deg, transparent 30%, hsl(200, 80%, 60%) 50%, transparent 70%)',
               }}
             />
-            <Heart className="w-4 h-4 relative z-10 transition-all" style={{ color: 'hsl(280, 70%, 70%)', filter: 'drop-shadow(0 0 4px hsl(280, 70%, 60%))' }} />
-            <span className="font-mono text-xs font-medium uppercase tracking-wider relative z-10 transition-colors" style={{ color: 'hsl(280, 50%, 80%)' }}>
+            <img src={supporterIcon} alt="Supporter" className="w-5 h-5 relative z-10 opacity-70 group-hover:opacity-100 transition-opacity" />
+            <span className="font-mono text-xs font-medium uppercase tracking-wider relative z-10 transition-colors" style={{ color: 'hsl(200, 70%, 70%)' }}>
               Support
             </span>
           </button>
@@ -153,8 +154,8 @@ export function SupporterHub({
         side="left" 
         className="w-[380px] sm:w-[420px] p-0 border-r-2 bg-background z-50"
         style={{ 
-          boxShadow: '4px 0 60px hsl(280 80% 50% / 0.3), 8px 0 100px hsl(var(--primary) / 0.15)',
-          borderColor: 'hsl(280, 70%, 55%)'
+          boxShadow: '4px 0 60px hsl(200 100% 50% / 0.4), 8px 0 100px hsl(200 100% 60% / 0.2)',
+          borderColor: 'hsl(200, 100%, 60%)'
         }}
       >
         {/* Header with gradient accent */}

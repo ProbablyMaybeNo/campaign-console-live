@@ -1,8 +1,10 @@
 import { memo, useMemo } from "react";
 import { useCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCampaignPlayers } from "@/hooks/useCampaignPlayers";
+import { useSubscription } from "@/hooks/useSubscription";
 import { format } from "date-fns";
 import { Users, Swords, CalendarDays, Target, Hash } from "lucide-react";
+import donatorBadge from "@/assets/donator-badge.png";
 
 interface CampaignConsoleWidgetProps {
   campaignId: string;
@@ -14,6 +16,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
 }: CampaignConsoleWidgetProps) {
   const { data: campaign } = useCampaign(campaignId);
   const { data: players = [] } = useCampaignPlayers(campaignId);
+  const { hasDonated } = useSubscription();
 
   const displaySettings = useMemo((): DisplaySettings => {
     if (!campaign) return {
@@ -55,6 +58,23 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
 
   return (
     <div className="w-full h-full flex flex-col p-3 gap-2 overflow-hidden select-none relative">
+      {/* Donator Badge - positioned in top right corner */}
+      {hasDonated && (
+        <div 
+          className="absolute top-2 right-2 z-20"
+          title="Thank you for your support!"
+        >
+          <img 
+            src={donatorBadge} 
+            alt="Supporter Badge" 
+            className="w-12 h-12 object-contain"
+            style={{ 
+              filter: 'drop-shadow(0 0 8px hsl(200, 100%, 60%))',
+            }}
+          />
+        </div>
+      )}
+
       {/* Decorative Frame with Corner Accents */}
       <div className="absolute inset-2 pointer-events-none">
         {/* Corner accents - Top Left */}
