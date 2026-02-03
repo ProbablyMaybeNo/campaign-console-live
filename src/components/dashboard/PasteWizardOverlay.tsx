@@ -685,9 +685,11 @@ Example:
               >
                 {(createComponent.isPending || createRule.isPending) 
                   ? 'Creating...' 
-                  : saveToRules 
-                    ? '[ Create Rule ]' 
-                    : '[ Create Component ]'
+                  : isCustom
+                    ? `[ Create ${componentType === 'table' ? 'Table' : 'Card'} ]`
+                    : saveToRules 
+                      ? `[ Create Rules ${componentType === 'table' ? 'Table' : 'Card'} ]`
+                      : '[ Create Component ]'
                 }
               </TerminalButton>
             </div>
