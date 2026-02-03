@@ -46,8 +46,18 @@ export function useAuth() {
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    return { error };
+    // Clear local state first to prevent UI issues
+    setUser(null);
+    setSession(null);
+    
+    // Then attempt server-side logout (ignore errors if session already expired)
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // Session may already be invalidated - that's fine
+    }
+    
+    return { error: null };
   };
 
   return { user, session, loading, signIn, signUp, signOut };
