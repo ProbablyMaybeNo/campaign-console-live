@@ -7,6 +7,7 @@ export interface SubscriptionState {
   subscriptionStatus: 'active' | 'trialing' | 'past_due' | 'canceled' | 'none';
   currentPeriodEnd: string | null;
   stripeCustomerId: string | null;
+  hasDonated: boolean;
   isLoading: boolean;
   error: string | null;
 }
@@ -25,6 +26,7 @@ export function useSubscription() {
     subscriptionStatus: 'none',
     currentPeriodEnd: null,
     stripeCustomerId: null,
+    hasDonated: false,
     isLoading: true,
     error: null,
   });
@@ -44,11 +46,19 @@ export function useSubscription() {
       
       if (error) throw error;
 
+      // Also check if user has donated
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('has_donated')
+        .eq('id', user.id)
+        .single();
+
       setState({
         plan: data.plan || 'free',
         subscriptionStatus: data.subscription_status || 'none',
         currentPeriodEnd: data.current_period_end || null,
         stripeCustomerId: data.stripe_customer_id || null,
+        hasDonated: profile?.has_donated || false,
         isLoading: false,
         error: null,
       });
@@ -123,6 +133,20 @@ export function useSubscription() {
     }
   };
 
+  const submitDonorFeedback = async (message: string, feedbackType: string = 'general') => {
+    if (!user) throw new Error('Not authenticated');
+    
+    const { error } = await supabase
+      .from('donor_feedback')
+      .insert({
+        user_id: user.id,
+        message,
+        feedback_type: feedbackType,
+      });
+    
+    if (error) throw error;
+  };
+
   // Check subscription on mount and when user changes
   useEffect(() => {
     checkSubscription();
@@ -150,6 +174,7 @@ export function useSubscription() {
     createCheckoutSession,
     openCustomerPortal,
     createDonation,
+    submitDonorFeedback,
     isSupporter: state.plan === 'supporter' && state.subscriptionStatus === 'active',
   };
 }

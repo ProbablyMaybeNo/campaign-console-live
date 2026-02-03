@@ -133,8 +133,14 @@ export default function Auth() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={6}
                 className="w-full bg-input border border-primary/30 px-3 py-2 text-sm font-mono focus:outline-none focus:border-primary/70 focus:shadow-[0_0_8px_hsl(var(--primary)/0.2)] transition-all"
               />
+              {mode === "signup" && (
+                <p className="text-[10px] text-muted-foreground leading-relaxed">
+                  Password must be at least 6 characters
+                </p>
+              )}
             </div>
 
             {mode === "login" && (

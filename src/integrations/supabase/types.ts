@@ -466,6 +466,39 @@ export type Database = {
         }
         Relationships: []
       }
+      donor_feedback: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          feedback_type: string
+          id: string
+          is_read: boolean
+          message: string
+          responded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          responded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          responded_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       error_reports: {
         Row: {
           component_stack: string | null
@@ -1060,6 +1093,7 @@ export type Database = {
           created_at: string
           current_period_end: string | null
           display_name: string | null
+          has_donated: boolean
           id: string
           plan: string
           stripe_customer_id: string | null
@@ -1071,6 +1105,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           display_name?: string | null
+          has_donated?: boolean
           id: string
           plan?: string
           stripe_customer_id?: string | null
@@ -1082,6 +1117,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string | null
           display_name?: string | null
+          has_donated?: boolean
           id?: string
           plan?: string
           stripe_customer_id?: string | null
