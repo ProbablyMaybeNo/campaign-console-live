@@ -112,6 +112,10 @@
     --chart-3: 0 90% 60%;
     --chart-4: 38 95% 55%;
     --chart-5: 280 85% 65%;
+
+    /* Font variables */
+    --font-ui: "IBM Plex Mono", ui-monospace, monospace;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
 
   /* Dark mode is the same - terminal is always dark */
@@ -137,188 +141,575 @@
     --ring: 142 76% 55%;
   }
 
-  /* Theme: Light - Bright, clean interface */
-  [data-theme="light"] {
-    --background: 0 0% 97%;
-    --foreground: 0 0% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 217 91% 60%;
+  /* ============================================================
+     ICONIC OS THEMES (Campaign Console)
+     ============================================================ */
+
+  /* 1) Windows 95 Classic — teal + gray + navy + "wine" accent */
+  [data-theme="win95"] {
+    --background: 180 100% 25%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 75%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 90%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 240 100% 25%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 217 91% 50%;
-    --primary-bright: 217 91% 70%;
-    --secondary: 262 83% 58%;
-    --secondary-foreground: 0 0% 100%;
-    --secondary-glow: 262 83% 48%;
-    --secondary-bright: 262 83% 68%;
-    --muted: 0 0% 93%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 95%;
-    --accent-foreground: 0 0% 10%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --warning: 38 95% 55%;
-    --warning-foreground: 0 0% 10%;
-    --success: 142 76% 45%;
-    --success-foreground: 0 0% 100%;
-    --border: 217 91% 70%;
-    --border-glow: 217 91% 60%;
-    --input: 0 0% 98%;
-    --input-foreground: 0 0% 10%;
-    --ring: 217 91% 60%;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 0 0% 10%;
-    --sidebar-primary: 217 91% 60%;
+    --primary-glow: 196 100% 42%;
+    --primary-bright: 196 100% 60%;
+
+    --secondary: 196 100% 47%;
+    --secondary-foreground: 0 0% 3%;
+    --secondary-glow: 196 100% 55%;
+    --secondary-bright: 196 100% 70%;
+
+    --destructive: 0 100% 33%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 0 100% 45%;
+
+    --warning: 36 100% 35%;
+    --warning-foreground: 0 0% 98%;
+
+    --success: 137 83% 26%;
+    --success-foreground: 0 0% 98%;
+
+    --muted: 180 100% 21%;
+    --muted-foreground: 0 0% 92%;
+
+    --accent: 328 61% 30%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 0 0% 50%;
+    --border-glow: 196 100% 47%;
+
+    --input: 0 0% 92%;
+    --input-foreground: 0 0% 0%;
+
+    --ring: 196 100% 47%;
+    --radius: 0rem;
+
+    --sidebar-background: 180 100% 21%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 240 100% 25%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 95%;
-    --sidebar-accent-foreground: 0 0% 10%;
-    --sidebar-border: 217 50% 80%;
-    --sidebar-ring: 217 91% 60%;
-    --chart-1: 217 91% 60%;
-    --chart-2: 262 83% 58%;
-    --chart-3: 0 84% 60%;
-    --chart-4: 38 95% 55%;
-    --chart-5: 142 76% 45%;
+    --sidebar-accent: 196 100% 47%;
+    --sidebar-accent-foreground: 0 0% 3%;
+    --sidebar-border: 0 0% 50%;
+    --sidebar-ring: 196 100% 47%;
+
+    --chart-1: 196 100% 47%;
+    --chart-2: 240 100% 25%;
+    --chart-3: 0 100% 33%;
+    --chart-4: 36 100% 35%;
+    --chart-5: 328 61% 45%;
+
+    --font-ui: "IBM Plex Mono", "Tahoma", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
 
-  /* Theme: Aquatic - Deep teal with cyan accents */
-  [data-theme="aquatic"] {
-    --background: 210 50% 8%;
-    --foreground: 180 50% 95%;
-    --card: 210 45% 11%;
-    --card-foreground: 180 50% 95%;
-    --popover: 210 45% 13%;
-    --popover-foreground: 180 50% 95%;
-    --primary: 180 70% 50%;
-    --primary-foreground: 210 50% 8%;
-    --primary-glow: 180 70% 40%;
-    --primary-bright: 180 70% 60%;
-    --secondary: 160 60% 45%;
-    --secondary-foreground: 210 50% 8%;
-    --secondary-glow: 160 60% 35%;
-    --secondary-bright: 160 60% 55%;
-    --muted: 210 40% 16%;
-    --muted-foreground: 180 30% 70%;
-    --accent: 210 40% 14%;
-    --accent-foreground: 180 50% 95%;
-    --destructive: 0 70% 55%;
-    --destructive-foreground: 180 50% 95%;
-    --warning: 38 80% 50%;
-    --warning-foreground: 210 50% 8%;
-    --success: 160 60% 50%;
-    --success-foreground: 210 50% 8%;
-    --border: 180 50% 35%;
-    --border-glow: 180 70% 50%;
-    --input: 210 45% 12%;
-    --input-foreground: 180 50% 95%;
-    --ring: 180 70% 50%;
-    --sidebar-background: 210 50% 9%;
-    --sidebar-foreground: 180 50% 95%;
-    --sidebar-primary: 180 70% 50%;
-    --sidebar-primary-foreground: 210 50% 8%;
-    --sidebar-accent: 210 40% 14%;
-    --sidebar-accent-foreground: 180 50% 95%;
-    --sidebar-border: 180 40% 25%;
-    --sidebar-ring: 180 70% 50%;
-    --chart-1: 180 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 0 70% 55%;
-    --chart-4: 38 80% 50%;
+  /* 2) Classic Mac OS Platinum+ — platinum + blue + lavender + aqua */
+  [data-theme="mac_platinum"] {
+    --background: 0 0% 85%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 95%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 89%;
+    --popover-foreground: 0 0% 7%;
+
+    --primary: 227 100% 59%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 227 100% 70%;
+    --primary-bright: 227 100% 65%;
+
+    --secondary: 254 100% 70%;
+    --secondary-foreground: 0 0% 7%;
+    --secondary-glow: 254 100% 78%;
+    --secondary-bright: 254 100% 75%;
+
+    --destructive: 0 66% 47%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 0 80% 60%;
+
+    --warning: 38 100% 38%;
+    --warning-foreground: 0 0% 7%;
+
+    --success: 155 63% 30%;
+    --success-foreground: 0 0% 100%;
+
+    --muted: 0 0% 79%;
+    --muted-foreground: 0 0% 24%;
+
+    --accent: 180 100% 32%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 0 0% 60%;
+    --border-glow: 227 100% 59%;
+
+    --input: 0 0% 97%;
+    --input-foreground: 0 0% 7%;
+
+    --ring: 227 100% 59%;
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 79%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 227 100% 59%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 254 100% 70%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 0 0% 60%;
+    --sidebar-ring: 227 100% 59%;
+
+    --chart-1: 227 100% 59%;
+    --chart-2: 180 100% 32%;
+    --chart-3: 0 66% 47%;
+    --chart-4: 38 100% 38%;
+    --chart-5: 254 100% 70%;
+
+    --font-ui: "IBM Plex Mono", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  /* 3) Amiga Workbench — deep blue + orange + cyan + demo purple */
+  [data-theme="amiga_workbench"] {
+    --background: 225 100% 20%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 92%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 84%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 33 100% 50%;
+    --primary-foreground: 0 0% 3%;
+    --primary-glow: 33 100% 60%;
+    --primary-bright: 33 100% 55%;
+
+    --secondary: 193 100% 50%;
+    --secondary-foreground: 0 0% 3%;
+    --secondary-glow: 193 100% 60%;
+    --secondary-bright: 193 100% 65%;
+
+    --destructive: 349 100% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 349 100% 55%;
+
+    --warning: 28 100% 45%;
+    --warning-foreground: 0 0% 98%;
+
+    --success: 146 55% 36%;
+    --success-foreground: 0 0% 98%;
+
+    --muted: 223 100% 12%;
+    --muted-foreground: 0 0% 92%;
+
+    --accent: 248 53% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 0 0% 0%;
+    --border-glow: 193 100% 50%;
+
+    --input: 0 0% 84%;
+    --input-foreground: 0 0% 0%;
+
+    --ring: 193 100% 50%;
+    --radius: 0.125rem;
+
+    --sidebar-background: 223 100% 12%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 33 100% 50%;
+    --sidebar-primary-foreground: 0 0% 3%;
+    --sidebar-accent: 193 100% 50%;
+    --sidebar-accent-foreground: 0 0% 3%;
+    --sidebar-border: 0 0% 0%;
+    --sidebar-ring: 193 100% 50%;
+
+    --chart-1: 33 100% 50%;
+    --chart-2: 193 100% 50%;
+    --chart-3: 349 100% 40%;
+    --chart-4: 28 100% 45%;
+    --chart-5: 248 53% 58%;
+
+    --font-ui: "IBM Plex Mono", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  /* 4) DEC VT320 Amber — black + amber + cyan links + "phosphor" green */
+  [data-theme="vt320_amber"] {
+    --background: 0 0% 0%;
+    --foreground: 41 100% 50%;
+    --card: 0 0% 4%;
+    --card-foreground: 41 100% 50%;
+    --popover: 0 0% 6%;
+    --popover-foreground: 40 100% 74%;
+
+    --primary: 41 100% 50%;
+    --primary-foreground: 0 0% 3%;
+    --primary-glow: 40 100% 74%;
+    --primary-bright: 40 100% 74%;
+
+    --secondary: 186 100% 50%;
+    --secondary-foreground: 0 0% 3%;
+    --secondary-glow: 186 100% 60%;
+    --secondary-bright: 186 100% 65%;
+
+    --destructive: 3 100% 59%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 3 100% 70%;
+
+    --warning: 41 100% 50%;
+    --warning-foreground: 0 0% 3%;
+
+    --success: 113 100% 71%;
+    --success-foreground: 0 0% 3%;
+
+    --muted: 43 100% 11%;
+    --muted-foreground: 40 100% 74%;
+
+    --accent: 41 100% 18%;
+    --accent-foreground: 40 100% 74%;
+
+    --border: 43 100% 11%;
+    --border-glow: 41 100% 50%;
+
+    --input: 0 0% 6%;
+    --input-foreground: 40 100% 74%;
+
+    --ring: 186 100% 50%;
+    --radius: 0.125rem;
+
+    --sidebar-background: 0 0% 2%;
+    --sidebar-foreground: 40 100% 74%;
+    --sidebar-primary: 41 100% 50%;
+    --sidebar-primary-foreground: 0 0% 3%;
+    --sidebar-accent: 186 100% 50%;
+    --sidebar-accent-foreground: 0 0% 3%;
+    --sidebar-border: 43 100% 11%;
+    --sidebar-ring: 186 100% 50%;
+
+    --chart-1: 41 100% 50%;
+    --chart-2: 186 100% 50%;
+    --chart-3: 3 100% 59%;
+    --chart-4: 41 100% 50%;
     --chart-5: 280 60% 55%;
+
+    --font-ui: "IBM Plex Mono", ui-monospace, monospace;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
 
-  /* Theme: Parchment - Warm vintage aesthetic */
-  [data-theme="parchment"] {
-    --background: 40 30% 94%;
-    --foreground: 30 25% 20%;
-    --card: 40 35% 97%;
-    --card-foreground: 30 25% 20%;
-    --popover: 40 35% 98%;
-    --popover-foreground: 30 25% 20%;
-    --primary: 25 80% 40%;
-    --primary-foreground: 40 30% 94%;
-    --primary-glow: 25 80% 30%;
-    --primary-bright: 25 80% 50%;
-    --secondary: 0 65% 45%;
-    --secondary-foreground: 40 30% 94%;
-    --secondary-glow: 0 65% 35%;
-    --secondary-bright: 0 65% 55%;
-    --muted: 40 25% 88%;
-    --muted-foreground: 30 20% 45%;
-    --accent: 40 30% 92%;
-    --accent-foreground: 30 25% 20%;
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 40 30% 94%;
-    --warning: 38 80% 45%;
-    --warning-foreground: 30 25% 20%;
-    --success: 142 50% 40%;
-    --success-foreground: 40 30% 94%;
-    --border: 25 50% 55%;
-    --border-glow: 25 80% 40%;
-    --input: 40 30% 96%;
-    --input-foreground: 30 25% 20%;
-    --ring: 25 80% 40%;
-    --sidebar-background: 40 30% 95%;
-    --sidebar-foreground: 30 25% 20%;
-    --sidebar-primary: 25 80% 40%;
-    --sidebar-primary-foreground: 40 30% 94%;
-    --sidebar-accent: 40 25% 90%;
-    --sidebar-accent-foreground: 30 25% 20%;
-    --sidebar-border: 25 40% 65%;
-    --sidebar-ring: 25 80% 40%;
-    --chart-1: 25 80% 40%;
-    --chart-2: 0 65% 45%;
-    --chart-3: 45 80% 45%;
-    --chart-4: 142 50% 40%;
-    --chart-5: 280 50% 50%;
+  /* 5) MS-DOS VGA — VGA blue + cyan/magenta/yellow */
+  [data-theme="msdos_vga"] {
+    --background: 240 100% 33%;
+    --foreground: 0 0% 100%;
+    --card: 240 83% 36%;
+    --card-foreground: 0 0% 100%;
+    --popover: 240 100% 20%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 3%;
+    --primary-glow: 180 100% 60%;
+    --primary-bright: 180 100% 65%;
+
+    --secondary: 300 100% 67%;
+    --secondary-foreground: 0 0% 3%;
+    --secondary-glow: 300 100% 75%;
+    --secondary-bright: 300 100% 72%;
+
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 0 0% 3%;
+    --destructive-glow: 0 100% 75%;
+
+    --warning: 60 100% 67%;
+    --warning-foreground: 0 0% 3%;
+
+    --success: 120 100% 67%;
+    --success-foreground: 0 0% 3%;
+
+    --muted: 240 100% 20%;
+    --muted-foreground: 0 0% 92%;
+
+    --accent: 60 100% 67%;
+    --accent-foreground: 0 0% 3%;
+
+    --border: 0 0% 75%;
+    --border-glow: 180 100% 50%;
+
+    --input: 240 100% 20%;
+    --input-foreground: 0 0% 100%;
+
+    --ring: 180 100% 50%;
+    --radius: 0rem;
+
+    --sidebar-background: 240 100% 20%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 0 0% 3%;
+    --sidebar-accent: 300 100% 67%;
+    --sidebar-accent-foreground: 0 0% 3%;
+    --sidebar-border: 0 0% 75%;
+    --sidebar-ring: 180 100% 50%;
+
+    --chart-1: 180 100% 50%;
+    --chart-2: 60 100% 67%;
+    --chart-3: 0 100% 67%;
+    --chart-4: 60 100% 67%;
+    --chart-5: 300 100% 67%;
+
+    --font-ui: "IBM Plex Mono", ui-monospace, monospace;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
 
-  /* Theme: Hazard - Neon terminal style */
-  [data-theme="hazard"] {
-    --background: 0 0% 4%;
-    --foreground: 80 100% 55%;
-    --card: 0 0% 7%;
-    --card-foreground: 80 100% 55%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 80 100% 55%;
-    --primary: 80 100% 45%;
-    --primary-foreground: 0 0% 4%;
-    --primary-glow: 80 100% 35%;
-    --primary-bright: 80 100% 55%;
-    --secondary: 45 100% 50%;
-    --secondary-foreground: 0 0% 4%;
-    --secondary-glow: 45 100% 40%;
-    --secondary-bright: 45 100% 60%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 80 50% 60%;
-    --accent: 0 0% 10%;
-    --accent-foreground: 80 100% 55%;
-    --destructive: 0 100% 50%;
-    --destructive-foreground: 0 0% 4%;
-    --warning: 45 100% 50%;
-    --warning-foreground: 0 0% 4%;
-    --success: 80 100% 45%;
-    --success-foreground: 0 0% 4%;
-    --border: 80 100% 30%;
-    --border-glow: 80 100% 45%;
-    --input: 0 0% 8%;
-    --input-foreground: 80 100% 55%;
-    --ring: 80 100% 45%;
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 80 100% 55%;
-    --sidebar-primary: 80 100% 45%;
-    --sidebar-primary-foreground: 0 0% 4%;
-    --sidebar-accent: 0 0% 10%;
-    --sidebar-accent-foreground: 80 100% 55%;
-    --sidebar-border: 80 60% 20%;
-    --sidebar-ring: 80 100% 45%;
-    --chart-1: 80 100% 45%;
-    --chart-2: 45 100% 50%;
-    --chart-3: 0 100% 50%;
-    --chart-4: 180 100% 45%;
-    --chart-5: 280 100% 55%;
+  /* 6) Atari ST TOS / GEM — green desktop + arcade neon accents */
+  [data-theme="atari_tos"] {
+    --background: 120 100% 33%;
+    --foreground: 0 0% 0%;
+    --card: 0 0% 85%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 75%;
+    --popover-foreground: 0 0% 0%;
+
+    --primary: 186 100% 50%;
+    --primary-foreground: 0 0% 3%;
+    --primary-glow: 186 100% 60%;
+    --primary-bright: 186 100% 65%;
+
+    --secondary: 300 100% 65%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-glow: 300 100% 72%;
+    --secondary-bright: 300 100% 70%;
+
+    --destructive: 349 100% 59%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 349 100% 70%;
+
+    --warning: 54 100% 50%;
+    --warning-foreground: 0 0% 3%;
+
+    --success: 150 100% 41%;
+    --success-foreground: 0 0% 3%;
+
+    --muted: 120 100% 23%;
+    --muted-foreground: 0 0% 98%;
+
+    --accent: 54 100% 50%;
+    --accent-foreground: 0 0% 3%;
+
+    --border: 0 0% 0%;
+    --border-glow: 186 100% 50%;
+
+    --input: 0 0% 85%;
+    --input-foreground: 0 0% 0%;
+
+    --ring: 186 100% 50%;
+    --radius: 0.125rem;
+
+    --sidebar-background: 120 100% 23%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 186 100% 50%;
+    --sidebar-primary-foreground: 0 0% 3%;
+    --sidebar-accent: 300 100% 65%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 0%;
+    --sidebar-ring: 186 100% 50%;
+
+    --chart-1: 186 100% 50%;
+    --chart-2: 54 100% 50%;
+    --chart-3: 349 100% 59%;
+    --chart-4: 54 100% 50%;
+    --chart-5: 300 100% 65%;
+
+    --font-ui: "IBM Plex Mono", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  /* 7) NeXTSTEP — graphite + yellow + cyan + orange */
+  [data-theme="nextstep"] {
+    --background: 220 5% 11%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 85%;
+    --card-foreground: 0 0% 6%;
+    --popover: 0 0% 74%;
+    --popover-foreground: 0 0% 6%;
+
+    --primary: 50 100% 50%;
+    --primary-foreground: 220 8% 7%;
+    --primary-glow: 50 100% 60%;
+    --primary-bright: 50 100% 55%;
+
+    --secondary: 191 100% 50%;
+    --secondary-foreground: 0 0% 3%;
+    --secondary-glow: 191 100% 60%;
+    --secondary-bright: 191 100% 65%;
+
+    --destructive: 1 77% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 1 90% 65%;
+
+    --warning: 25 100% 50%;
+    --warning-foreground: 0 0% 3%;
+
+    --success: 157 100% 38%;
+    --success-foreground: 0 0% 98%;
+
+    --muted: 220 8% 7%;
+    --muted-foreground: 0 0% 92%;
+
+    --accent: 25 100% 50%;
+    --accent-foreground: 0 0% 3%;
+
+    --border: 0 0% 23%;
+    --border-glow: 191 100% 50%;
+
+    --input: 0 0% 74%;
+    --input-foreground: 0 0% 6%;
+
+    --ring: 50 100% 50%;
+    --radius: 0.25rem;
+
+    --sidebar-background: 220 8% 7%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 50 100% 50%;
+    --sidebar-primary-foreground: 220 8% 7%;
+    --sidebar-accent: 191 100% 50%;
+    --sidebar-accent-foreground: 0 0% 3%;
+    --sidebar-border: 0 0% 23%;
+    --sidebar-ring: 50 100% 50%;
+
+    --chart-1: 50 100% 50%;
+    --chart-2: 191 100% 50%;
+    --chart-3: 1 77% 55%;
+    --chart-4: 25 100% 50%;
+    --chart-5: 280 60% 55%;
+
+    --font-ui: "IBM Plex Mono", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  /* 8) Solaris CDE / Motif — warm stone + teal/blue + magenta */
+  [data-theme="solaris_cde"] {
+    --background: 41 8% 40%;
+    --foreground: 0 0% 98%;
+    --card: 42 14% 81%;
+    --card-foreground: 30 5% 7%;
+    --popover: 40 10% 70%;
+    --popover-foreground: 30 5% 7%;
+
+    --primary: 175 59% 40%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 175 70% 52%;
+    --primary-bright: 175 59% 46%;
+
+    --secondary: 205 69% 49%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-glow: 205 80% 60%;
+    --secondary-bright: 205 69% 56%;
+
+    --destructive: 1 71% 52%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 1 85% 62%;
+
+    --warning: 45 100% 35%;
+    --warning-foreground: 0 0% 98%;
+
+    --success: 175 59% 40%;
+    --success-foreground: 0 0% 100%;
+
+    --muted: 38 7% 29%;
+    --muted-foreground: 0 0% 92%;
+
+    --accent: 331 64% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 35 5% 45%;
+    --border-glow: 205 69% 49%;
+
+    --input: 42 14% 81%;
+    --input-foreground: 30 5% 7%;
+
+    --ring: 205 69% 49%;
+    --radius: 0.125rem;
+
+    --sidebar-background: 38 7% 29%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 205 69% 49%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 175 59% 40%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 35 5% 45%;
+    --sidebar-ring: 205 69% 49%;
+
+    --chart-1: 175 59% 40%;
+    --chart-2: 205 69% 49%;
+    --chart-3: 1 71% 52%;
+    --chart-4: 45 100% 35%;
+    --chart-5: 331 64% 52%;
+
+    --font-ui: "IBM Plex Mono", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+
+  /* 9) SGI IRIX Indigo Magic — steel + teal + indigo + orange */
+  [data-theme="sgi_irix"] {
+    --background: 207 11% 19%;
+    --foreground: 0 0% 98%;
+    --card: 210 8% 80%;
+    --card-foreground: 210 15% 5%;
+    --popover: 210 8% 71%;
+    --popover-foreground: 210 15% 5%;
+
+    --primary: 182 100% 36%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 182 100% 46%;
+    --primary-bright: 182 100% 40%;
+
+    --secondary: 255 30% 42%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-glow: 255 45% 55%;
+    --secondary-bright: 255 35% 48%;
+
+    --destructive: 1 77% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --destructive-glow: 1 90% 65%;
+
+    --warning: 42 100% 50%;
+    --warning-foreground: 0 0% 3%;
+
+    --success: 157 100% 38%;
+    --success-foreground: 0 0% 98%;
+
+    --muted: 207 15% 12%;
+    --muted-foreground: 0 0% 92%;
+
+    --accent: 29 100% 50%;
+    --accent-foreground: 0 0% 3%;
+
+    --border: 213 4% 50%;
+    --border-glow: 182 100% 36%;
+
+    --input: 210 8% 71%;
+    --input-foreground: 210 15% 5%;
+
+    --ring: 182 100% 36%;
+    --radius: 0.25rem;
+
+    --sidebar-background: 207 15% 12%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 182 100% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 255 30% 42%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 213 4% 50%;
+    --sidebar-ring: 182 100% 36%;
+
+    --chart-1: 182 100% 36%;
+    --chart-2: 29 100% 50%;
+    --chart-3: 1 77% 55%;
+    --chart-4: 42 100% 50%;
+    --chart-5: 255 30% 42%;
+
+    --font-ui: "IBM Plex Mono", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
 }
 

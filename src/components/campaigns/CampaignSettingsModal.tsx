@@ -377,39 +377,87 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
                 <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                   Dashboard Theme
                 </label>
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-1">
                   {THEMES.map((theme) => {
                     const ThemeIcon = theme.icon;
                     const isLocked = theme.supporterOnly && !isSupporter;
+                    const isActive = themeId === theme.id;
                     
                     return (
-                      <button
+                      <div
                         key={theme.id}
+                        data-theme={theme.id}
                         onClick={() => !isLocked && setThemeId(theme.id)}
-                        disabled={isLocked}
-                        className={`p-3 border rounded text-center transition-all relative ${
-                          themeId === theme.id
-                            ? "border-primary bg-primary/10"
-                            : isLocked
-                              ? "border-border/50 opacity-50 cursor-not-allowed"
-                              : "border-border hover:border-primary/50"
-                        }`}
-                        title={isLocked ? "Supporter only" : theme.description}
-                      >
-                        <ThemeIcon className={`w-5 h-5 mx-auto mb-1 ${
-                          themeId === theme.id ? "text-primary" : "text-muted-foreground"
-                        }`} />
-                        <p className="text-[10px] font-mono uppercase">{theme.name}</p>
-                        {isLocked && (
-                          <Lock className="absolute top-1 right-1 w-3 h-3 text-muted-foreground" />
+                        className={cn(
+                          "relative rounded-md overflow-hidden border-2 transition-all cursor-pointer group",
+                          isActive 
+                            ? "border-primary ring-2 ring-primary/30" 
+                            : "border-border hover:border-primary/50",
+                          isLocked && "opacity-60 cursor-not-allowed"
                         )}
-                      </button>
+                      >
+                        {/* Mini Preview Area */}
+                        <div 
+                          className="p-2 min-h-[60px]"
+                          style={{ backgroundColor: `hsl(${theme.preview.background})` }}
+                        >
+                          {/* Mini card preview */}
+                          <div 
+                            className="rounded-sm p-1 mb-1"
+                            style={{ 
+                              backgroundColor: `hsl(${theme.preview.card})`,
+                              border: `1px solid hsl(${theme.preview.border})`
+                            }}
+                          >
+                            <div 
+                              className="text-[7px] font-mono font-bold truncate"
+                              style={{ color: `hsl(${theme.preview.primary})` }}
+                            >
+                              {theme.name}
+                            </div>
+                          </div>
+
+                          {/* Color swatches */}
+                          <div className="flex gap-0.5">
+                            <div 
+                              className="w-2.5 h-2.5 rounded-sm"
+                              style={{ backgroundColor: `hsl(${theme.preview.primary})` }}
+                            />
+                            <div 
+                              className="w-2.5 h-2.5 rounded-sm"
+                              style={{ backgroundColor: `hsl(${theme.preview.secondary})` }}
+                            />
+                            <div 
+                              className="w-2.5 h-2.5 rounded-sm"
+                              style={{ backgroundColor: `hsl(${theme.preview.accent})` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Theme Info Footer */}
+                        <div className="bg-card p-1.5 border-t border-border">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1">
+                              <ThemeIcon className="w-3 h-3 text-muted-foreground" />
+                              <span className="text-[9px] font-mono font-semibold uppercase text-foreground truncate">
+                                {theme.name}
+                              </span>
+                            </div>
+                            {isActive && (
+                              <Check className="w-3 h-3 text-primary" />
+                            )}
+                            {isLocked && !isActive && (
+                              <Lock className="w-3 h-3 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
                 {!isSupporter && (
                   <p className="text-xs text-muted-foreground">
-                    🔒 Additional themes available with Supporter subscription
+                    🔒 9 OS-inspired themes available with Supporter subscription
                   </p>
                 )}
               </div>
