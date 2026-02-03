@@ -301,9 +301,6 @@ export function BillingSettings() {
                 {donationError && (
                   <p className="text-sm text-destructive mt-1">{donationError}</p>
                 )}
-                <p className="text-xs mt-1" style={{ color: "hsl(0, 0%, 70%)" }}>
-                  Min: ${MIN_DONATION} · Max: ${MAX_DONATION}
-                </p>
               </div>
 
               <TerminalButton
