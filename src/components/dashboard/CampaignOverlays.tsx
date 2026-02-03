@@ -96,6 +96,13 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     size: "md",
     gmOnly: true,
   },
+  battles: {
+    title: "Battles",
+    subtitle: "Manage rounds, pairings, and battle reports",
+    icon: <Swords className="w-4 h-4" />,
+    size: "xl",
+    gmOnly: true,
+  },
 };
 
 interface CampaignOverlaysProps {
@@ -246,6 +253,13 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
       return (
         <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
           <PlayerMessagesOverlay campaignId={campaignId} />
+        </OverlayPanel>
+      );
+
+    case "battles":
+      return (
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+          <BattlesManager campaignId={campaignId} />
         </OverlayPanel>
       );
 
