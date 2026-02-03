@@ -14,6 +14,255 @@ export type Database = {
   }
   public: {
     Tables: {
+      battle_audit_trail: {
+        Row: {
+          action: string
+          campaign_id: string
+          changed_by: string
+          changes: Json | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          campaign_id: string
+          changed_by: string
+          changes?: Json | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          campaign_id?: string
+          changed_by?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_audit_trail_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_audit_trail_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_matches: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          final_results: Json | null
+          id: string
+          is_bye: boolean
+          match_index: number
+          notes: string | null
+          participants: Json
+          provisional_results: Json | null
+          round_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          final_results?: Json | null
+          id?: string
+          is_bye?: boolean
+          match_index?: number
+          notes?: string | null
+          participants?: Json
+          provisional_results?: Json | null
+          round_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          final_results?: Json | null
+          id?: string
+          is_bye?: boolean
+          match_index?: number
+          notes?: string | null
+          participants?: Json
+          provisional_results?: Json | null
+          round_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_matches_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_matches_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_matches_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_reports: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          attachments: Json | null
+          created_at: string
+          id: string
+          injuries: Json | null
+          loot_found: Json | null
+          match_id: string
+          narrative: string | null
+          notable_events: Json | null
+          outcome: string
+          player_side: string
+          points_earned: number | null
+          resources: Json | null
+          submitted_at: string
+          submitted_by: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: Json | null
+          created_at?: string
+          id?: string
+          injuries?: Json | null
+          loot_found?: Json | null
+          match_id: string
+          narrative?: string | null
+          notable_events?: Json | null
+          outcome: string
+          player_side?: string
+          points_earned?: number | null
+          resources?: Json | null
+          submitted_at?: string
+          submitted_by: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: Json | null
+          created_at?: string
+          id?: string
+          injuries?: Json | null
+          loot_found?: Json | null
+          match_id?: string
+          narrative?: string | null
+          notable_events?: Json | null
+          outcome?: string
+          player_side?: string
+          points_earned?: number | null
+          resources?: Json | null
+          submitted_at?: string
+          submitted_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_reports_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "battle_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_rounds: {
+        Row: {
+          campaign_id: string
+          constraints_config: Json | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          name: string
+          pairing_system: string
+          report_fields_config: Json | null
+          round_index: number
+          scoring_config: Json | null
+          starts_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          constraints_config?: Json | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          name?: string
+          pairing_system?: string
+          report_fields_config?: Json | null
+          round_index?: number
+          scoring_config?: Json | null
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          constraints_config?: Json | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          name?: string
+          pairing_system?: string
+          report_fields_config?: Json | null
+          round_index?: number
+          scoring_config?: Json | null
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_rounds_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_rounds_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_documents: {
         Row: {
           campaign_id: string

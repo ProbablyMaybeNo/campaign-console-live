@@ -12,6 +12,7 @@ import { WarbandsWidget } from "./WarbandsWidget";
 import { PlayerSettingsOverlay } from "@/components/players/PlayerSettingsOverlay";
 import { PlayerMessagesOverlay } from "@/components/players/PlayerMessagesOverlay";
 import { RulesManager } from "@/components/rules/RulesManager";
+import { BattlesManager } from "@/components/battles/BattlesManager";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Link } from "react-router-dom";
