@@ -33,7 +33,7 @@ const UNLOCKED_FEATURES = [
   {
     icon: Palette,
     title: "Dashboard Themes",
-    description: "Choose from 5 unique themes: Dark, Light, Aquatic, Parchment, and Hazard.",
+    description: "Choose from 10 unique OS-inspired themes including Windows 95, Mac Platinum, Amiga, VT320 Amber, and more.",
     howToAccess: "Campaign Settings → Appearance → Theme Selector.",
   },
   {
