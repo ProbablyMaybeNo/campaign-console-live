@@ -378,6 +378,136 @@ This architecture sets up well for future PWA:
 
 ---
 
+## Phase 6.5: Mobile Onboarding Overlay
+
+**New File: `src/components/dashboard/MobileOnboardingModal.tsx`**
+
+A first-time overlay that appears when users access the mobile version, explaining the differences from desktop.
+
+### Trigger Condition
+
+- Shows on first mobile visit (stored in `localStorage` as `campaign-console-mobile-onboarding-seen`)
+- Only appears on phone devices (`isPhone === true`)
+- Can be dismissed and won't show again
+- Optional: "Show again" button in GM Menu for reference
+
+### Visual Layout
+
+```
+┌──────────────────────────────────────┐
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                      │
+│         📱 MOBILE MODE               │
+│                                      │
+│   Welcome to Campaign Console        │
+│   on your phone!                     │
+│                                      │
+│ ─────────────────────────────────    │
+│                                      │
+│ ✅ WHAT'S INCLUDED                   │
+│                                      │
+│ • View all campaign widgets          │
+│ • Access Rules, Map, Schedule        │
+│ • Read & send messages               │
+│ • Roll dice & view activity          │
+│ • GMs: Add widgets & manage players  │
+│ • Copy & share join codes            │
+│                                      │
+│ ─────────────────────────────────    │
+│                                      │
+│ ❌ DESKTOP ONLY                      │
+│                                      │
+│ • Drag-and-drop dashboard layout     │
+│ • Resize & reposition widgets        │
+│ • Infinite canvas & zoom controls    │
+│ • Multi-select & bulk editing        │
+│ • Keyboard shortcuts (Ctrl+K, etc.)  │
+│                                      │
+│ ─────────────────────────────────    │
+│                                      │
+│ 💡 TIP                               │
+│                                      │
+│ For full dashboard editing,          │
+│ switch to a tablet or desktop.       │
+│ Your changes sync instantly!         │
+│                                      │
+│         ┌────────────────┐           │
+│         │   Got it! 👍   │           │
+│         └────────────────┘           │
+│                                      │
+└──────────────────────────────────────┘
+```
+
+### Content Sections
+
+**What's Included (Mobile):**
+- View all campaign widgets in carousel
+- Access Rules, Map, Schedule, and Narrative overlays
+- Read and send player messages
+- Roll dice and view activity feed
+- GMs: Add new widgets via Quick Actions menu
+- GMs: Manage players and campaign settings
+- Copy and share join codes
+
+**Desktop Only:**
+- Drag-and-drop dashboard canvas
+- Resize and reposition widgets freely
+- Infinite canvas with zoom/pan controls
+- Multi-select widgets for bulk operations
+- Keyboard shortcuts (Ctrl+K command palette, etc.)
+- Full widget editing interface
+
+### Implementation
+
+```typescript
+// MobileOnboardingModal.tsx
+import { useState, useEffect } from "react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { TerminalButton } from "@/components/ui/TerminalButton";
+import { Smartphone, Check, X, Lightbulb } from "lucide-react";
+
+const STORAGE_KEY = "campaign-console-mobile-onboarding-seen";
+
+interface MobileOnboardingModalProps {
+  isPhone: boolean;
+}
+
+export function MobileOnboardingModal({ isPhone }: MobileOnboardingModalProps) {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (isPhone && !localStorage.getItem(STORAGE_KEY)) {
+      setOpen(true);
+    }
+  }, [isPhone]);
+
+  const handleDismiss = () => {
+    localStorage.setItem(STORAGE_KEY, "true");
+    setOpen(false);
+  };
+
+  // ... render content
+}
+```
+
+### Styling
+
+- Uses terminal aesthetic with glowing borders
+- Section headers with neon green dividers
+- Icon accents for visual scanning
+- Large, touch-friendly dismiss button
+- Scrollable content if needed (ScrollArea)
+
+### Integration
+
+Add to `MobileDashboard.tsx`:
+
+```tsx
+<MobileOnboardingModal isPhone={isPhone} />
+```
+
+---
+
 ## Implementation Order
 
 1. **Phase 1**: Update `use-mobile.tsx` with device detection
@@ -386,8 +516,9 @@ This architecture sets up well for future PWA:
 4. **Phase 4**: Create `MobileGMMenu` (FAB + bottom sheet)
 5. **Phase 5**: Create `MobileDashboard` (main container)
 6. **Phase 6**: Integrate into `CampaignDashboard` with routing
-7. **Phase 7**: Tablet touch optimizations (CSS only)
-8. **Phase 8**: Testing and polish
+7. **Phase 6.5**: Create `MobileOnboardingModal` (first-time instructions)
+8. **Phase 7**: Tablet touch optimizations (CSS only)
+9. **Phase 8**: Testing and polish
 
 ---
 
