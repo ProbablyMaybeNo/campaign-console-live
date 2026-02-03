@@ -229,6 +229,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          banner_url: string | null
           border_color: string | null
           created_at: string
           current_round: number | null
@@ -238,6 +239,7 @@ export type Database = {
           game_system: string | null
           game_system_id: string | null
           id: string
+          is_archived: boolean
           join_code: string | null
           max_players: number | null
           name: string
@@ -250,11 +252,13 @@ export type Database = {
           rules_repo_url: string | null
           start_date: string | null
           status: string | null
+          theme_id: string
           title_color: string | null
           total_rounds: number | null
           updated_at: string
         }
         Insert: {
+          banner_url?: string | null
           border_color?: string | null
           created_at?: string
           current_round?: number | null
@@ -264,6 +268,7 @@ export type Database = {
           game_system?: string | null
           game_system_id?: string | null
           id?: string
+          is_archived?: boolean
           join_code?: string | null
           max_players?: number | null
           name: string
@@ -276,11 +281,13 @@ export type Database = {
           rules_repo_url?: string | null
           start_date?: string | null
           status?: string | null
+          theme_id?: string
           title_color?: string | null
           total_rounds?: number | null
           updated_at?: string
         }
         Update: {
+          banner_url?: string | null
           border_color?: string | null
           created_at?: string
           current_round?: number | null
@@ -290,6 +297,7 @@ export type Database = {
           game_system?: string | null
           game_system_id?: string | null
           id?: string
+          is_archived?: boolean
           join_code?: string | null
           max_players?: number | null
           name?: string
@@ -302,6 +310,7 @@ export type Database = {
           rules_repo_url?: string | null
           start_date?: string | null
           status?: string | null
+          theme_id?: string
           title_color?: string | null
           total_rounds?: number | null
           updated_at?: string
@@ -1290,6 +1299,7 @@ export type Database = {
     Views: {
       campaigns_safe: {
         Row: {
+          banner_url: string | null
           border_color: string | null
           created_at: string | null
           current_round: number | null
@@ -1300,6 +1310,7 @@ export type Database = {
           game_system_id: string | null
           has_password: boolean | null
           id: string | null
+          is_archived: boolean | null
           join_code: string | null
           max_players: number | null
           name: string | null
@@ -1310,11 +1321,13 @@ export type Database = {
           rules_repo_url: string | null
           start_date: string | null
           status: string | null
+          theme_id: string | null
           title_color: string | null
           total_rounds: number | null
           updated_at: string | null
         }
         Insert: {
+          banner_url?: string | null
           border_color?: string | null
           created_at?: string | null
           current_round?: number | null
@@ -1325,7 +1338,8 @@ export type Database = {
           game_system_id?: string | null
           has_password?: never
           id?: string | null
-          join_code?: never
+          is_archived?: boolean | null
+          join_code?: string | null
           max_players?: number | null
           name?: string | null
           owner_id?: string | null
@@ -1335,11 +1349,13 @@ export type Database = {
           rules_repo_url?: string | null
           start_date?: string | null
           status?: string | null
+          theme_id?: string | null
           title_color?: string | null
           total_rounds?: number | null
           updated_at?: string | null
         }
         Update: {
+          banner_url?: string | null
           border_color?: string | null
           created_at?: string | null
           current_round?: number | null
@@ -1350,7 +1366,8 @@ export type Database = {
           game_system_id?: string | null
           has_password?: never
           id?: string | null
-          join_code?: never
+          is_archived?: boolean | null
+          join_code?: string | null
           max_players?: number | null
           name?: string | null
           owner_id?: string | null
@@ -1360,6 +1377,7 @@ export type Database = {
           rules_repo_url?: string | null
           start_date?: string | null
           status?: string | null
+          theme_id?: string | null
           title_color?: string | null
           total_rounds?: number | null
           updated_at?: string | null
@@ -1376,7 +1394,10 @@ export type Database = {
       }
     }
     Functions: {
+      can_create_campaign: { Args: { _user_id: string }; Returns: boolean }
+      count_active_campaigns: { Args: { _user_id: string }; Returns: number }
       generate_join_code: { Args: never; Returns: string }
+      get_user_entitlements: { Args: { _user_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

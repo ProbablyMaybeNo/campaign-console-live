@@ -40,6 +40,10 @@ export interface Campaign {
   display_settings?: DisplaySettings | Json | null;
   title_color?: string | null;
   border_color?: string | null;
+  // Supporter features
+  is_archived?: boolean;
+  banner_url?: string | null;
+  theme_id?: string;
 }
 
 export interface CreateCampaignInput {
@@ -338,6 +342,30 @@ export function useJoinCampaign() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+}
+
+export function useArchiveCampaign() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ campaignId, isArchived }: { campaignId: string; isArchived: boolean }): Promise<void> => {
+      const { error } = await supabase
+        .from("campaigns")
+        .update({ is_archived: isArchived })
+        .eq("id", campaignId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["campaign", variables.campaignId] });
+      queryClient.invalidateQueries({ queryKey: ["entitlements"] });
+      toast.success(variables.isArchived ? "Campaign archived" : "Campaign restored");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update campaign: ${error.message}`);
     },
   });
 }

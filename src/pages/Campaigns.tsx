@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { useAuth } from "@/hooks/useAuth";
-import { useCampaigns, Campaign } from "@/hooks/useCampaigns";
+import { useCampaigns, useArchiveCampaign, Campaign } from "@/hooks/useCampaigns";
 import { CreateCampaignModal } from "@/components/campaigns/CreateCampaignModal";
 import { JoinCampaignModal } from "@/components/campaigns/JoinCampaignModal";
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Crown, User, AlertCircle, Copy, Check, Users, Unlock } from "lucide-react";
+import { ArrowLeft, Crown, User, AlertCircle, Copy, Check, Users, Unlock, Archive, ArchiveRestore } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { HelpButton } from "@/components/help/HelpButton";
@@ -16,13 +16,27 @@ import { HelpButton } from "@/components/help/HelpButton";
 export default function Campaigns() {
   const { user, signOut } = useAuth();
   const { data: campaigns, isLoading, error } = useCampaigns();
+  const archiveCampaign = useArchiveCampaign();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
   const [deletingCampaign, setDeletingCampaign] = useState<Campaign | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showArchived, setShowArchived] = useState(false);
   const navigate = useNavigate();
+
+  // Separate active and archived campaigns
+  const { activeCampaigns, archivedCampaigns } = useMemo(() => {
+    if (!campaigns) return { activeCampaigns: [], archivedCampaigns: [] };
+    return {
+      activeCampaigns: campaigns.filter(c => !c.is_archived),
+      archivedCampaigns: campaigns.filter(c => c.is_archived),
+    };
+  }, [campaigns]);
+
+  const displayedCampaigns = showArchived ? archivedCampaigns : activeCampaigns;
+  const selectedCampaign = campaigns?.find(c => c.id === selectedCampaignId);
 
   const getStatusColor = () => {
     return "text-primary text-glow-primary";
@@ -105,6 +119,27 @@ export default function Campaigns() {
           <div className="w-full h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent mt-4" />
         </div>
 
+        {/* Archive Toggle */}
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex gap-2">
+            <TerminalButton
+              variant={!showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowArchived(false)}
+            >
+              Active ({activeCampaigns.length})
+            </TerminalButton>
+            <TerminalButton
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowArchived(true)}
+            >
+              <Archive className="w-3 h-3 mr-1" />
+              Archived ({archivedCampaigns.length})
+            </TerminalButton>
+          </div>
+        </div>
+
         {/* Campaign Table */}
         <div className="p-6 mb-6 border border-dashed border-primary/40">
           {isLoading ? (
@@ -116,7 +151,7 @@ export default function Campaigns() {
               <AlertCircle className="w-8 h-8" />
               <p className="text-sm">[ERROR] Failed to load campaigns</p>
             </div>
-          ) : campaigns && campaigns.length > 0 ? (
+          ) : displayedCampaigns.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -130,7 +165,7 @@ export default function Campaigns() {
                   </tr>
                 </thead>
                 <tbody>
-                  {campaigns.map((campaign) => (
+                  {displayedCampaigns.map((campaign) => (
                     <tr 
                       key={campaign.id}
                       onClick={() => handleRowClick(campaign.id)}
