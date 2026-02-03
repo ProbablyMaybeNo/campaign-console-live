@@ -53,8 +53,6 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
   const { data: campaign, isLoading } = useCampaign(campaignId);
   const updateCampaign = useUpdateCampaign();
   const { isSupporter } = useEntitlements();
-  const updateCampaign = useUpdateCampaign();
-  
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [pointsLimit, setPointsLimit] = useState("");
