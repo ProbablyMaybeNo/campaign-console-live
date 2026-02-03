@@ -421,6 +421,174 @@
 
 ---
 
+## 11. Supporter Features & Entitlements
+
+### 11.1 Campaign Limits (Free User)
+**Start State**: Logged in as Free user (no active subscription)
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/campaigns` | Campaign list visible | Page loads |
+| 2 | If no campaigns, create one | Campaign created successfully | First campaign works |
+| 3 | Click "[ Create ]" again | Modal shows Campaign Limit reached | "Campaign Limit Reached" title with upgrade CTA |
+| 4 | Check modal content | Shows limit of 1 campaign for Free users | Text mentions upgrading for more |
+| 5 | Click "Become a Supporter" | Navigates to `/settings` | Settings page with billing tab |
+
+### 11.2 Campaign Archiving
+**Start State**: Logged in as Free user with 1 active campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/campaigns` | Shows "Active" tab selected | Tab highlight visible |
+| 2 | Select a campaign | Row highlighted | Selection visible |
+| 3 | Click "[ Archive ]" button | Confirmation modal appears | "Archive this campaign?" text |
+| 4 | Confirm archive | Campaign moves to Archived tab | Row disappears from Active |
+| 5 | Click "Archived" tab | Archived campaign visible | Campaign row appears |
+| 6 | Can now create new campaign | "[ Create ]" button works | Modal opens (not limit modal) |
+| 7 | Select archived campaign | Row highlighted | Selection visible |
+| 8 | Click "[ Restore ]" button | Campaign moves back to Active | Appears in Active tab |
+
+### 11.3 Dashboard Themes (Supporter-Gated)
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click Settings in sidebar | Campaign Settings modal opens | Modal visible |
+| 2 | Click "Appearance" tab | Appearance settings visible | Theme selector shown |
+| 3 | **As Free user**: Check theme options | Non-Dark themes show 🔒 lock icon | Lock icons visible |
+| 4 | Click locked theme (e.g., Aquatic) | Upgrade prompt or CTA shown | Cannot select locked themes |
+| 5 | **As Supporter**: Click Aquatic theme | Theme selected, save button active | Theme option selected |
+| 6 | Click "Save Changes" | Dashboard updates with new theme | Colors change (teal/cyan palette) |
+| 7 | Refresh page | Theme persists | Aquatic colors still applied |
+| 8 | Try Light theme | White/light background applied | UI switches to light mode |
+| 9 | Try Parchment theme | Warm beige/brown palette | Vintage aesthetic visible |
+| 10 | Try Hazard theme | Neon green terminal style | Bright neon accents |
+| 11 | Switch back to Dark | Default dark theme restored | Green accents on dark |
+
+### 11.4 Campaign Banner (Supporter-Gated)
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Campaign Settings → Appearance | Banner URL field visible | Input field for URL |
+| 2 | **As Free user**: Check banner field | Shows 🔒 lock with upgrade CTA | Field locked |
+| 3 | **As Supporter**: Enter banner URL | Field accepts input | URL typed in |
+| 4 | Use URL: `https://picsum.photos/800/200` | Valid image URL entered | Text in field |
+| 5 | Save settings | Success message | Toast confirms save |
+| 6 | Check Campaign Console widget | Banner image displays at top | Image visible above campaign info |
+| 7 | Refresh page | Banner persists | Image still displayed |
+| 8 | Enter invalid URL (e.g., "not-a-url") | Validation error or broken image | Error handling works |
+| 9 | Clear banner URL and save | Banner removed | No image in console widget |
+
+---
+
+## 12. Text Widget (Supporter-Exclusive)
+
+### 12.1 Add Text Widget
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget type grid visible |
+| 2 | Find "Text" widget option | Text option visible with FileText icon | Option in grid |
+| 3 | **As Free user**: Check Text option | Shows 🔒 lock icon | Locked indicator visible |
+| 4 | **As Supporter**: Click Text | Text widget added to canvas | New widget appears |
+| 5 | Widget shows default content | Empty or placeholder text | Widget body visible |
+
+### 12.2 Edit Text Content
+**Start State**: Text widget on canvas as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find edit (pencil) button on widget | Edit icon visible | Pencil icon in widget |
+| 2 | Click edit button | Text area becomes editable | Cursor appears in text area |
+| 3 | Type: `# Battle Report\n\nThe forces clashed at dawn.` | Markdown text entered | Text visible in editor |
+| 4 | Click Save or click outside | Text saves | Content displayed |
+| 5 | Check markdown rendering | Heading renders as H1 | Large bold text for heading |
+| 6 | Refresh page | Content persists | Markdown text still there |
+
+### 12.3 Text Widget Visibility
+**Start State**: Text widget exists, test with Player account
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | **As Player**: Open same campaign | Dashboard loads | Player view active |
+| 2 | Check Text widget visibility | Widget visible (if visibility=all) | Widget shown to player |
+| 3 | Check for edit controls | No edit button visible | Players cannot edit |
+
+---
+
+## 13. Sticker Widget (Supporter-Exclusive)
+
+### 13.1 Add Sticker Widget
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget type grid visible |
+| 2 | Find "Sticker" widget option | Sticker option visible | Option in grid |
+| 3 | **As Free user**: Check Sticker option | Shows 🔒 lock icon | Locked indicator visible |
+| 4 | **As Supporter**: Click Sticker | Sticker widget added to canvas | New widget with default icon |
+| 5 | Widget shows default sticker | Target icon in medium size | Icon visible in widget |
+
+### 13.2 Customize Sticker
+**Start State**: Sticker widget on canvas as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find edit (pencil) button on widget | Edit icon visible | Pencil icon present |
+| 2 | Click edit button | Sticker Picker modal opens | Icon grid with categories |
+| 3 | Check categories visible | Objectives, Units, Terrain, Status, etc. | Category tabs or sections |
+| 4 | Click "Danger" category | Danger icons shown | Skull, Flame, Zap, etc. |
+| 5 | Click Skull icon | Icon selected | Selection indicator |
+| 6 | Change size to "Large" | Size selector updates | Large option selected |
+| 7 | Change color (if available) | Color picker works | New color applied |
+| 8 | Click "Select" or close | Sticker updates | Skull icon now showing |
+| 9 | Refresh page | Sticker persists | Same icon, size, color |
+
+### 13.3 Sticker Categories Test
+**Start State**: Sticker Picker open
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Check Objectives category | Target, Flag, Star, Trophy icons | Icons visible |
+| 2 | Check Units category | Sword, Shield, Users icons | Icons visible |
+| 3 | Check Terrain category | Mountain, Trees, Home, Castle icons | Icons visible |
+| 4 | Check Cities category | Building, Church, Factory icons | Icons visible |
+| 5 | Check Loot category | Gem, Crown, Coins, Gift icons | Icons visible |
+| 6 | Check Arrows category | ArrowUp, ArrowDown, etc. | Directional arrows visible |
+| 7 | Use search/filter (if available) | Icons filter based on search | Reduced icon list |
+
+---
+
+## 14. Smart Paste Gating
+
+### 14.1 AI Convert Lock (Free User)
+**Start State**: Logged in as Free user (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Modal visible |
+| 2 | Click "Rules Table" | Paste Wizard overlay opens | Text input area visible |
+| 3 | Paste some rules text | Text appears in input | Content pasted |
+| 4 | Find "AI Convert" button | Button may show 🔒 lock | Locked indicator |
+| 5 | Click "AI Convert" | Upgrade prompt or 403 error | Cannot use AI conversion |
+| 6 | Find "Generate" button | Button available (no lock) | Deterministic parsing available |
+| 7 | Click "Generate" | Attempts to parse as CSV/TSV | Basic parsing works |
+
+### 14.2 AI Convert (Supporter User)
+**Start State**: Logged in as Supporter (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Paste Wizard via Rules Table | Paste Wizard opens | Text input visible |
+| 2 | Paste complex rules text | Text in input | Content pasted |
+| 3 | Click "AI Convert" | AI processing starts | Loading indicator |
+| 4 | Wait for result | Table structure generated | Rows and columns created |
+| 5 | Verify AI-parsed content | Intelligent structuring | Not just CSV splitting |
+
+---
+
 ## Test Completion Checklist
 
 | Section | Status | Notes |
@@ -435,6 +603,10 @@
 | 8. Role Preview Mode | [ ] Pass / [ ] Fail | |
 | 9. Error Handling | [ ] Pass / [ ] Fail | |
 | 10. Responsive Design | [ ] Pass / [ ] Fail | |
+| 11. Supporter Features | [ ] Pass / [ ] Fail | |
+| 12. Text Widget | [ ] Pass / [ ] Fail | |
+| 13. Sticker Widget | [ ] Pass / [ ] Fail | |
+| 14. Smart Paste Gating | [ ] Pass / [ ] Fail | |
 
 ---
 
