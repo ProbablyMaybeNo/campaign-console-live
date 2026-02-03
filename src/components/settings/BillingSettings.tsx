@@ -185,36 +185,95 @@ export function BillingSettings() {
 
   const isSupporter = plan === "supporter" && subscriptionStatus === "active";
 
+  // Neon blue color for consistency
+  const neonBlue = "hsl(200, 100%, 70%)";
+  const neonBlueGlow = "hsla(200, 100%, 70%, 0.3)";
+  const neonBlueFaint = "hsla(200, 100%, 70%, 0.4)";
+
   return (
     <div className="space-y-6">
-      {/* Unified Billing Card */}
+      {/* Main Support Card */}
       <div
-        className="rounded-lg p-6 space-y-8"
+        className="rounded-lg p-6 space-y-6 font-mono"
         style={{
-          border: "2px solid hsl(142, 76%, 65%)",
-          boxShadow: "0 0 20px hsla(142, 76%, 65%, 0.3), inset 0 0 20px hsla(142, 76%, 65%, 0.05)",
+          border: `2px solid ${neonBlue}`,
+          boxShadow: `0 0 20px ${neonBlueGlow}, inset 0 0 20px hsla(200, 100%, 70%, 0.05)`,
           backgroundColor: "hsl(var(--card))",
         }}
       >
-        {/* About Blurb */}
+        {/* Mission Statement */}
         <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 95%)" }}>
-          Campaign Console is a solo-dev project built for people who love narrative campaigns. 
-          Your subscription helps keep it online, supports ongoing development, and unlocks more 
-          customization as the app grows. You're not just upgrading—you're helping shape what gets built next.
+          Support Campaign Console to help its sole developer keep the app alive,
+          ship new features faster, and continue offering the major tools free for everyone.
         </p>
 
         {/* Divider */}
-        <div className="border-t" style={{ borderColor: "hsla(142, 76%, 65%, 0.3)" }} />
+        <div 
+          className="text-center text-xs tracking-widest py-2"
+          style={{ 
+            borderTop: `1px dashed ${neonBlueFaint}`,
+            borderBottom: `1px dashed ${neonBlueFaint}`,
+            color: neonBlue 
+          }}
+        >
+          PIPELINE FEATURES // IN DEVELOPMENT
+        </div>
 
-        {/* Current Plan Section */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <Crown className="h-5 w-5" style={{ color: "hsl(142, 76%, 65%)" }} />
-            <h3 className="text-lg font-mono font-semibold" style={{ color: "hsl(142, 76%, 65%)" }}>
-              Current Plan
-            </h3>
+        {/* Pipeline Features */}
+        <div className="space-y-4 text-sm" style={{ color: "hsl(0, 0%, 85%)" }}>
+          <div>
+            <p className="font-semibold mb-1" style={{ color: neonBlue }}>[WAR BAND BUILDER + AI AUTO-IMPORT]</p>
+            <p className="leading-relaxed">
+              Build and manage warbands inside Campaign Console.<br />
+              Prefer another builder? Paste a link or upload a file — AI extracts the roster,<br />
+              auto-fills a Warband component, and keeps it editable + shareable all campaign long.
+            </p>
           </div>
 
+          <div>
+            <p className="font-semibold mb-1" style={{ color: neonBlue }}>[ADVANCED RULES MANAGEMENT // RULES AGENT UPGRADE]</p>
+            <p className="leading-relaxed">
+              Import rules from PDFs, spreadsheets, GitHub rules repos, or pasted homebrew text.<br />
+              The Rules Agent extracts, organizes, stores, and enables fast lookup +<br />
+              auto-generated rules components.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1" style={{ color: neonBlue }}>[RULES LIBRARY // PERSISTENT + REUSABLE]</p>
+            <p className="leading-relaxed">
+              Upload a rules system once. Reuse it across campaigns.<br />
+              Faster setup, consistent play, and instant component creation for every new campaign.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1" style={{ color: neonBlue }}>[ADVANCED MAP MANAGEMENT]</p>
+            <p className="leading-relaxed">
+              Enhanced maps with RPG assets, tokens/icons, drawing/shapes, layers, templates,<br />
+              and optional live GM + player interaction — run sessions from your dashboard.
+            </p>
+          </div>
+
+          <p className="italic" style={{ color: neonBlue }}>
+            ...AND MORE // new components, integrations, upgrades, QoL improvements
+          </p>
+        </div>
+
+        {/* Subscribe Section */}
+        <div 
+          className="text-center text-xs tracking-widest py-2"
+          style={{ 
+            borderTop: `1px dashed ${neonBlueFaint}`,
+            borderBottom: `1px dashed ${neonBlueFaint}`,
+            color: neonBlue 
+          }}
+        >
+          SUBSCRIBE // $2.99 / MONTH
+        </div>
+
+        <div className="space-y-4">
+          {/* Current Status */}
           {isLoading ? (
             <div className="flex items-center gap-2" style={{ color: "hsl(0, 0%, 85%)" }}>
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -222,25 +281,8 @@ export function BillingSettings() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xl font-semibold" style={{ color: isSupporter ? "hsl(142, 76%, 55%)" : "hsl(0, 0%, 90%)" }}>
-                    {isSupporter ? "Supporter" : "Free"}
-                  </p>
-                  {isSupporter && currentPeriodEnd && (
-                    <p className="text-sm" style={{ color: "hsl(0, 0%, 75%)" }}>
-                      Renews on {format(new Date(currentPeriodEnd), "MMM d, yyyy")}
-                    </p>
-                  )}
-                  {subscriptionStatus === "past_due" && (
-                    <p className="text-sm text-destructive">Payment past due</p>
-                  )}
-                  {subscriptionStatus === "canceled" && (
-                    <p className="text-sm text-warning">Subscription canceled</p>
-                  )}
-                </div>
-
-                {isSupporter && (
+              {isSupporter && (
+                <div className="flex items-center gap-3">
                   <div 
                     className="flex items-center gap-2 px-3 py-1 rounded"
                     style={{ 
@@ -249,108 +291,171 @@ export function BillingSettings() {
                     }}
                   >
                     <Check className="h-4 w-4" style={{ color: "hsl(142, 76%, 65%)" }} />
-                    <span className="text-sm font-mono" style={{ color: "hsl(142, 76%, 65%)" }}>Active</span>
+                    <span className="text-sm font-mono" style={{ color: "hsl(142, 76%, 65%)" }}>Active Supporter</span>
                   </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 flex-wrap">
-                {!isSupporter && (
-                  <TerminalButton
-                    onClick={handleUpgrade}
-                    disabled={isUpgrading}
-                    className="gap-2"
-                  >
-                    {isUpgrading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CreditCard className="h-4 w-4" />
-                    )}
-                    Upgrade to Supporter ($2.99/mo)
-                  </TerminalButton>
-                )}
-
-                {stripeCustomerId && (
-                  <TerminalButton
-                    variant="secondary"
-                    onClick={handleManageSubscription}
-                    disabled={isManaging}
-                    className="gap-2"
-                  >
-                    {isManaging ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ExternalLink className="h-4 w-4" />
-                    )}
-                    Manage Subscription
-                  </TerminalButton>
-                )}
-              </div>
+                  {currentPeriodEnd && (
+                    <span className="text-sm" style={{ color: "hsl(0, 0%, 75%)" }}>
+                      Renews {format(new Date(currentPeriodEnd), "MMM d, yyyy")}
+                    </span>
+                  )}
+                </div>
+              )}
+              {subscriptionStatus === "past_due" && (
+                <p className="text-sm text-destructive">Payment past due</p>
+              )}
+              {subscriptionStatus === "canceled" && (
+                <p className="text-sm text-warning">Subscription canceled</p>
+              )}
             </div>
           )}
-        </div>
 
-        {/* Divider */}
-        <div className="border-t" style={{ borderColor: "hsla(142, 76%, 65%, 0.3)" }} />
-
-        {/* One-Time Donation Section */}
-        <div>
-          <div className="flex items-center gap-3 mb-4">
-            <Heart className="h-5 w-5" style={{ color: "hsl(0, 80%, 60%)" }} />
-            <h3 className="text-lg font-mono font-semibold" style={{ color: "hsl(0, 80%, 60%)" }}>
-              Help keep Campaign Console running with a one-time contribution.
-            </h3>
+          {/* Unlock Benefits */}
+          <div>
+            <p className="text-xs tracking-widest mb-3" style={{ color: neonBlue }}>
+              UNLOCK: SUPPORTER BENEFITS
+            </p>
+            <div className="space-y-1 text-sm" style={{ color: "hsl(0, 0%, 90%)" }}>
+              <p><span style={{ color: "hsl(142, 76%, 65%)" }}>+</span> SMART PASTE <span style={{ color: "hsl(0, 0%, 60%)" }}>// AI text-to-table/card conversion</span></p>
+              <p><span style={{ color: "hsl(142, 76%, 65%)" }}>+</span> DASHBOARD THEMES <span style={{ color: "hsl(0, 0%, 60%)" }}>// custom visuals beyond default</span></p>
+              <p><span style={{ color: "hsl(142, 76%, 65%)" }}>+</span> BANNER URL <span style={{ color: "hsl(0, 0%, 60%)" }}>// custom campaign banner images</span></p>
+              <p><span style={{ color: "hsl(142, 76%, 65%)" }}>+</span> DASHBOARD TEXT <span style={{ color: "hsl(0, 0%, 60%)" }}>// place labels directly on the dashboard</span></p>
+              <p><span style={{ color: "hsl(142, 76%, 65%)" }}>+</span> STICKERS <span style={{ color: "hsl(0, 0%, 60%)" }}>// add Lucide icons + markers anywhere</span></p>
+              <p><span style={{ color: "hsl(142, 76%, 65%)" }}>+</span> CAMPAIGN LIMIT <span style={{ color: "hsl(0, 0%, 60%)" }}>// up to 5 active campaigns (free = 1)</span></p>
+            </div>
           </div>
 
-          <div className="space-y-4">
-            {/* Preset Buttons */}
-            <div className="flex gap-2 flex-wrap">
-              {PRESET_AMOUNTS.map((amount) => (
-                <TerminalButton
-                  key={amount}
-                  variant={donationAmount === amount.toString() ? "default" : "secondary"}
-                  onClick={() => handlePresetClick(amount)}
-                  className="min-w-[70px]"
-                >
-                  ${amount}
-                </TerminalButton>
-              ))}
-            </div>
-
-            {/* Custom Amount Input */}
-            <div className="flex gap-3 items-start">
-              <div className="flex-1">
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "hsl(0, 0%, 70%)" }}>
-                    $
-                  </span>
-                  <TerminalInput
-                    type="text"
-                    placeholder="Custom amount"
-                    value={donationAmount}
-                    onChange={(e) => handleDonationInputChange(e.target.value)}
-                    className="pl-7"
-                  />
-                </div>
-                {donationError && (
-                  <p className="text-sm text-destructive mt-1">{donationError}</p>
-                )}
-              </div>
-
+          {/* Subscribe / Manage Buttons */}
+          <div className="flex gap-3 flex-wrap">
+            {!isSupporter && (
               <TerminalButton
-                onClick={handleDonate}
-                disabled={isDonating || !donationAmount || !!donationError}
+                onClick={handleUpgrade}
+                disabled={isUpgrading}
                 className="gap-2"
+                style={{
+                  backgroundColor: neonBlue,
+                  color: "hsl(0, 0%, 5%)",
+                  boxShadow: `0 0 15px ${neonBlueGlow}`,
+                }}
               >
-                {isDonating ? (
+                {isUpgrading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Gift className="h-4 w-4" />
+                  <CreditCard className="h-4 w-4" />
                 )}
-                Donate
+                Subscribe — $2.99/mo
               </TerminalButton>
-            </div>
+            )}
+
+            {stripeCustomerId && (
+              <TerminalButton
+                variant="secondary"
+                onClick={handleManageSubscription}
+                disabled={isManaging}
+                className="gap-2"
+              >
+                {isManaging ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="h-4 w-4" />
+                )}
+                Manage Subscription
+              </TerminalButton>
+            )}
           </div>
+        </div>
+
+        {/* One-Time Support Section */}
+        <div 
+          className="text-center text-xs tracking-widest py-2"
+          style={{ 
+            borderTop: `1px dashed ${neonBlueFaint}`,
+            borderBottom: `1px dashed ${neonBlueFaint}`,
+            color: neonBlue 
+          }}
+        >
+          ONE-TIME SUPPORT // OPTIONAL
+        </div>
+
+        <div className="space-y-4">
+          <p className="text-sm" style={{ color: "hsl(0, 0%, 85%)" }}>
+            Keep the dream alive with a one-off contribution.
+          </p>
+
+          {/* Preset Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            {PRESET_AMOUNTS.map((amount) => (
+              <TerminalButton
+                key={amount}
+                variant={donationAmount === amount.toString() ? "default" : "secondary"}
+                onClick={() => handlePresetClick(amount)}
+                className="min-w-[70px]"
+              >
+                ${amount}
+              </TerminalButton>
+            ))}
+          </div>
+
+          {/* Custom Amount Input */}
+          <div className="flex gap-3 items-start">
+            <div className="flex-1">
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "hsl(0, 0%, 70%)" }}>
+                  $
+                </span>
+                <TerminalInput
+                  type="text"
+                  placeholder="Custom amount"
+                  value={donationAmount}
+                  onChange={(e) => handleDonationInputChange(e.target.value)}
+                  className="pl-7"
+                />
+              </div>
+              {donationError && (
+                <p className="text-sm text-destructive mt-1">{donationError}</p>
+              )}
+            </div>
+
+            <TerminalButton
+              onClick={handleDonate}
+              disabled={isDonating || !donationAmount || !!donationError}
+              className="gap-2"
+            >
+              {isDonating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Gift className="h-4 w-4" />
+              )}
+              Donate
+            </TerminalButton>
+          </div>
+        </div>
+
+        {/* Community Support Section */}
+        <div 
+          className="text-center text-xs tracking-widest py-2"
+          style={{ 
+            borderTop: `1px dashed ${neonBlueFaint}`,
+            borderBottom: `1px dashed ${neonBlueFaint}`,
+            color: neonBlue 
+          }}
+        >
+          SUPPORT WITHOUT $$$
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-sm" style={{ color: "hsl(0, 0%, 85%)" }}>
+            Join the community: suggest features, report bugs, share ideas.
+          </p>
+          <a
+            href="https://discord.gg/quKEdF6yaf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-mono transition-colors hover:underline"
+            style={{ color: neonBlue }}
+          >
+            <ExternalLink className="h-4 w-4" />
+            DISCORD: discord.gg/quKEdF6yaf
+          </a>
         </div>
       </div>
 
