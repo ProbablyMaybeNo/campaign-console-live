@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Heart } from "lucide-react";
@@ -13,11 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useCreateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { getConsoleSpawnPosition } from "@/lib/canvasPlacement";
 import { ChevronDown, ChevronRight, CalendarIcon } from "lucide-react";
 import { HelpButton } from "@/components/help/HelpButton";
+import { CampaignLimitModal } from "./CampaignLimitModal";
 import { format, parse, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
+
 interface CreateCampaignModalProps {
   open: boolean;
   onClose: () => void;
@@ -65,13 +68,28 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   
   const navigate = useNavigate();
   const createCampaign = useCreateCampaign();
   const createComponent = useCreateComponent();
+  const { entitlements, canCreateCampaign, refetch: refetchEntitlements } = useEntitlements();
+
+  // Check limit when modal opens
+  useEffect(() => {
+    if (open && !canCreateCampaign) {
+      setShowLimitModal(true);
+    }
+  }, [open, canCreateCampaign]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Double-check limit before submitting
+    if (!canCreateCampaign) {
+      setShowLimitModal(true);
+      return;
+    }
     
     const campaign = await createCampaign.mutateAsync({
       name,
@@ -460,6 +478,19 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
           </div>
         </form>
       </DialogContent>
+
+      {/* Campaign Limit Modal */}
+      <CampaignLimitModal
+        open={showLimitModal}
+        onClose={() => {
+          setShowLimitModal(false);
+          if (!canCreateCampaign) {
+            handleClose();
+          }
+        }}
+        activeCampaignCount={entitlements.active_campaign_count}
+        maxCampaigns={entitlements.max_active_campaigns}
+      />
     </Dialog>
   );
 }
