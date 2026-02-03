@@ -69,6 +69,8 @@ export function CommandPalette({
   const commands: CommandAction[] = [
     // Quick Actions
     { id: "add-widget", label: "Add new widget", icon: Plus, category: "quick", action: () => { onAddComponent(); onClose(); } },
+    { id: "add-narrative", label: "Add narrative entry", icon: BookOpen, category: "quick", action: () => { onOpenOverlay("narrative"); onClose(); } },
+    { id: "send-message", label: "Send message", icon: MessageSquare, category: "quick", action: () => { onOpenOverlay("messages"); onClose(); } },
     { id: "copy-join", label: "Copy join code", icon: Copy, category: "quick", action: () => { onCopyJoinCode(); onClose(); } },
     { id: "send-announcement", label: "Send announcement", icon: Send, category: "quick", action: () => { onSendAnnouncement(); onClose(); } },
     ...(onExportCampaign ? [{ id: "export-campaign", label: "Export campaign backup", icon: Download, category: "quick" as const, action: () => { onExportCampaign(); onClose(); } }] : []),
