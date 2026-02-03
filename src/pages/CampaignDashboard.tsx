@@ -4,6 +4,7 @@ import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
 import { useDashboardComponents, DashboardComponent, useDeleteComponent, useUpdateComponent, useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
 import { useOverlayState, OverlayType } from "@/hooks/useOverlayState";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
@@ -16,6 +17,7 @@ import { CommandPalette } from "@/components/dashboard/CommandPalette";
 import { MultiSelectToolbar } from "@/components/dashboard/MultiSelectToolbar";
 import { CampaignExportModal } from "@/components/dashboard/CampaignExportModal";
 import { GettingStartedModal } from "@/components/help/GettingStartedModal";
+import { SupporterWelcomeModal } from "@/components/settings/SupporterWelcomeModal";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
@@ -35,7 +37,8 @@ import {
   UserCog,
   PanelLeftOpen,
   PanelLeftClose,
-  Heart
+  Heart,
+  Crown
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -78,6 +81,9 @@ export default function CampaignDashboard() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
+  const [showSupporterWelcome, setShowSupporterWelcome] = useState(false);
+  
+  const { isSupporter } = useEntitlements();
   
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -98,6 +104,15 @@ export default function CampaignDashboard() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams, isGM, campaignLoading]);
+
+  // Supporter welcome modal - show after subscription redirect
+  useEffect(() => {
+    if (searchParams.get("supporter") === "welcome" && isSupporter) {
+      setShowSupporterWelcome(true);
+      searchParams.delete("supporter");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isSupporter]);
 
   // Handle component selection with multi-select support
   const handleComponentSelect = useCallback((component: DashboardComponent | null, shiftKey = false) => {
@@ -415,20 +430,44 @@ export default function CampaignDashboard() {
                 />
               </nav>
               
-              {/* Support Button at bottom of sidebar */}
+              {/* Supporter Badge & Perks - only for supporters */}
+              {isSupporter && (
+                <>
+                  <div className="h-px bg-border my-3" />
+                  <Link
+                    to="/settings?tab=billing"
+                    className="flex items-center gap-2 w-full py-2 px-3 rounded transition-all hover:bg-primary/10"
+                    style={{
+                      background: 'linear-gradient(90deg, hsl(280, 80%, 50%) 0%, hsl(200, 100%, 50%) 100%)',
+                      backgroundClip: 'text',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    <Crown className="w-4 h-4 text-amber-400" style={{ filter: 'drop-shadow(0 0 4px hsl(45, 100%, 50%))' }} />
+                    <span className="font-mono text-xs font-bold uppercase tracking-wider">
+                      Supporter
+                    </span>
+                  </Link>
+                </>
+              )}
+              
+              {/* Support Button at bottom of sidebar - for non-supporters */}
               <div className="mt-auto pt-4">
-                <Link
-                  to="/settings?tab=billing"
-                  className="flex items-center gap-2 w-full py-2 px-3 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-xs font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
-                  style={{
-                    color: 'hsl(200, 100%, 70%)',
-                    boxShadow: '0 0 12px hsl(200 100% 60% / 0.3), 0 0 25px hsl(200 100% 50% / 0.15)',
-                    textShadow: '0 0 8px hsl(200 100% 60% / 0.6)'
-                  }}
-                >
-                  <Heart className="w-4 h-4" />
-                  Support
-                </Link>
+                {!isSupporter && (
+                  <Link
+                    to="/settings?tab=billing"
+                    className="flex items-center gap-2 w-full py-2 px-3 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-xs font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
+                    style={{
+                      color: 'hsl(200, 100%, 70%)',
+                      boxShadow: '0 0 12px hsl(200 100% 60% / 0.3), 0 0 25px hsl(200 100% 50% / 0.15)',
+                      textShadow: '0 0 8px hsl(200 100% 60% / 0.6)'
+                    }}
+                  >
+                    <Heart className="w-4 h-4" />
+                    Support
+                  </Link>
+                )}
               </div>
             </div>
           </aside>
@@ -558,6 +597,12 @@ export default function CampaignDashboard() {
         onClose={() => setShowGettingStarted(false)}
         joinCode={campaign?.join_code || undefined}
         onCopyJoinCode={handleCopyJoinCode}
+      />
+
+      {/* Supporter Welcome Modal */}
+      <SupporterWelcomeModal
+        open={showSupporterWelcome}
+        onClose={() => setShowSupporterWelcome(false)}
       />
     </div>
   );

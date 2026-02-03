@@ -16,7 +16,8 @@ import {
   ChevronRight,
   ChevronLeft,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,12 @@ const STEPS: Step[] = [
     title: "Add Your First Components",
     description: "Click the green ➕ Add Component button (bottom-right) to place widgets on the board. See the ? FAQ for details on each component type. Once created, manage components from the Components menu in the side panel.",
     tip: "Start with 6-12 components. You can always add more later.",
+  },
+  {
+    icon: Activity,
+    title: "Track Campaign Activity",
+    description: "The Activity Feed widget shows real-time updates: player joins, dice rolls, messages, and warband changes. Add one to your dashboard to stay informed of all campaign happenings at a glance.",
+    tip: "Activity Feed is view-only for players but shows them relevant updates too.",
   },
   {
     icon: Map,
