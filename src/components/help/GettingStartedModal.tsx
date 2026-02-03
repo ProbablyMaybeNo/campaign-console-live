@@ -187,9 +187,9 @@ export function GettingStartedModal({ open, onClose, joinCode, onCopyJoinCode }:
             </div>
 
             {/* Current Step Content */}
-            <div className="bg-muted/30 border border-border rounded-lg p-5 space-y-4">
+            <div className="bg-muted/30 border border-border rounded-lg p-5 space-y-4 transition-all duration-300">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_hsl(var(--primary)/0.2)]">
                   <StepIcon className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">

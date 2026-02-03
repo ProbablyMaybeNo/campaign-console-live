@@ -494,12 +494,12 @@ export default function CampaignDashboard() {
             <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3 items-center">
               <HelpButton variant="fab" />
               <button
-                className="h-14 w-14 rounded-full bg-[hsl(142,76%,50%)] hover:bg-[hsl(142,76%,60%)] text-black font-bold text-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-                style={{ boxShadow: '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' }}
+                className="h-14 w-14 rounded-full bg-primary hover:bg-primary-bright text-primary-foreground font-bold text-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 hover-glow-primary"
+                style={{ boxShadow: '0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.25)' }}
                 onClick={() => setShowCommandPalette(true)}
                 title="Quick Actions (Ctrl+K)"
               >
-                <Command className="w-6 h-6" />
+                <Command className="w-6 h-6 transition-transform duration-200 group-hover:rotate-90" />
               </button>
             </div>
           )}
@@ -606,15 +606,20 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-wider transition-all ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs uppercase tracking-wider transition-all duration-200 rounded-sm group ${
         active
-          ? "bg-[hsl(200,100%,65%)]/15 text-[hsl(200,100%,70%)] border-l-2 border-[hsl(200,100%,65%)]"
-          : "text-[hsl(142,76%,55%)] hover:text-[hsl(142,76%,70%)] hover:bg-[hsl(142,76%,50%)]/10"
+          ? "bg-secondary/15 text-secondary border-l-2 border-secondary"
+          : "text-primary hover:text-primary-bright hover:bg-primary/10 border-l-2 border-transparent hover:border-primary/50"
       }`}
-      style={active ? { textShadow: '0 0 10px hsl(200 100% 60% / 0.6)' } : { textShadow: '0 0 8px hsl(142 76% 50% / 0.4)' }}
+      style={active 
+        ? { textShadow: '0 0 12px hsl(var(--secondary) / 0.7)', boxShadow: 'inset 0 0 15px hsl(var(--secondary) / 0.1)' } 
+        : undefined
+      }
     >
-      {icon}
-      {label}
+      <span className={`transition-transform duration-200 ${active ? '' : 'group-hover:scale-110'}`}>
+        {icon}
+      </span>
+      <span className="transition-colors duration-200">{label}</span>
     </button>
   );
 }
