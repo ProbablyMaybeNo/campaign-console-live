@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Crown, CreditCard, Heart, Check, ExternalLink, Loader2, Gift, ChevronDown } from "lucide-react";
 import { TerminalCard } from "@/components/ui/TerminalCard";
 import { TerminalButton } from "@/components/ui/TerminalButton";
@@ -7,6 +7,7 @@ import { TerminalInput } from "@/components/ui/TerminalInput";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
+import { useCampaigns } from "@/hooks/useCampaigns";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -16,6 +17,8 @@ const MAX_DONATION = 250;
 
 export function BillingSettings() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const campaignsQuery = useCampaigns();
   const {
     plan,
     subscriptionStatus,
@@ -50,6 +53,16 @@ export function BillingSettings() {
       });
       checkSubscription();
       setSearchParams({});
+      
+      // Redirect to a campaign dashboard with supporter=welcome to show welcome modal
+      // Find the most recent campaign the user has access to
+      const campaigns = campaignsQuery.data;
+      if (campaigns && campaigns.length > 0) {
+        const firstCampaign = campaigns[0];
+        setTimeout(() => {
+          navigate(`/campaign/${firstCampaign.id}?supporter=welcome`);
+        }, 1000);
+      }
     } else if (success === "donation") {
       toast.success("Thank you for your donation! 💚", {
         description: "Your support means a lot to us!",
@@ -62,7 +75,7 @@ export function BillingSettings() {
       });
       setSearchParams({});
     }
-  }, [searchParams, setSearchParams, checkSubscription, fetchDonations]);
+  }, [searchParams, setSearchParams, checkSubscription, fetchDonations, campaignsQuery.data, navigate]);
 
   const validateDonation = (value: string): number | null => {
     // Clean input

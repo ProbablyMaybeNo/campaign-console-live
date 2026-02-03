@@ -6,7 +6,6 @@ import { useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useEntitlements, isFeatureLocked } from "@/hooks/useEntitlements";
 import { getSpawnPosition } from "@/lib/canvasPlacement";
 import { PasteWizardOverlay } from "./PasteWizardOverlay";
-import { LockedFeature } from "@/components/ui/LockedFeature";
 import { 
   Table, 
   LayoutList, 
@@ -21,7 +20,10 @@ import {
   Megaphone,
   FileText,
   Sticker,
+  Lock,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AddComponentModalProps {
   open: boolean;
@@ -29,29 +31,43 @@ interface AddComponentModalProps {
   campaignId: string;
 }
 
-const COMPONENT_TYPES = [
-  { type: "rules_table", label: "Rules Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true, requiresSmartPaste: true },
-  { type: "rules_card", label: "Rules Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true, requiresSmartPaste: true },
+type SupporterFeatureType = 'smart_paste' | 'themes' | 'banner' | 'text_widget' | 'stickers';
+
+interface ComponentTypeConfig {
+  type: string;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+  usesPasteWizard?: boolean;
+  saveToRules?: boolean;
+  isCustom?: boolean;
+  supporterFeature?: SupporterFeatureType;
+}
+
+const COMPONENT_TYPES: ComponentTypeConfig[] = [
+  { type: "rules_table", label: "Rules Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true, supporterFeature: "smart_paste" },
+  { type: "rules_card", label: "Rules Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true, supporterFeature: "smart_paste" },
   { type: "custom_table", label: "Custom Table", icon: Table, description: "Blank table for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "custom_card", label: "Custom Card", icon: LayoutList, description: "Blank card for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "narrative_table", label: "Narrative", icon: LayoutList, description: "Display narrative events" },
   { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
   { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
-  { type: "roll_recorder", label: "Roll Recorder", icon: History, description: "Track dice roll history" },
+  { type: "roll_recorder", label: "Roll History", icon: History, description: "Track dice roll history" },
   { type: "map", label: "Map", icon: Map, description: "Live campaign map with markers" },
   { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
-  { type: "activity_feed", label: "Activity Feed", icon: Activity, description: "Real-time campaign activity log" },
-  { type: "announcements", label: "Announcements", icon: Megaphone, description: "GM notice board for campaign updates" },
-  { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget", supporterFeature: "text_widget" as const },
-  { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker", supporterFeature: "stickers" as const },
+  { type: "activity_feed", label: "Activity", icon: Activity, description: "Real-time campaign activity log" },
+  { type: "announcements", label: "Announce", icon: Megaphone, description: "GM notice board for campaign updates" },
+  { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget", supporterFeature: "text_widget" },
+  { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker", supporterFeature: "stickers" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [showPasteWizard, setShowPasteWizard] = useState(false);
+  const navigate = useNavigate();
   
   const createComponent = useCreateComponent();
   const { entitlements } = useEntitlements();
@@ -66,7 +82,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     
     // Check if feature is locked
     if (typeData?.supporterFeature && isFeatureLocked(entitlements, typeData.supporterFeature)) {
-      // Don't proceed - LockedFeature wrapper handles navigation
+      // Don't proceed - show upgrade prompt
       return;
     }
     
@@ -214,40 +230,60 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
             <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
               Select Component Type
             </label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {COMPONENT_TYPES.map(({ type, label, icon: Icon, description, supporterFeature }) => {
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+              {COMPONENT_TYPES.map(({ type, label, icon: Icon, supporterFeature }) => {
                 const isLocked = supporterFeature && isFeatureLocked(entitlements, supporterFeature);
                 
                 const buttonContent = (
                   <button
                     key={type}
                     onClick={() => !isLocked && handleTypeSelect(type)}
-                    className={`p-3 border rounded text-center transition-all relative ${
+                    className={`p-2 border rounded text-center transition-all relative ${
                       selectedType === type
                         ? "border-primary bg-primary/10 text-primary"
                         : isLocked
-                          ? "border-border/50 opacity-60 cursor-not-allowed"
+                          ? "border-border/30 bg-muted/20"
                           : "border-border hover:border-primary/50 hover:bg-accent"
                     }`}
                     disabled={isLocked}
                   >
-                    <Icon className={`w-6 h-6 mx-auto mb-2 ${
-                      selectedType === type ? "text-primary" : 
-                      isLocked ? "text-muted-foreground/50" : "text-muted-foreground"
-                    }`} />
-                    <p className="text-xs font-mono uppercase">{label}</p>
+                    <div className={isLocked ? "opacity-40" : ""}>
+                      <Icon className={`w-5 h-5 mx-auto mb-1 ${
+                        selectedType === type ? "text-primary" : 
+                        isLocked ? "text-muted-foreground" : "text-muted-foreground"
+                      }`} />
+                      <p className="text-[10px] font-mono uppercase leading-tight">{label}</p>
+                    </div>
+                    {isLocked && (
+                      <div className="flex flex-col items-center mt-1">
+                        <Lock className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[8px] text-muted-foreground uppercase">Locked</span>
+                      </div>
+                    )}
                   </button>
                 );
 
                 if (isLocked) {
                   return (
-                    <LockedFeature 
-                      key={type} 
-                      isLocked={true}
-                      featureName={label}
-                    >
-                      {buttonContent}
-                    </LockedFeature>
+                    <Tooltip key={type}>
+                      <TooltipTrigger asChild>
+                        {buttonContent}
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[200px]">
+                        <p className="text-xs mb-2">
+                          Unlock {label} with Supporter ($2.99/mo)
+                        </p>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate("/settings?tab=billing");
+                          }}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Upgrade →
+                        </button>
+                      </TooltipContent>
+                    </Tooltip>
                   );
                 }
 

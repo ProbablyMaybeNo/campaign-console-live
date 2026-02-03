@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import headerImage from "@/assets/campaign-console-header.png";
 import { lovable } from "@/integrations/lovable/index";
 
 export default function Auth() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,6 +33,11 @@ export default function Auth() {
         const { error } = await signUp(email, password, displayName || undefined);
         if (error) throw error;
         toast.success("Account created - access granted");
+        // After successful signup, sign in automatically and redirect
+        const { error: signInError } = await signIn(email, password);
+        if (!signInError) {
+          navigate("/campaigns");
+        }
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed");
@@ -39,6 +46,9 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  // Shared button styles to match Google button
+  const authButtonClass = "w-full flex items-center justify-center gap-2 bg-card border border-primary/30 py-2.5 text-sm font-mono uppercase tracking-wider hover:bg-primary/10 hover:border-primary/50 transition-all disabled:opacity-50";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
@@ -144,10 +154,11 @@ export default function Auth() {
               <p className="text-xs text-destructive">{error}</p>
             )}
 
+            {/* Main action button - matches Google button style */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary/20 border border-primary text-primary py-2 text-sm font-mono uppercase tracking-wider hover:bg-primary/30 hover:shadow-[0_0_12px_hsl(var(--primary)/0.3)] transition-all disabled:opacity-50 text-glow-primary"
+              className={authButtonClass}
             >
               {loading ? (
                 <TerminalLoader text={mode === "login" ? "Authenticating" : "Creating"} size="sm" />
@@ -156,13 +167,14 @@ export default function Auth() {
               )}
             </button>
 
+            {/* Toggle mode button - matches Google button style */}
             <button
               type="button"
               onClick={() => {
                 setMode(mode === "login" ? "signup" : "login");
                 setError(null);
               }}
-              className="w-full text-xs text-primary hover:underline uppercase tracking-wider text-glow-primary"
+              className={authButtonClass}
             >
               {mode === "login" ? "Create Account" : "Back to Login"}
             </button>
@@ -195,7 +207,7 @@ export default function Auth() {
                 }
               }}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-card border border-primary/30 py-2 text-sm font-mono uppercase tracking-wider hover:bg-primary/10 hover:border-primary/50 transition-all disabled:opacity-50"
+              className={authButtonClass}
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path
