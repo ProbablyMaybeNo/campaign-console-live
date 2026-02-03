@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
-import { Upload, X, Link, Image as ImageIcon } from "lucide-react";
+import { Upload, X, Link, Image as ImageIcon, Loader2 } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
+import { uploadCampaignImage, ImageUploadError, isBase64Image, deleteCampaignImage, getPathFromUrl } from "@/lib/imageStorage";
+import { toast } from "sonner";
 
 interface ImageWidgetProps {
   component: DashboardComponent;
@@ -9,6 +11,7 @@ interface ImageWidgetProps {
 
 interface ImageConfig {
   imageUrl?: string;
+  imagePath?: string; // Storage path for cleanup
   caption?: string;
 }
 
@@ -17,6 +20,7 @@ export function ImageWidget({ component, isGM }: ImageWidgetProps) {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlValue, setUrlValue] = useState("");
   const [captionEdit, setCaptionEdit] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const config = (component.config as ImageConfig) || {};
@@ -27,27 +31,36 @@ export function ImageWidget({ component, isGM }: ImageWidgetProps) {
     if (urlValue.trim()) {
       updateComponent.mutate({
         id: component.id,
-        config: { ...config, imageUrl: urlValue.trim() },
+        config: { ...config, imageUrl: urlValue.trim(), imagePath: undefined },
       });
       setUrlValue("");
       setShowUrlInput(false);
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Convert to base64 for display (note: for production, use Supabase Storage)
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
+    setIsUploading(true);
+    try {
+      const result = await uploadCampaignImage(component.campaign_id, file, "widgets");
       updateComponent.mutate({
         id: component.id,
-        config: { ...config, imageUrl: base64 },
+        config: { ...config, imageUrl: result.url, imagePath: result.path },
       });
-    };
-    reader.readAsDataURL(file);
+    } catch (error) {
+      if (error instanceof ImageUploadError) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to upload image");
+      }
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleCaptionSave = (newCaption: string) => {
@@ -58,10 +71,16 @@ export function ImageWidget({ component, isGM }: ImageWidgetProps) {
     setCaptionEdit(false);
   };
 
-  const handleRemoveImage = () => {
+  const handleRemoveImage = async () => {
+    // Clean up stored image if it's from our storage
+    const path = config.imagePath || getPathFromUrl(imageUrl);
+    if (path && !isBase64Image(imageUrl)) {
+      await deleteCampaignImage(path);
+    }
+    
     updateComponent.mutate({
       id: component.id,
-      config: { ...config, imageUrl: "" },
+      config: { ...config, imageUrl: "", imagePath: undefined },
     });
   };
 
@@ -71,7 +90,12 @@ export function ImageWidget({ component, isGM }: ImageWidgetProps) {
       <div className="flex flex-col items-center justify-center h-full gap-4">
         {isGM ? (
           <>
-            {showUrlInput ? (
+            {isUploading ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <p className="text-xs text-muted-foreground">Uploading...</p>
+              </div>
+            ) : showUrlInput ? (
               <div className="w-full space-y-2 px-4">
                 <input
                   type="text"
@@ -100,6 +124,7 @@ export function ImageWidget({ component, isGM }: ImageWidgetProps) {
               <>
                 <ImageIcon className="w-12 h-12 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground">No image set</p>
+                <p className="text-[10px] text-muted-foreground/60">Max 10MB • JPG, PNG, GIF, WebP</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => fileInputRef.current?.click()}
@@ -117,7 +142,7 @@ export function ImageWidget({ component, isGM }: ImageWidgetProps) {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
