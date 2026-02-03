@@ -8,10 +8,11 @@ import { JoinCampaignModal } from "@/components/campaigns/JoinCampaignModal";
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Crown, User, AlertCircle, Copy, Check, Users, Unlock, Archive, ArchiveRestore } from "lucide-react";
+import { ArrowLeft, Crown, User, AlertCircle, Copy, Check, Users, Archive, ArchiveRestore } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { HelpButton } from "@/components/help/HelpButton";
+import supporterIcon from "@/assets/supporter-icon.png";
 
 export default function Campaigns() {
   const { user, signOut } = useAuth();
@@ -92,9 +93,13 @@ export default function Campaigns() {
           <TooltipTrigger asChild>
             <button
               onClick={() => navigate("/settings")}
-              className="p-3 border border-primary/50 text-primary transition-all duration-200 hover:bg-primary/10 hover:border-primary hover:shadow-[0_0_15px_hsl(var(--primary)/0.3)] active:scale-95"
+              className="p-2 border transition-all duration-200 hover:scale-105 active:scale-95"
+              style={{
+                borderColor: 'hsl(200, 100%, 60%)',
+                boxShadow: '0 0 15px hsl(200 100% 60% / 0.4)',
+              }}
             >
-              <Unlock className="w-6 h-6" />
+              <img src={supporterIcon} alt="Supporters" className="w-7 h-7" style={{ filter: 'drop-shadow(0 0 4px hsl(200, 100%, 70%))' }} />
             </button>
           </TooltipTrigger>
           <TooltipContent>
