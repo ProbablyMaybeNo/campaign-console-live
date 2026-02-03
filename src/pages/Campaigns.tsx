@@ -98,7 +98,7 @@ export default function Campaigns() {
                 boxShadow: '0 0 15px hsl(200 100% 60% / 0.4)',
               }}
             >
-              <img src={supporterIcon} alt="Supporters" className="w-7 h-7" style={{ filter: 'drop-shadow(0 0 6px hsl(200, 100%, 70%))' }} />
+              <img src={supporterIcon} alt="Supporters" className="w-10 h-10" style={{ filter: 'drop-shadow(0 0 6px hsl(200, 100%, 70%))' }} />
             </button>
           </TooltipTrigger>
           <TooltipContent>
