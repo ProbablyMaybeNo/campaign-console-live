@@ -1,253 +1,264 @@
 
-# Implementation Plan: Supporter-Gated Features (Phase 2)
+# OS-Themed Dashboard Themes Implementation Plan
 
-This plan continues the implementation from Phase 1 (completed), which established the entitlements system, campaign limits, and archiving. Now we implement the remaining supporter-exclusive features.
+## Overview
 
-## Summary of Changes
-
-| Feature | Status | Implementation |
-|---------|--------|----------------|
-| Entitlements System | Done | `useEntitlements` hook + `get_user_entitlements` RPC |
-| Campaign Limits (1/5) | Done | Server-side enforcement + `CampaignLimitModal` |
-| Archive/Restore | Done | `is_archived` column + UI tabs |
-| Smart Paste Lock | **To Do** | Gate AI conversion, keep deterministic parsing |
-| Dashboard Themes (5) | **To Do** | CSS variables + theme selector |
-| Campaign Banner | **To Do** | URL field + display in console |
-| Text Widget | **To Do** | New widget type with markdown |
-| Sticker Widget | **To Do** | Lucide icon selector widget |
+Replace the current 5 supporter themes (Light, Aquatic, Parchment, Hazard) with 9 new iconic OS-inspired themes, add rich preview metadata for the Supporter Hub, and create a visual theme preview card component.
 
 ---
 
-## Phase 2A: Smart Paste Lock
+## Current State
 
-### Goal
-Lock AI-powered Smart Paste behind Supporter while keeping deterministic parsing (CSV/TSV) available to all.
+**Existing Themes:**
+- Dark (default, free)
+- Light, Aquatic, Parchment, Hazard (supporter-only)
 
-### Changes
+**Files to Modify:**
+- `src/index.css` - CSS theme definitions
+- `src/lib/themes.ts` - Theme metadata and types
+- `src/components/settings/SupporterWelcomeModal.tsx` - Update theme count
+- `src/components/campaigns/CampaignSettingsModal.tsx` - Theme selector UI
 
-**1. Update Edge Function** (`supabase/functions/convert-text-to-table/index.ts`)
-- Add entitlement check after authentication
-- Query `get_user_entitlements` for the authenticated user
-- Return `403 SUBSCRIPTION_REQUIRED` if `smart_paste_enabled` is false
+**New Files:**
+- `src/components/supporter/ThemePreviewCard.tsx` - Visual theme preview component
+
+---
+
+## New Theme Lineup
+
+| Theme ID | Name | Visual Style |
+|----------|------|--------------|
+| `dark` | Dark | Default terminal (free) |
+| `win95` | Windows 95 Classic | Teal desktop + gray chrome + navy |
+| `mac_platinum` | Mac OS Platinum+ | Platinum + blue + lavender |
+| `amiga_workbench` | Amiga Workbench | Deep blue + orange + cyan |
+| `vt320_amber` | DEC VT320 Amber | Black + amber phosphor |
+| `msdos_vga` | MS-DOS VGA | VGA blue + cyan/magenta/yellow |
+| `atari_tos` | Atari ST TOS | Green desktop + neon arcade |
+| `nextstep` | NeXTSTEP | Graphite + yellow + cyan |
+| `solaris_cde` | Solaris CDE | Warm stone + teal/blue |
+| `sgi_irix` | SGI IRIX Indigo | Steel + teal/indigo + orange |
+
+---
+
+## Implementation Steps
+
+### Phase 1: Update Theme Type Definitions
+
+**File: `src/lib/themes.ts`**
+
+Replace the current simple Theme interface with the enhanced ThemeMeta type:
+
+```typescript
+export type ThemeId =
+  | "dark"
+  | "win95"
+  | "mac_platinum"
+  | "amiga_workbench"
+  | "vt320_amber"
+  | "msdos_vga"
+  | "atari_tos"
+  | "nextstep"
+  | "solaris_cde"
+  | "sgi_irix";
+
+export interface ThemeMeta {
+  id: ThemeId;
+  name: string;
+  tagline: string;
+  icon: LucideIcon;
+  supporterOnly: boolean;
+  preview: {
+    background: string;  // HSL format: "h s% l%"
+    card: string;
+    primary: string;
+    secondary: string;
+    accent: string;
+    border: string;
+  };
+  fonts: {
+    ui: string;
+    mono: string;
+  };
+}
+```
+
+Add new icon imports for OS themes:
+- `Moon` for Dark
+- `Monitor`, `Apple`, `Cpu`, `Terminal`, `HardDrive`, `Gamepad2`, `Square`, `Sun`, `Server` for OS themes
+
+---
+
+### Phase 2: Update CSS Theme Definitions
+
+**File: `src/index.css`**
+
+1. **Remove** existing Light, Aquatic, Parchment, and Hazard theme blocks (lines 141-322)
+
+2. **Add** 9 new OS theme blocks after the `:root` and `.dark` definitions:
+   - Windows 95 Classic (`[data-theme="win95"]`)
+   - Mac OS Platinum+ (`[data-theme="mac_platinum"]`)
+   - Amiga Workbench (`[data-theme="amiga_workbench"]`)
+   - DEC VT320 Amber (`[data-theme="vt320_amber"]`)
+   - MS-DOS VGA (`[data-theme="msdos_vga"]`)
+   - Atari ST TOS (`[data-theme="atari_tos"]`)
+   - NeXTSTEP (`[data-theme="nextstep"]`)
+   - Solaris CDE (`[data-theme="solaris_cde"]`)
+   - SGI IRIX Indigo (`[data-theme="sgi_irix"]`)
+
+Each theme includes all required tokens:
+- Core: background, foreground, card, popover
+- Intent: primary, secondary, destructive, warning, success
+- Glow variants: primary-glow, primary-bright, secondary-glow, etc.
+- UI: muted, accent, border, input, ring, radius
+- Sidebar: full sidebar token set
+- Charts: chart-1 through chart-5
+- Fonts: --font-ui and --font-mono
+
+---
+
+### Phase 3: Create Theme Preview Card Component
+
+**New File: `src/components/supporter/ThemePreviewCard.tsx`**
+
+A visual preview component that:
+1. Uses nested `data-theme` attribute for accurate color rendering
+2. Shows a mini "dashboard snapshot" with:
+   - Background color
+   - Card with sample text
+   - Primary/secondary/accent color swatches
+   - Font sample text
+3. Displays theme name and tagline
+4. Shows "Apply" button for supporters
+5. Shows lock icon for non-supporters
+6. Highlights currently active theme with ring/checkmark
+
+---
+
+### Phase 4: Update Theme Selector in Campaign Settings
+
+**File: `src/components/campaigns/CampaignSettingsModal.tsx`**
+
+Update the theme grid (lines 380-415):
+1. Change from 5-column grid to responsive grid (3 columns on smaller screens)
+2. Import `ThemePreviewCard` component
+3. Replace simple icon buttons with rich preview cards
+4. Each card shows:
+   - Mini color swatch preview
+   - Theme name and tagline
+   - Lock state for non-supporters
+
+---
+
+### Phase 5: Update Supporter Welcome Modal
+
+**File: `src/components/settings/SupporterWelcomeModal.tsx`**
+
+Update the Dashboard Themes feature entry (line 37):
+
+```typescript
+{
+  icon: Palette,
+  title: "Dashboard Themes",
+  description: "Choose from 10 unique OS-inspired themes including Windows 95, Mac Platinum, Amiga, VT320 Amber, and more.",
+  howToAccess: "Campaign Settings → Appearance → Theme Selector.",
+}
+```
+
+---
+
+### Phase 6: Font Handling
+
+**Current fonts available:**
+- IBM Plex Mono (already imported)
+- Uncial Antiqua
+- Augusta / Augusta Shadow (local)
+- Old London (local)
+
+**New theme fonts:**
+All 9 OS themes use `IBM Plex Mono` as the primary font, with system fallbacks:
+- `IBM Plex Mono, Tahoma, system-ui` for Win95
+- `IBM Plex Mono, system-ui` for Mac/Amiga/Atari/NeXT/Solaris/SGI
+- `IBM Plex Mono, ui-monospace` for VT320/MS-DOS
+
+No new font downloads required - all themes use existing IBM Plex Mono with system fallbacks.
+
+---
+
+## Technical Notes
+
+### Theme Application
+
+The current system applies themes via `data-theme` attribute on the dashboard container:
+```tsx
+<div data-theme={themeId}>
+```
+
+CSS selectors like `[data-theme="win95"]` override the `:root` variables within that scope.
+
+### Preview Card Isolation
+
+Theme preview cards use the same `data-theme` attribute locally:
+```tsx
+<div data-theme={theme.id} className="preview-container">
+  {/* Uses theme's actual CSS variables */}
+</div>
+```
+
+This ensures previews show accurate colors without affecting the rest of the UI.
+
+### Backward Compatibility
+
+Users with existing theme selections (light, aquatic, parchment, hazard) will fall back to "dark" since those theme IDs will no longer exist. The code already handles unknown themes by defaulting to dark:
+
+```typescript
+const themeId = campaign?.theme_id || "dark";
+```
+
+---
+
+## Files Summary
+
+| File | Action |
+|------|--------|
+| `src/lib/themes.ts` | Rewrite with new ThemeMeta type and 10 themes |
+| `src/index.css` | Remove old themes, add 9 OS themes |
+| `src/components/supporter/ThemePreviewCard.tsx` | Create new component |
+| `src/components/campaigns/CampaignSettingsModal.tsx` | Update theme selector UI |
+| `src/components/settings/SupporterWelcomeModal.tsx` | Update theme count/description |
+
+---
+
+## Visual Preview
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│                 convert-text-to-table                       │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Authenticate user (existing)                             │
-│ 2. NEW: Call get_user_entitlements(user_id)                │
-│ 3. NEW: If !smart_paste_enabled → 403 SUBSCRIPTION_REQUIRED│
-│ 4. Process AI conversion (existing)                         │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│  DASHBOARD THEMES                               │
+│  ───────────────────────────────────            │
+│                                                 │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐           │
+│  │ ■ Dark  │ │ ■ Win95 │ │ ■ Mac   │           │
+│  │ [████]  │ │ [████]  │ │ [████]  │  ← Color  │
+│  │ [████]  │ │ [████]  │ │ [████]  │    swatches│
+│  │ Default │ │ Teal+   │ │ Platinum│           │
+│  │         │ │ Gray 🔒 │ │ +Blue 🔒│           │
+│  └─────────┘ └─────────┘ └─────────┘           │
+│                                                 │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐           │
+│  │ ■ Amiga │ │ ■ VT320 │ │ ■ DOS   │           │
+│  │ [████]  │ │ [████]  │ │ [████]  │           │
+│  │ [████]  │ │ [████]  │ │ [████]  │           │
+│  │ Blue+   │ │ Amber   │ │ VGA     │           │
+│  │ Orange🔒│ │ Phosphor│ │ Blue 🔒 │           │
+│  └─────────┘ └─────────┘ └─────────┘           │
+│                                                 │
+│  ... (Atari, NeXT, Solaris, SGI)               │
+└─────────────────────────────────────────────────┘
 ```
 
-**2. Update PasteWizardOverlay** (`src/components/dashboard/PasteWizardOverlay.tsx`)
-- Import `useEntitlements` and `isFeatureLocked`
-- For "AI Convert" button:
-  - If locked: show with `LockedButton` wrapper
-  - If unlocked: show normal button
-- Keep "Generate" (deterministic parsing) available to all users
-
-**3. Update AddComponentModal** (`src/components/dashboard/AddComponentModal.tsx`)
-- Import entitlements hook
-- For Rules Table/Rules Card options:
-  - Show lock icon overlay when `smart_paste_enabled` is false
-  - Allow click but show upgrade prompt when trying to use AI features
-
----
-
-## Phase 2B: Dashboard Themes (5 Total)
-
-### Goal
-Implement 5 themes via CSS variables, selectable per campaign.
-
-### Theme Definitions
-
-| Theme | Background | Panel | Primary | Accent |
-|-------|------------|-------|---------|--------|
-| **Dark** (default) | `#080808` | `#0d0d0d` | Green `#22c55e` | Cyan |
-| **Light** | `#f8f8f8` | `#ffffff` | Blue `#3b82f6` | Indigo |
-| **Aquatic** | `#0a1929` | `#0d2137` | Cyan `#06b6d4` | Seafoam |
-| **Parchment** | `#f5f0e6` | `#faf8f3` | Brown `#92400e` | Brass |
-| **Hazard** | `#0a0a0a` | `#111111` | Neon Green `#39ff14` | Amber |
-
-### Changes
-
-**1. Add Theme CSS Variables** (`src/index.css`)
-Add theme classes that override CSS custom properties:
-
-```css
-[data-theme="light"] {
-  --background: 0 0% 97%;
-  --foreground: 0 0% 10%;
-  --card: 0 0% 100%;
-  --primary: 217 91% 60%;
-  /* ... etc */
-}
-
-[data-theme="aquatic"] { /* ... */ }
-[data-theme="parchment"] { /* ... */ }
-[data-theme="hazard"] { /* ... */ }
-```
-
-**2. Create Theme Configuration** (`src/lib/themes.ts`)
-```typescript
-export const THEMES = [
-  { id: 'dark', name: 'Dark', icon: Moon, locked: false },
-  { id: 'light', name: 'Light', icon: Sun, locked: true },
-  { id: 'aquatic', name: 'Aquatic', icon: Waves, locked: true },
-  { id: 'parchment', name: 'Parchment', icon: Scroll, locked: true },
-  { id: 'hazard', name: 'Hazard', icon: AlertTriangle, locked: true },
-];
-```
-
-**3. Update CampaignSettingsModal** (`src/components/campaigns/CampaignSettingsModal.tsx`)
-- Add Theme selector in Appearance tab
-- Use `LockedFeature` wrapper for non-Dark themes when user is not Supporter
-- Persist selection to `campaigns.theme_id`
-
-**4. Apply Theme to Dashboard** (`src/pages/CampaignDashboard.tsx`)
-- Read `campaign.theme_id` from campaign data
-- Apply `data-theme` attribute to dashboard root container
-- Only apply if user is Supporter OR theme is "dark"
-
----
-
-## Phase 2C: Campaign Banner Image
-
-### Goal
-Allow Supporters to set a banner image URL displayed in the dashboard header.
-
-### Changes
-
-**1. Database** (already done in Phase 1)
-- `campaigns.banner_url` column exists
-
-**2. Update CampaignSettingsModal** (`src/components/campaigns/CampaignSettingsModal.tsx`)
-- Add Banner URL input field in Appearance tab
-- Wrap with `LockedFeature` for Free users
-- Validate URL format before saving
-
-**3. Update CampaignConsoleWidget** (`src/components/dashboard/widgets/CampaignConsoleWidget.tsx`)
-- If `campaign.banner_url` is set:
-  - Display banner image at top of widget
-  - Use `object-cover` with max height
-  - Add fallback for broken images
-
----
-
-## Phase 2D: Text Widget (Supporter)
-
-### Goal
-New widget type for plain text or basic markdown notes.
-
-### Changes
-
-**1. Create TextWidget** (`src/components/dashboard/widgets/TextWidget.tsx`)
-- Props: `component`, `isGM`, `campaignId`
-- Config stores: `{ content: string, showTitle?: boolean }`
-- Display: Scrollable text area with basic markdown rendering
-- GM can edit inline (like other widgets)
-
-**2. Update AddComponentModal** (`src/components/dashboard/AddComponentModal.tsx`)
-- Add "Text" to `COMPONENT_TYPES` array
-- Icon: `FileText` from lucide
-- Gate with `LockedButton` using `text_widget_enabled` entitlement
-
-**3. Update DraggableComponent** (`src/components/dashboard/DraggableComponent.tsx`)
-- Add case for `component_type === "text"` to render `TextWidget`
-
-**4. Update useDashboardComponents** (if needed)
-- Ensure Text widget config schema is handled
-
----
-
-## Phase 2E: Sticker Widget (Supporter)
-
-### Goal
-Widget that displays a selectable Lucide icon as a visual marker.
-
-### Changes
-
-**1. Define Sticker Library** (`src/lib/stickerLibrary.ts`)
-```typescript
-export const STICKER_CATEGORIES = {
-  objectives: ['Target', 'Flag', 'Star', 'Trophy'],
-  units: ['Sword', 'Shield', 'Users', 'User'],
-  terrain: ['Mountain', 'Trees', 'Home', 'Castle'],
-  status: ['AlertCircle', 'CheckCircle', 'XCircle', 'Clock'],
-  loot: ['Gem', 'Crown', 'Coins', 'Gift'],
-  cities: ['Building', 'Church', 'Store', 'Factory'],
-  danger: ['Skull', 'Flame', 'Zap', 'AlertTriangle'],
-  arrows: ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'],
-};
-// ~50-80 icons total
-```
-
-**2. Create StickerWidget** (`src/components/dashboard/widgets/StickerWidget.tsx`)
-- Props: `component`, `isGM`
-- Config: `{ icon: string, size: 'sm' | 'md' | 'lg', color?: string }`
-- Display: Renders the selected Lucide icon at chosen size
-- GM edit mode: Opens icon picker palette
-
-**3. Create StickerPicker** (`src/components/dashboard/StickerPicker.tsx`)
-- Grid of categorized icons
-- Search/filter functionality
-- Size selector (S/M/L)
-- Color picker (preset palette)
-
-**4. Update AddComponentModal**
-- Add "Sticker" to `COMPONENT_TYPES`
-- Icon: `Sticker` from lucide
-- Gate with `LockedButton` using `stickers_enabled` entitlement
-
-**5. Update DraggableComponent**
-- Add case for `component_type === "sticker"` to render `StickerWidget`
-
----
-
-## File Changes Summary
-
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/functions/convert-text-to-table/index.ts` | Edit | Add entitlement check |
-| `src/index.css` | Edit | Add theme CSS variables |
-| `src/lib/themes.ts` | Create | Theme configuration |
-| `src/lib/stickerLibrary.ts` | Create | Sticker icon library |
-| `src/components/dashboard/AddComponentModal.tsx` | Edit | Add Text + Sticker with locks |
-| `src/components/dashboard/PasteWizardOverlay.tsx` | Edit | Lock AI Convert button |
-| `src/components/campaigns/CampaignSettingsModal.tsx` | Edit | Add theme + banner UI |
-| `src/pages/CampaignDashboard.tsx` | Edit | Apply theme attribute |
-| `src/components/dashboard/widgets/CampaignConsoleWidget.tsx` | Edit | Display banner |
-| `src/components/dashboard/widgets/TextWidget.tsx` | Create | New widget |
-| `src/components/dashboard/widgets/StickerWidget.tsx` | Create | New widget |
-| `src/components/dashboard/StickerPicker.tsx` | Create | Icon picker UI |
-| `src/components/dashboard/DraggableComponent.tsx` | Edit | Add widget cases |
-
----
-
-## Testing Checklist
-
-### Free User
-- [ ] Can access 1 active campaign
-- [ ] Can archive/unarchive campaigns
-- [ ] Sees locked Smart Paste (AI) with upgrade CTA
-- [ ] Can still use deterministic parsing (Generate button)
-- [ ] Sees locked themes (only Dark available)
-- [ ] Sees locked banner URL field
-- [ ] Sees locked Text widget option
-- [ ] Sees locked Sticker widget option
-
-### Supporter User
-- [ ] Can access up to 5 active campaigns
-- [ ] Smart Paste (AI Convert) works
-- [ ] Can select any of 5 themes
-- [ ] Can set banner URL, image displays
-- [ ] Can add Text widgets with content
-- [ ] Can add Sticker widgets with icon selection
-
-### No Regressions
-- [ ] Existing widgets function normally
-- [ ] Title/border color customization works for all users
-- [ ] Campaign flows unchanged
-- [ ] Player access unchanged
+Each preview card shows:
+- Background color as main card fill
+- Primary/secondary color swatches
+- Theme name and brief tagline
+- Lock icon for non-supporters
+- Checkmark/ring for active selection
