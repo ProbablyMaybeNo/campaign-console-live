@@ -60,6 +60,18 @@ export function SupporterWelcomeModal({ open, onClose }: SupporterWelcomeModalPr
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="bg-card border-primary/30 max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Red X close button in top-right */}
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 p-1.5 rounded-full bg-destructive/20 hover:bg-destructive/40 transition-colors group z-10"
+          aria-label="Close"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-destructive group-hover:text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+        </button>
+
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div 
@@ -130,7 +142,13 @@ export function SupporterWelcomeModal({ open, onClose }: SupporterWelcomeModalPr
           </div>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-between items-center pt-2">
+          <button
+            onClick={onClose}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            Return to Campaign
+          </button>
           <TerminalButton onClick={onClose}>
             Get Started
           </TerminalButton>

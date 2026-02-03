@@ -58,7 +58,7 @@ const COMPONENT_TYPES: ComponentTypeConfig[] = [
   { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
   { type: "activity_feed", label: "Activity", icon: Activity, description: "Real-time campaign activity log" },
-  { type: "announcements", label: "Announce", icon: Megaphone, description: "GM notice board for campaign updates" },
+  { type: "announcements", label: "Announce", icon: Megaphone, description: "GM notice board" },
   { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget", supporterFeature: "text_widget" },
   { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker", supporterFeature: "stickers" },
 ];

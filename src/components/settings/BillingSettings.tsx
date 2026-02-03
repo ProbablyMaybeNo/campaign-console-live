@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Crown, CreditCard, Heart, Check, ExternalLink, Loader2, Gift, ChevronDown } from "lucide-react";
+import { Crown, CreditCard, Heart, Check, ExternalLink, Loader2, Gift, ChevronDown, MessageSquare, Send } from "lucide-react";
 import { TerminalCard } from "@/components/ui/TerminalCard";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useAuth } from "@/hooks/useAuth";
 import { useCampaigns } from "@/hooks/useCampaigns";
@@ -24,6 +25,7 @@ export function BillingSettings() {
     subscriptionStatus,
     currentPeriodEnd,
     stripeCustomerId,
+    hasDonated,
     isLoading,
     donations,
     donationsLoading,
@@ -32,6 +34,7 @@ export function BillingSettings() {
     createDonation,
     checkSubscription,
     fetchDonations,
+    submitDonorFeedback,
   } = useSubscription();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -41,6 +44,8 @@ export function BillingSettings() {
   const [isManaging, setIsManaging] = useState(false);
   const [isDonating, setIsDonating] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   // Handle success/cancel URL params
   useEffect(() => {
@@ -149,6 +154,22 @@ export function BillingSettings() {
       toast.error(message);
     } finally {
       setIsDonating(false);
+    }
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!feedbackMessage.trim()) return;
+    
+    try {
+      setIsSubmittingFeedback(true);
+      await submitDonorFeedback(feedbackMessage.trim());
+      toast.success("Thank you for your feedback! 💚");
+      setFeedbackMessage("");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to submit feedback";
+      toast.error(message);
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -332,6 +353,52 @@ export function BillingSettings() {
           </div>
         </div>
       </div>
+
+      {/* Donor Feedback Section - Only for donors */}
+      {hasDonated && (
+        <div
+          className="rounded-lg p-6"
+          style={{
+            border: "2px solid hsl(200, 100%, 70%)",
+            boxShadow: "0 0 20px hsla(200, 100%, 70%, 0.3)",
+            backgroundColor: "hsl(var(--card))",
+          }}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <MessageSquare className="h-5 w-5" style={{ color: "hsl(200, 100%, 70%)" }} />
+            <h3 className="text-lg font-mono font-semibold" style={{ color: "hsl(200, 100%, 70%)" }}>
+              Donor Feedback
+            </h3>
+          </div>
+          
+          <p className="text-sm text-muted-foreground mb-4">
+            Your donation gives you a voice! Suggest features, report bugs, or share ideas for Campaign Console.
+          </p>
+          
+          <div className="space-y-3">
+            <Textarea
+              placeholder="Share your feedback, suggestions, or bug reports..."
+              value={feedbackMessage}
+              onChange={(e) => setFeedbackMessage(e.target.value)}
+              className="min-h-[100px] bg-background border-border"
+            />
+            
+            <div className="flex justify-end">
+              <TerminalButton
+                onClick={handleSubmitFeedback}
+                disabled={isSubmittingFeedback || !feedbackMessage.trim()}
+                className="gap-2"
+              >
+                {isSubmittingFeedback ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send Feedback
+              </TerminalButton>
+            </div>
+          </div>
+        </div>
 
       {/* Donation History - Collapsible */}
       {donations.length > 0 && (
