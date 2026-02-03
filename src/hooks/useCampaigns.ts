@@ -376,7 +376,31 @@ export function useArchiveCampaign() {
 export function useIsGM(campaignId: string | undefined) {
   const { user } = useAuth();
   const { data: campaign } = useCampaign(campaignId);
+  
+  // Check if user has GM role in campaign_players
+  const { data: playerRecord } = useQuery({
+    queryKey: ["campaign-player-role", campaignId, user?.id],
+    queryFn: async () => {
+      if (!campaignId || !user) return null;
+      const { data, error } = await supabase
+        .from("campaign_players")
+        .select("role")
+        .eq("campaign_id", campaignId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error checking GM role:", error);
+        return null;
+      }
+      return data;
+    },
+    enabled: !!campaignId && !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
   if (!user || !campaign) return false;
-  return campaign.owner_id === user.id;
+  
+  // User is GM if they own the campaign OR have role='gm' in campaign_players
+  return campaign.owner_id === user.id || playerRecord?.role === "gm";
 }

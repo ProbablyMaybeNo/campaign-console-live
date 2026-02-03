@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Plus, HelpCircle, X } from 'lucide-react';
+import { Trash2, Plus, HelpCircle, X, Loader2 } from 'lucide-react';
 import { OverlayLoading, OverlayEmpty } from '@/components/ui/OverlayPanel';
 import { MapUploader } from './MapUploader';
 import { MapCanvas } from './MapCanvas';
@@ -10,6 +10,7 @@ import { TerminalButton } from '@/components/ui/TerminalButton';
 import { useCreateComponent } from '@/hooks/useDashboardComponents';
 import { getSpawnPosition } from '@/lib/canvasPlacement';
 import { toast } from 'sonner';
+import { uploadCampaignImage, ImageUploadError } from '@/lib/imageStorage';
 import {
   useCampaignMap,
   useMapRealtime,
@@ -83,6 +84,8 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
   const [gmOnlyMode, setGmOnlyMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [isReplacingMap, setIsReplacingMap] = useState(false);
+  const replaceMapInputRef = useRef<HTMLInputElement>(null);
 
   // Show instructions on first open per campaign (for GMs only)
   useEffect(() => {
@@ -141,6 +144,7 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
 
     return (
       <MapUploader
+        campaignId={campaignId}
         onUpload={(imageUrl) => createMap.mutate({ campaignId, imageUrl })}
         isLoading={createMap.isPending}
       />
@@ -186,25 +190,45 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
               <TerminalButton
                 variant="outline"
                 size="sm"
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.onchange = (e) => {
-                    const file = (e.target as HTMLInputElement).files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        updateMap.mutate({ mapId: map.id, imageUrl: event.target?.result as string });
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  };
-                  input.click();
-                }}
+                onClick={() => replaceMapInputRef.current?.click()}
+                disabled={isReplacingMap}
               >
-                Replace Map
+                {isReplacingMap ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Replace Map'
+                )}
               </TerminalButton>
+              <input
+                ref={replaceMapInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  setIsReplacingMap(true);
+                  try {
+                    const result = await uploadCampaignImage(campaignId, file, 'maps');
+                    updateMap.mutate({ mapId: map.id, imageUrl: result.url });
+                  } catch (error) {
+                    if (error instanceof ImageUploadError) {
+                      toast.error(error.message);
+                    } else {
+                      toast.error('Failed to upload replacement map');
+                    }
+                  } finally {
+                    setIsReplacingMap(false);
+                    if (replaceMapInputRef.current) {
+                      replaceMapInputRef.current.value = '';
+                    }
+                  }
+                }}
+              />
               <TerminalButton
                 variant="outline"
                 size="sm"
