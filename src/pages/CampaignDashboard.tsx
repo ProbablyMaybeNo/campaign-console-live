@@ -311,8 +311,11 @@ export default function CampaignDashboard() {
     }
   };
 
+  // Apply theme
+  const themeId = campaign?.theme_id || "dark";
+
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden" data-theme={themeId}>
       {/* Fixed Header */}
       <header className="border-b-2 border-[hsl(142,76%,65%)] bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 15px hsl(142 76% 50% / 0.3)' }}>
         <div className="flex items-center justify-between">

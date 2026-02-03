@@ -10,6 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { useCampaign, useUpdateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import { LockedFeature } from "@/components/ui/LockedFeature";
+import { THEMES } from "@/lib/themes";
 import { 
   Settings2, 
   Copy, 
@@ -18,6 +21,7 @@ import {
   Shield,
   Info,
   CalendarIcon,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parse, isValid } from "date-fns";
@@ -48,6 +52,8 @@ const COLOR_PRESETS = [
 export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSettingsModalProps) {
   const { data: campaign, isLoading } = useCampaign(campaignId);
   const updateCampaign = useUpdateCampaign();
+  const { isSupporter } = useEntitlements();
+  const updateCampaign = useUpdateCampaign();
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -64,6 +70,8 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
   const [status, setStatus] = useState(true);
   const [titleColor, setTitleColor] = useState("#22c55e");
   const [borderColor, setBorderColor] = useState("#22c55e");
+  const [themeId, setThemeId] = useState("dark");
+  const [bannerUrl, setBannerUrl] = useState("");
   const [displaySettings, setDisplaySettings] = useState<DisplaySettings>({
     showId: true,
     showPoints: true,
@@ -94,6 +102,8 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       setStatus(campaign.status === "active");
       setTitleColor(campaign.title_color || "#22c55e");
       setBorderColor(campaign.border_color || "#22c55e");
+      setThemeId(campaign.theme_id || "dark");
+      setBannerUrl(campaign.banner_url || "");
       const ds = campaign.display_settings as DisplaySettings | null;
       if (ds) {
         setDisplaySettings({
@@ -127,6 +137,8 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       status: status ? "active" : "inactive",
       title_color: titleColor,
       border_color: borderColor,
+      theme_id: isSupporter ? themeId : "dark",
+      banner_url: isSupporter ? (bannerUrl || undefined) : undefined,
       display_settings: displaySettings,
     });
     
@@ -362,6 +374,58 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
 
             {/* Appearance Tab */}
             <TabsContent value="appearance" className="mt-0 space-y-4">
+              {/* Theme Selector */}
+              <div className="space-y-2">
+                <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Dashboard Theme
+                </label>
+                <div className="grid grid-cols-5 gap-2">
+                  {THEMES.map((theme) => {
+                    const ThemeIcon = theme.icon;
+                    const isLocked = theme.supporterOnly && !isSupporter;
+                    
+                    return (
+                      <button
+                        key={theme.id}
+                        onClick={() => !isLocked && setThemeId(theme.id)}
+                        disabled={isLocked}
+                        className={`p-3 border rounded text-center transition-all relative ${
+                          themeId === theme.id
+                            ? "border-primary bg-primary/10"
+                            : isLocked
+                              ? "border-border/50 opacity-50 cursor-not-allowed"
+                              : "border-border hover:border-primary/50"
+                        }`}
+                        title={isLocked ? "Supporter only" : theme.description}
+                      >
+                        <ThemeIcon className={`w-5 h-5 mx-auto mb-1 ${
+                          themeId === theme.id ? "text-primary" : "text-muted-foreground"
+                        }`} />
+                        <p className="text-[10px] font-mono uppercase">{theme.name}</p>
+                        {isLocked && (
+                          <Lock className="absolute top-1 right-1 w-3 h-3 text-muted-foreground" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!isSupporter && (
+                  <p className="text-xs text-muted-foreground">
+                    🔒 Additional themes available with Supporter subscription
+                  </p>
+                )}
+              </div>
+
+              {/* Banner URL */}
+              <LockedFeature isLocked={!isSupporter} featureName="Banner Image">
+                <TerminalInput
+                  label="Banner Image URL"
+                  placeholder="https://example.com/banner.jpg"
+                  value={bannerUrl}
+                  onChange={(e) => setBannerUrl(e.target.value)}
+                />
+              </LockedFeature>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">

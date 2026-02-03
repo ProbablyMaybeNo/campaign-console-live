@@ -22,6 +22,11 @@ interface CardResult {
   sections: Array<{ header: string; content: string }>;
 }
 
+interface Entitlements {
+  plan: string;
+  smart_paste_enabled: boolean;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -50,6 +55,35 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ error: "Unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  // Get user ID from claims
+  const userId = claimsData.claims.sub as string;
+
+  // Check entitlements - Smart Paste requires Supporter subscription
+  const { data: entitlements, error: entitlementError } = await supabase.rpc('get_user_entitlements', {
+    _user_id: userId,
+  });
+
+  if (entitlementError) {
+    console.error("Failed to check entitlements:", entitlementError);
+    return new Response(
+      JSON.stringify({ error: "Failed to verify subscription status" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  const userEntitlements = entitlements as Entitlements;
+  
+  if (!userEntitlements?.smart_paste_enabled) {
+    return new Response(
+      JSON.stringify({ 
+        error: "SUBSCRIPTION_REQUIRED",
+        message: "Smart Paste requires a Supporter subscription. Upgrade to unlock AI-powered text conversion.",
+        code: "SUBSCRIPTION_REQUIRED"
+      }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
