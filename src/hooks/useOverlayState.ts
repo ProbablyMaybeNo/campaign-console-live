@@ -13,6 +13,7 @@ export type OverlayType =
   | "messages" 
   | "schedule" 
   | "settings"
+  | "battles"
   | null;
 
 interface UseOverlayStateReturn {
