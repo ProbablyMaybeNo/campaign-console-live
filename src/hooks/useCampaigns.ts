@@ -401,6 +401,7 @@ export function useIsGM(campaignId: string | undefined) {
 
   if (!user || !campaign) return false;
   
-  // User is GM if they own the campaign OR have role='gm' in campaign_players
-  return campaign.owner_id === user.id || playerRecord?.role === "gm";
+  // User is GM if they own the campaign OR have any GM-level role in campaign_players
+  const gmRoles = ["gm", "co_gm", "assistant"];
+  return campaign.owner_id === user.id || (playerRecord?.role && gmRoles.includes(playerRecord.role));
 }

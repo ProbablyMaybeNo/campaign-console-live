@@ -1712,11 +1712,19 @@ export type Database = {
         }[]
       }
       get_user_entitlements: { Args: { _user_id: string }; Returns: Json }
+      has_full_gm_access: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_campaign_gm: {
+        Args: { _campaign_id: string; _user_id: string }
         Returns: boolean
       }
       is_campaign_member: {

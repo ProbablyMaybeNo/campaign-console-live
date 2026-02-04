@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useCampaign, useIsGM, useUpdateCampaign } from "@/hooks/useCampaigns";
+import { usePlayerRole } from "@/hooks/usePlayerRole";
 import { useDashboardComponents, DashboardComponent, useDeleteComponent, useUpdateComponent, useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
 import { useOverlayState, OverlayType } from "@/hooks/useOverlayState";
@@ -70,6 +71,7 @@ export default function CampaignDashboard() {
   const { data: components = [], isLoading: componentsLoading } = useDashboardComponents(campaignId);
   const { user, signOut } = useAuth();
   const isGM = useIsGM(campaignId);
+  const { hasFullControl, permissions } = usePlayerRole(campaignId);
   const deleteComponent = useDeleteComponent();
   const updateComponent = useUpdateComponent();
   const createComponent = useCreateComponent();
@@ -153,6 +155,12 @@ export default function CampaignDashboard() {
 
   // GM Keyboard Shortcuts
   const handleDeleteSelected = useCallback(() => {
+    // Check if user has delete permission
+    if (!permissions.canDeleteComponents) {
+      toast.error("You don't have permission to delete widgets.");
+      return;
+    }
+
     // Handle multi-select delete
     if (multiSelect.selectedIds.size > 1) {
       const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
@@ -183,7 +191,7 @@ export default function CampaignDashboard() {
       });
       setSelectedComponent(null);
     }
-  }, [selectedComponent, multiSelect, components, handleDeleteWithUndo, deleteComponent, campaignId]);
+  }, [selectedComponent, multiSelect, components, handleDeleteWithUndo, deleteComponent, campaignId, permissions.canDeleteComponents]);
 
   const handleCopyJoinCode = useCallback(() => {
     if (campaign?.join_code) {
@@ -210,6 +218,10 @@ export default function CampaignDashboard() {
 
   // Multi-select bulk operations
   const handleBulkDelete = useCallback(() => {
+    if (!permissions.canDeleteComponents) {
+      toast.error("You don't have permission to delete widgets.");
+      return;
+    }
     const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
     const lockedCount = selectedComponents.filter((c) => (c.config as { locked?: boolean })?.locked).length;
     if (lockedCount > 0) {
@@ -224,7 +236,7 @@ export default function CampaignDashboard() {
     multiSelect.clearSelection();
     setSelectedComponent(null);
     toast.success(`Deleted ${selectedComponents.length} widgets`);
-  }, [components, multiSelect, handleDeleteWithUndo, deleteComponent, campaignId]);
+  }, [components, multiSelect, handleDeleteWithUndo, deleteComponent, campaignId, permissions.canDeleteComponents]);
 
   const handleBulkLock = useCallback(() => {
     const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
@@ -271,6 +283,10 @@ export default function CampaignDashboard() {
   }, [components, multiSelect, updateComponent]);
 
   const handleBulkDuplicate = useCallback(() => {
+    if (!permissions.canCreateComponents) {
+      toast.error("You don't have permission to create widgets.");
+      return;
+    }
     const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
     selectedComponents.forEach((c, index) => {
       createComponent.mutate({
@@ -287,7 +303,7 @@ export default function CampaignDashboard() {
     });
     multiSelect.clearSelection();
     toast.success(`Duplicated ${selectedComponents.length} widgets`);
-  }, [components, multiSelect, createComponent, campaignId]);
+  }, [components, multiSelect, createComponent, campaignId, permissions.canCreateComponents]);
 
   // Persist sidebar state to localStorage
   const handleSidebarToggle = (open: boolean) => {
@@ -587,6 +603,8 @@ export default function CampaignDashboard() {
           onHideAll={handleBulkHide}
           onDuplicateAll={handleBulkDuplicate}
           onClearSelection={multiSelect.clearSelection}
+          canCreate={permissions.canCreateComponents}
+          canDelete={permissions.canDeleteComponents}
         />
       )}
 
