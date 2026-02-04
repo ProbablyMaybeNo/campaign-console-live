@@ -1,10 +1,17 @@
 import { useState, useEffect } from "react";
-import { Dices, History, ChevronRight, ChevronLeft, Trash2 } from "lucide-react";
+import { Dices, History, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
 import { useRecordRoll } from "@/hooks/useRollHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -175,9 +182,9 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
   };
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Main Dice Roller Section */}
-      <div className={`flex flex-col items-center gap-2 py-2 px-2 transition-all duration-300 ${showHistory ? 'w-1/2' : 'flex-1'}`}>
+      <div className="flex flex-col items-center gap-2 py-2 px-2 shrink-0">
         {/* Inline dropdowns for dice configuration */}
         <div className="flex items-center gap-2">
           <Select value={count.toString()} onValueChange={handleCountChange}>
@@ -236,54 +243,18 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
         >
           <History className="w-3 h-3" />
           <span>History</span>
-          {showHistory ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         </button>
-
-        {/* Recent rolls preview (when history is closed) */}
-        {!showHistory && rollHistory.length > 0 && (
-          <div className="w-full mt-1">
-            <div 
-              className="h-px w-full mb-1"
-              style={{ backgroundColor: "hsl(142, 76%, 35%)" }}
-            />
-            <ScrollArea className="h-20" data-scrollable="true">
-              <div className="space-y-0.5 px-1">
-                {rollHistory.slice(0, 5).map((roll) => (
-                  <div
-                    key={roll.id}
-                    className="flex items-center justify-between text-[10px] font-mono px-1 py-0.5 rounded hover:bg-primary/5"
-                  >
-                    <span 
-                      className="truncate"
-                      style={{ color: "hsl(195, 100%, 65%)" }}
-                    >
-                      {roll.player_name}
-                    </span>
-                    <span 
-                      className="font-bold ml-1 shrink-0"
-                      style={{ 
-                        color: "hsl(45, 100%, 60%)",
-                        textShadow: "0 0 6px hsl(45, 100%, 50%, 0.4)",
-                      }}
-                    >
-                      {roll.total}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
       </div>
 
-      {/* Slide-out Roll History Panel */}
+      {/* Slide-out Roll History Panel - slides down below the roller */}
       <div 
-        className={`border-l transition-all duration-300 overflow-hidden ${showHistory ? 'w-1/2' : 'w-0'}`}
+        className={`border-t transition-all duration-300 overflow-hidden ${showHistory ? 'flex-1 min-h-0' : 'h-0'}`}
         style={{ borderColor: "hsl(142, 76%, 35%)" }}
       >
         {showHistory && (
           <div className="flex flex-col h-full">
-            {/* Header */}
+            {/* Header with clear all */}
             <div 
               className="flex items-center justify-between px-2 py-1.5 border-b shrink-0"
               style={{ borderColor: "hsl(142, 76%, 35%)" }}
@@ -302,94 +273,66 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
               )}
             </div>
 
-            {/* Roll List */}
+            {/* Roll History Table */}
             <ScrollArea className="flex-1" data-scrollable="true">
-              <div className="p-1.5 space-y-1">
-                {rollHistory.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
-                    <Dices className="w-6 h-6 mb-1 opacity-50" />
-                    <p className="text-[10px] font-mono">No rolls yet</p>
-                  </div>
-                ) : (
-                  rollHistory.map((roll) => (
-                    <div
-                      key={roll.id}
-                      className="group relative px-1.5 py-1 rounded border transition-all hover:bg-primary/5"
-                      style={{
-                        borderColor: "hsl(142, 76%, 35%, 0.3)",
-                      }}
-                    >
-                      <div className="flex items-start justify-between gap-1">
-                        <div className="flex-1 min-w-0">
-                          {/* Player name and dice config */}
-                          <div className="flex items-center gap-1 mb-0.5">
-                            <span 
-                              className="text-[10px] font-medium truncate"
-                              style={{
-                                color: "hsl(195, 100%, 65%)",
-                                textShadow: "0 0 4px hsl(195, 100%, 50%, 0.4)",
-                              }}
-                            >
-                              {roll.player_name}
-                            </span>
-                            <span className="text-[9px] text-muted-foreground font-mono">
-                              {roll.dice_config}
-                            </span>
-                          </div>
-                          
-                          {/* Rolls and total */}
-                          <div className="flex items-center gap-1">
-                            <div className="flex gap-0.5 flex-wrap">
-                              {roll.rolls.slice(0, 5).map((r, i) => (
-                                <span
-                                  key={i}
-                                  className="w-4 h-4 rounded text-[9px] font-mono flex items-center justify-center"
-                                  style={{
-                                    backgroundColor: "hsl(142, 76%, 55%, 0.15)",
-                                    border: "1px solid hsl(142, 76%, 55%, 0.3)",
-                                    color: "hsl(142, 76%, 65%)",
-                                  }}
-                                >
-                                  {r}
-                                </span>
-                              ))}
-                              {roll.rolls.length > 5 && (
-                                <span className="text-[9px] text-muted-foreground">+{roll.rolls.length - 5}</span>
-                              )}
-                            </div>
-                            {roll.rolls.length > 1 && (
-                              <span 
-                                className="text-[10px] font-mono font-bold"
-                                style={{ 
-                                  color: "hsl(45, 100%, 60%)",
-                                  textShadow: "0 0 4px hsl(45, 100%, 50%, 0.4)",
-                                }}
-                              >
-                                = {roll.total}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Timestamp and delete */}
-                        <div className="flex flex-col items-end gap-0.5 shrink-0">
-                          <span className="text-[8px] text-muted-foreground font-mono">
-                            {format(new Date(roll.rolled_at), "HH:mm")}
-                          </span>
-                          {isGM && (
+              {rollHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
+                  <Dices className="w-6 h-6 mb-1 opacity-50" />
+                  <p className="text-[10px] font-mono">No rolls yet</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-b-primary/30 hover:bg-transparent">
+                      <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground">Player</TableHead>
+                      <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground">Dice</TableHead>
+                      <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground text-right">Roll</TableHead>
+                      {isGM && <TableHead className="h-6 w-6 px-1"></TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rollHistory.map((roll) => (
+                      <TableRow 
+                        key={roll.id} 
+                        className="group border-b-primary/10 hover:bg-primary/5"
+                      >
+                        <TableCell 
+                          className="py-1 px-2 text-[10px] font-medium truncate max-w-[80px]"
+                          style={{
+                            color: "hsl(195, 100%, 65%)",
+                            textShadow: "0 0 4px hsl(195, 100%, 50%, 0.4)",
+                          }}
+                          title={roll.player_name}
+                        >
+                          {roll.player_name}
+                        </TableCell>
+                        <TableCell className="py-1 px-2 text-[10px] text-muted-foreground font-mono">
+                          {roll.dice_config}
+                        </TableCell>
+                        <TableCell 
+                          className="py-1 px-2 text-[10px] font-mono font-bold text-right"
+                          style={{ 
+                            color: "hsl(45, 100%, 60%)",
+                            textShadow: "0 0 4px hsl(45, 100%, 50%, 0.4)",
+                          }}
+                        >
+                          {roll.total}
+                        </TableCell>
+                        {isGM && (
+                          <TableCell className="py-1 px-1 w-6">
                             <button
                               onClick={() => handleDeleteRoll(roll.id)}
                               className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-destructive"
                             >
                               <Trash2 className="w-2.5 h-2.5" />
                             </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </ScrollArea>
           </div>
         )}
