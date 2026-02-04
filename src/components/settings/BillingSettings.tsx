@@ -210,7 +210,7 @@ export function BillingSettings() {
             textShadow: `0 0 10px ${neonGreen}, 0 0 20px hsla(142, 76%, 65%, 0.5)`
           }}
         >
-          SHOW SOME SUPPORT
+          SUPPORT THE CAMPAIGN CONSOLE
         </h2>
 
         {/* Mission Statement */}
