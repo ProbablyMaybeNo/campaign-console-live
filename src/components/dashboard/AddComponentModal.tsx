@@ -242,6 +242,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                 const buttonContent = (
                   <button
                     key={type}
+                    data-component-type={type}
                     onClick={() => !isLocked && handleTypeSelect(type)}
                     className={`p-2.5 border rounded text-center transition-all duration-200 relative group ${
                       selectedType === type
