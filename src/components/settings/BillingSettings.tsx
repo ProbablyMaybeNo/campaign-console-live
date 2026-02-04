@@ -202,6 +202,17 @@ export function BillingSettings() {
           backgroundColor: "hsl(var(--card))",
         }}
       >
+        {/* Main Header */}
+        <h2 
+          className="text-2xl font-bold text-center tracking-widest"
+          style={{ 
+            color: neonGreen,
+            textShadow: `0 0 10px ${neonGreen}, 0 0 20px hsla(142, 76%, 65%, 0.5)`
+          }}
+        >
+          SHOW SOME SUPPORT
+        </h2>
+
         {/* Mission Statement */}
         <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 95%)" }}>
           Campaign Console is a one-person passion project that grew out of my personal need for a better way to host and manage tabletop campaigns. Your support helps keep Campaign Console alive and lets me spend more time developing new features and upgrades. Below is a list of some core and supporter features I'm working on right now.
