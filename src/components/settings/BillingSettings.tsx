@@ -260,11 +260,6 @@ export function BillingSettings() {
           </p>
         </div>
 
-        {/* Supporter Benefits Intro */}
-        <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 95%)" }}>
-          In return for your support, you'll receive extra perks like customization options, quality-of-life upgrades, and early access to future features. The core tools will always stay available to everyone.
-        </p>
-
         {/* Subscribe Section */}
         {/* Section Header - Subscribe */}
         <div 
@@ -277,6 +272,11 @@ export function BillingSettings() {
         >
           SUBSCRIBE // $2.99 / MONTH
         </div>
+
+        {/* Supporter Benefits Intro */}
+        <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 95%)" }}>
+          In return for your support, you'll receive extra perks like customization options, quality-of-life upgrades, and early access to future features. The core tools will always stay available to everyone.
+        </p>
 
         <div className="space-y-4">
           {/* Current Status */}
