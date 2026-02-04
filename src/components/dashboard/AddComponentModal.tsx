@@ -21,6 +21,7 @@ import {
   FileText,
   Sticker,
   Lock,
+  Swords,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -50,6 +51,7 @@ const COMPONENT_TYPES: ComponentTypeConfig[] = [
   { type: "custom_table", label: "Custom Table", icon: Table, description: "Blank table for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "custom_card", label: "Custom Card", icon: LayoutList, description: "Blank card for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "narrative_table", label: "Narrative", icon: LayoutList, description: "Display narrative events" },
+  { type: "battle_tracker", label: "Battles", icon: Swords, description: "Track rounds, pairings & reports" },
   { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
   { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
@@ -159,6 +161,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "sticker") {
       width = 120;
       height = 120;
+    } else if (selectedType === "battle_tracker") {
+      width = 420;
+      height = 450;
     }
 
     // Spawn at canvas center with slight offset to not overlap existing components
@@ -369,6 +374,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "sticker" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   A decorative icon marker. Choose from dozens of icons to mark objectives, danger zones, or points of interest.
+                </p>
+              )}
+
+              {selectedType === "battle_tracker" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Displays active pairings, match history, and allows players to submit battle reports. GMs manage rounds via the Battles overlay.
                 </p>
               )}
 
