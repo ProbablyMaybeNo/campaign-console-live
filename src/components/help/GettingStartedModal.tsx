@@ -17,7 +17,8 @@ import {
   ChevronLeft,
   Sparkles,
   HelpCircle,
-  Activity
+  Activity,
+  Swords
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +80,13 @@ const STEPS: Step[] = [
     title: "Schedule Sessions & Rounds",
     description: "Add, edit, remove, and manage campaign schedule, rounds, events, and dates via the Schedule menu in the side panel. Add a Calendar component containing scheduled dates and rounds via the ➕ button.",
     tip: "Players see the Calendar widget but can't edit the schedule.",
+  },
+  {
+    icon: Swords,
+    title: "Manage Battles & Pairings",
+    description: "Use the Battles panel in the side menu to create rounds, generate pairings (Random, Swiss, or Manual), and track match results. Players can submit battle reports which you approve or resolve disputes.",
+    tip: "Add a Battle Tracker widget to the dashboard so players can see their upcoming matches and submit results.",
+    optional: true,
   },
   {
     icon: Users,
