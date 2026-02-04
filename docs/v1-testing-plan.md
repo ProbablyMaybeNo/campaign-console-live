@@ -764,6 +764,195 @@
 
 ---
 
+## 20. Battle Tracker System
+
+### 20.1 Battles Sidebar Entry (GM Only)
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Check sidebar navigation | "Battles" entry visible with Swords icon | Icon and label present |
+| 2 | Verify GM-only visibility | Entry visible in GM view | Battles in sidebar |
+| 3 | Toggle to Player Preview | "Battles" entry NOT visible | Entry hidden for players |
+| 4 | Toggle back to GM view | "Battles" entry reappears | GM controls restored |
+| 5 | Click "Battles" | BattlesManager overlay opens | Full-page overlay panel |
+
+### 20.2 Battle Tracker Widget
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget grid visible |
+| 2 | Find "Battles" widget option | Battles option with Swords icon | Option in grid |
+| 3 | Click "Battles" | Widget added to canvas | New Battle Tracker widget appears |
+| 4 | Widget shows "No active round" | Empty state message | Placeholder text visible |
+| 5 | Drag widget to new position | Widget moves | Position updates |
+| 6 | Refresh page | Widget persists at position | Database save confirmed |
+
+### 20.3 Round Management (GM)
+**Start State**: BattlesManager overlay open as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find "Rounds" tab | Tab visible | Tab header present |
+| 2 | Click "+ Create Round" button | Round creation form appears | Input fields visible |
+| 3 | Enter name: "Round 1" | Name field populated | Text in field |
+| 4 | Set pairing system to "Random" | Dropdown selection | Random selected |
+| 5 | Click "Create" | Round appears in list | New round row visible |
+| 6 | Check round status | Shows "Open" | Status badge visible |
+| 7 | Refresh page | Round persists | Data saved to database |
+| 8 | Create second round "Round 2" | Second round appears | Two rounds in list |
+| 9 | Click "Close" on Round 1 | Round status changes to "Closed" | Status updates |
+
+### 20.4 Pairing Generation (GM)
+**Start State**: BattlesManager open with at least 2 players in campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Select "Round 1" | Round details visible | Round selected |
+| 2 | Click "Generate Pairings" | Pairing options appear | Pairing system dropdown |
+| 3 | Select "Random" pairing | Random selected | Dropdown value |
+| 4 | Click "Generate" | Matches created | Pairings appear in list |
+| 5 | Verify player names in pairings | Both players assigned | Names visible in match |
+| 6 | Check for BYE if odd players | BYE match created | "(BYE)" indicator visible |
+| 7 | Refresh page | Pairings persist | Database save confirmed |
+
+### 20.5 Swiss Pairing System
+**Start State**: Campaign with 4+ players, multiple rounds completed
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Create new round with Swiss pairing | Round created | Swiss system selected |
+| 2 | Generate pairings | Swiss algorithm runs | Pairings based on points |
+| 3 | Check pairing logic | Top-ranked players paired | Points-based matching |
+| 4 | Verify no rematches (if possible) | Different opponents than before | Anti-repeat constraint |
+
+### 20.6 Manual Pairing
+**Start State**: BattlesManager open with round created
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Select "Manual" pairing system | Manual selected | Dropdown value |
+| 2 | Click "Add Match" | Match creation form | Player selection dropdowns |
+| 3 | Select Player A and Player B | Both players chosen | Dropdowns populated |
+| 4 | Click "Save Match" | Match added to round | Match row appears |
+| 5 | Repeat for all desired matches | All matches created | Complete pairing list |
+
+### 20.7 Battle Report Submission (Player)
+**Start State**: Logged in as Player, round with pairings exists
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Battle Tracker widget | Widget shows current pairing | Player's match visible |
+| 2 | Find "Submit Report" button | Button visible | Action button present |
+| 3 | Click "Submit Report" | Report overlay opens | Form fields visible |
+| 4 | Select outcome: "Victory" | Outcome selected | Radio/select value |
+| 5 | Enter narrative: "A hard-fought battle" | Text entered | Content in textarea |
+| 6 | Add injury (if enabled): "Leader wounded" | Injury recorded | Entry in list |
+| 7 | Click "Submit" | Report saved | Success toast |
+| 8 | Widget shows "Report Submitted" | Status updates | Indicator visible |
+| 9 | Refresh page | Report persists | Data saved |
+
+### 20.8 Conflicting Reports (Disputes Queue)
+**Start State**: Both players submitted reports with different outcomes
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | **As GM**: Open BattlesManager | Overlay opens | Manager visible |
+| 2 | Find "Disputes" tab or section | Disputes queue visible | Tab/section present |
+| 3 | Conflicting match appears | Match highlighted | Dispute indicator |
+| 4 | Click match to review | Both reports displayed | Side-by-side or list view |
+| 5 | Choose "Victory for Player A" | Resolution selected | Option chosen |
+| 6 | Add reason: "Per video evidence" | Reason entered | Text in field |
+| 7 | Click "Resolve" | Dispute resolved | Match status updates |
+| 8 | Check audit trail | Resolution recorded | Audit entry created |
+
+### 20.9 GM Override with Audit Trail
+**Start State**: BattlesManager open with completed match
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find a completed match | Match visible | Status shows "Played" |
+| 2 | Click "Edit Result" | Override form opens | Fields editable |
+| 3 | Change outcome | New outcome selected | Value changed |
+| 4 | Enter reason: "Scoring error correction" | Reason required | Text in field |
+| 5 | Click "Save Override" | Changes saved | Success confirmation |
+| 6 | Check audit trail | Override recorded with reason | Audit entry visible |
+| 7 | Verify changed_by, timestamp, reason | All fields populated | Complete audit record |
+
+### 20.10 View Battle Report
+**Start State**: Match with approved report exists
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find match in Battle Tracker widget | Match row visible | Row present |
+| 2 | Click "View Report" | Report overlay opens | Report details visible |
+| 3 | Check outcome displayed | Outcome shown | Win/Loss/Draw visible |
+| 4 | Check narrative displayed | Story text visible | Narrative content |
+| 5 | Check injuries (if any) | Injury list visible | Injuries recorded |
+| 6 | Check loot/resources (if enabled) | Resources displayed | Additional fields |
+| 7 | Close overlay | Returns to widget | Overlay closes |
+
+### 20.11 Activity Feed Integration
+**Start State**: Battle report approved by GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Add Activity Feed widget | Widget on canvas | Activity widget visible |
+| 2 | Approve a battle report | Report approved | GM approves report |
+| 3 | Check Activity Feed | "Battle Completed" entry appears | Orange icon, player names |
+| 4 | Verify entry content | Shows players and outcome | "PlayerA vs PlayerB - Victory" |
+| 5 | Refresh page | Entry persists | Data from database |
+
+### 20.12 Scoring Configuration
+**Start State**: BattlesManager open, editing round
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find "Scoring" configuration | Scoring tab/section | Options visible |
+| 2 | Check default values | Win: 3, Draw: 1, Loss: 0 | Default scoring |
+| 3 | Change Win to 5 | Value updates | New value saved |
+| 4 | Toggle "Auto-approve reports" | Option toggles | Setting changes |
+| 5 | Toggle "Require narrative" | Option toggles | Setting changes |
+| 6 | Save round settings | Settings persist | Configuration saved |
+| 7 | Refresh page | Settings retained | Database persistence |
+
+### 20.13 Report Field Configuration
+**Start State**: BattlesManager open, editing round
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find "Report Fields" configuration | Field toggles visible | Options present |
+| 2 | Toggle "Narrative" off | Field disabled | Checkbox unchecked |
+| 3 | Toggle "Injuries" on | Field enabled | Checkbox checked |
+| 4 | Toggle "Loot" on | Field enabled | Checkbox checked |
+| 5 | Save configuration | Settings persist | Config saved |
+| 6 | **As Player**: Submit report | Form reflects config | Only enabled fields shown |
+
+### 20.14 Match History
+**Start State**: Campaign with multiple completed rounds
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Battle Tracker widget | Widget visible | Widget loaded |
+| 2 | Find "History" tab or section | History view available | Tab/section present |
+| 3 | Verify rounds grouped | Matches grouped by round | Round headers visible |
+| 4 | Check match details | Participants and outcomes shown | Match info visible |
+| 5 | Click on historical match | View Report option | Can view old reports |
+
+### 20.15 Real-time Sync
+**Start State**: Two browsers - GM and Player on same campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Both open Battle Tracker | Widget visible in both | Widgets loaded |
+| 2 | **GM**: Generate new pairing | Pairing created | Match appears in GM view |
+| 3 | Check Player view | Pairing appears in Player view | Real-time sync within 2 seconds |
+| 4 | **Player**: Submit report | Report submitted | Status updates in Player view |
+| 5 | Check GM view | Report appears in GM view | Real-time update confirmed |
+
+---
+
 ## Test Completion Checklist
 
 | Section | Status | Notes |
@@ -787,6 +976,7 @@
 | 17. Getting Started Onboarding | [ ] Pass / [ ] Fail | |
 | 18. Subscriber Experience | [ ] Pass / [ ] Fail | |
 | 19. Sidebar Support Link | [ ] Pass / [ ] Fail | |
+| 20. Battle Tracker System | [ ] Pass / [ ] Fail | |
 
 ---
 
