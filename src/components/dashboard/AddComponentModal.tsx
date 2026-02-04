@@ -16,7 +16,6 @@ import {
   Users,
   Calendar,
   Activity,
-  History,
   Megaphone,
   FileText,
   Sticker,
@@ -54,8 +53,7 @@ const COMPONENT_TYPES: ComponentTypeConfig[] = [
   { type: "battle_tracker", label: "Battles", icon: Swords, description: "Track rounds, pairings & reports" },
   { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
-  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
-  { type: "roll_recorder", label: "Roll History", icon: History, description: "Track dice roll history" },
+  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll dice with history log" },
   { type: "map", label: "Map", icon: Map, description: "Live campaign map with markers" },
   { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
@@ -149,9 +147,6 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "activity_feed") {
       width = 350;
       height = 400;
-    } else if (selectedType === "roll_recorder") {
-      width = 320;
-      height = 350;
     } else if (selectedType === "announcements") {
       width = 380;
       height = 400;
@@ -351,12 +346,6 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "activity_feed" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   Shows real-time campaign activity including player joins, messages, and warband updates.
-                </p>
-              )}
-
-              {selectedType === "roll_recorder" && (
-                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
-                  Displays a real-time log of all dice rolls from Dice Roller widgets, showing player name, roll results, and timestamp.
                 </p>
               )}
 
