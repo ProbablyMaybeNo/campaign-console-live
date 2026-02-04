@@ -89,32 +89,32 @@ export const MobileWidgetCard = memo(function MobileWidgetCard({
   return (
     <button
       onClick={onExpand}
-      className="flex-shrink-0 w-28 min-[400px]:w-32 h-32 min-[400px]:h-36 border border-primary/40 bg-card/80 rounded-lg p-2.5 flex flex-col items-center justify-between transition-all active:scale-95 hover:border-primary hover:bg-primary/5"
-      style={{ boxShadow: "0 0 10px hsl(var(--primary) / 0.1)" }}
+      className="w-full aspect-square border border-primary/40 bg-card/80 rounded-lg p-3 flex flex-col items-center justify-between transition-all active:scale-[0.98] hover:border-primary hover:bg-primary/5"
+      style={{ boxShadow: "0 0 8px hsl(var(--primary) / 0.1)" }}
     >
       <div className="flex items-center gap-1.5 w-full min-w-0">
-        <Icon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-        <span className="text-[10px] min-[400px]:text-xs font-mono text-foreground truncate">
+        <Icon className="w-4 h-4 text-primary flex-shrink-0" />
+        <span className="text-xs font-mono text-foreground truncate">
           {component.name}
         </span>
       </div>
 
-      <div className="flex-1 flex items-center justify-center w-full px-1">
+      <div className="flex-1 flex items-center justify-center w-full">
         {isCounter ? (
           <span 
-            className="text-2xl min-[400px]:text-3xl font-bold text-primary"
-            style={{ textShadow: "0 0 15px hsl(var(--primary) / 0.5)" }}
+            className="text-3xl font-bold text-primary"
+            style={{ textShadow: "0 0 12px hsl(var(--primary) / 0.5)" }}
           >
             {preview}
           </span>
         ) : (
-          <span className="text-[10px] min-[400px]:text-xs text-muted-foreground text-center line-clamp-2">
+          <span className="text-xs text-muted-foreground text-center line-clamp-2 px-1">
             {preview}
           </span>
         )}
       </div>
 
-      <span className="text-[9px] min-[400px]:text-[10px] text-muted-foreground/60 uppercase tracking-wider">
+      <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">
         Tap to view
       </span>
     </button>
