@@ -471,16 +471,19 @@ interface ManualMatchCreatorProps {
   existingMatchCount: number;
 }
 
+const BYE_VALUE = "__bye__";
+
 function ManualMatchCreator({ campaignId, roundId, players, existingMatchCount }: ManualMatchCreatorProps) {
   const [playerA, setPlayerA] = useState("");
-  const [playerB, setPlayerB] = useState("");
+  const [playerB, setPlayerB] = useState(BYE_VALUE);
   const createMatch = useCreateMatch();
   
   const handleCreate = () => {
     if (!playerA) return;
     
     const pA = players.find(p => p.user_id === playerA);
-    const pB = playerB ? players.find(p => p.user_id === playerB) : null;
+    const isBye = playerB === BYE_VALUE;
+    const pB = !isBye ? players.find(p => p.user_id === playerB) : null;
     
     if (!pA) return;
     
@@ -497,11 +500,11 @@ function ManualMatchCreator({ campaignId, roundId, players, existingMatchCount }
       roundId,
       participants,
       matchIndex: existingMatchCount,
-      isBye: !pB,
+      isBye,
     }, {
       onSuccess: () => {
         setPlayerA("");
-        setPlayerB("");
+        setPlayerB(BYE_VALUE);
       },
     });
   };
@@ -530,7 +533,7 @@ function ManualMatchCreator({ campaignId, roundId, players, existingMatchCount }
             <SelectValue placeholder="Player B (or BYE)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">BYE</SelectItem>
+            <SelectItem value={BYE_VALUE}>BYE</SelectItem>
             {players.filter(p => p.user_id !== playerA).map(p => (
               <SelectItem key={p.user_id} value={p.user_id}>
                 {p.profile?.display_name || 'Unknown'}
