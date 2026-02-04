@@ -17,7 +17,8 @@ import {
   Map, 
   Calendar, 
   MessageSquare,
-  BookOpen
+  BookOpen,
+  Users
 } from "lucide-react";
 
 interface MobileDashboardProps {
@@ -58,22 +59,23 @@ export const MobileDashboard = memo(function MobileDashboard({
       {/* Mobile Onboarding */}
       <MobileOnboardingModal isPhone={true} />
 
-      {/* Header */}
+      {/* Header - with safe padding */}
       <header className="border-b-2 border-primary bg-card/95 px-4 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <Link 
             to="/campaigns" 
-            className="text-secondary hover:text-secondary-foreground transition-all"
+            className="text-secondary hover:text-secondary-foreground transition-all flex-shrink-0"
           >
-            <span className="flex items-center gap-1 font-mono text-sm font-medium uppercase tracking-wider">
-              <ArrowLeft className="w-4 h-4" />
-              Camps
+            <span className="flex items-center gap-1 font-mono text-xs font-medium uppercase tracking-wider">
+              <ArrowLeft className="w-4 h-4 flex-shrink-0" />
+              <span className="hidden min-[360px]:inline">Campaigns</span>
+              <span className="min-[360px]:hidden">Back</span>
             </span>
           </Link>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <div 
-              className={`px-3 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${
+              className={`px-2 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${
                 isGM 
                   ? "bg-secondary text-secondary-foreground" 
                   : "bg-primary text-primary-foreground"
@@ -82,22 +84,23 @@ export const MobileDashboard = memo(function MobileDashboard({
               {isGM ? "GM" : "Player"}
             </div>
             <HelpButton variant="icon" />
-            <TerminalButton variant="ghost" size="sm" onClick={onSignOut}>
-              Out
+            <TerminalButton variant="ghost" size="sm" onClick={onSignOut} className="px-2">
+              <span className="hidden min-[360px]:inline">Out</span>
+              <span className="min-[360px]:hidden">×</span>
             </TerminalButton>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - with safe area padding */}
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4 pb-24">
+        <div className="px-4 py-4 space-y-4 pb-28">
           {/* Campaign Console Hero */}
           <div 
             className="border-2 border-primary rounded-lg overflow-hidden bg-card"
             style={{ boxShadow: "0 0 20px hsl(var(--primary) / 0.15)" }}
           >
-            <div className="h-40">
+            <div className="h-36 min-[400px]:h-40">
               <CampaignConsoleWidget 
                 campaignId={campaignId} 
                 isGM={isGM} 
@@ -116,9 +119,9 @@ export const MobileDashboard = memo(function MobileDashboard({
                 <div className="h-px flex-1 bg-primary/30" />
               </div>
               
-              {/* Horizontal scrolling carousel */}
-              <div className="overflow-x-auto pb-2 -mx-4 px-4">
-                <div className="flex gap-3">
+              {/* Horizontal scrolling carousel - with proper edge padding */}
+              <div className="overflow-x-auto pb-2 -mx-4 scrollbar-hide">
+                <div className="flex gap-3 px-4">
                   {widgetComponents.map((component) => (
                     <MobileWidgetCard
                       key={component.id}
@@ -126,6 +129,8 @@ export const MobileDashboard = memo(function MobileDashboard({
                       onExpand={() => setExpandedWidget(component)}
                     />
                   ))}
+                  {/* End padding spacer for last card visibility */}
+                  <div className="w-1 flex-shrink-0" aria-hidden="true" />
                 </div>
               </div>
             </div>
@@ -135,47 +140,43 @@ export const MobileDashboard = memo(function MobileDashboard({
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className="h-px flex-1 bg-primary/30" />
-              <span className="text-xs font-mono text-primary uppercase tracking-wider">
+              <span className="text-xs font-mono text-primary uppercase tracking-wider whitespace-nowrap">
                 Quick Access
               </span>
               <div className="h-px flex-1 bg-primary/30" />
             </div>
             
-            <div className="grid grid-cols-4 gap-2">
+            {/* 2x2 grid on tiny screens, 2x3 on larger phones */}
+            <div className="grid grid-cols-2 min-[400px]:grid-cols-3 gap-2">
               <QuickAccessButton 
-                icon={<Scroll className="w-5 h-5" />} 
+                icon={<Scroll className="w-4 h-4" />} 
                 label="Rules" 
                 onClick={() => onOpenOverlay("rules")} 
               />
               <QuickAccessButton 
-                icon={<Map className="w-5 h-5" />} 
+                icon={<Map className="w-4 h-4" />} 
                 label="Map" 
                 onClick={() => onOpenOverlay("map")} 
               />
               <QuickAccessButton 
-                icon={<Calendar className="w-5 h-5" />} 
+                icon={<Calendar className="w-4 h-4" />} 
                 label="Schedule" 
                 onClick={() => onOpenOverlay("schedule")} 
               />
               <QuickAccessButton 
-                icon={<MessageSquare className="w-5 h-5" />} 
+                icon={<MessageSquare className="w-4 h-4" />} 
                 label="Messages" 
                 onClick={() => onOpenOverlay("messages")} 
               />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 mt-2">
               <QuickAccessButton 
-                icon={<BookOpen className="w-5 h-5" />} 
+                icon={<BookOpen className="w-4 h-4" />} 
                 label="Narrative" 
                 onClick={() => onOpenOverlay("narrative")} 
-                wide
               />
               <QuickAccessButton 
-                icon={<MessageSquare className="w-5 h-5" />} 
+                icon={<Users className="w-4 h-4" />} 
                 label="Players" 
                 onClick={() => onOpenOverlay("players")} 
-                wide
               />
             </div>
           </div>
@@ -208,19 +209,16 @@ interface QuickAccessButtonProps {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
-  wide?: boolean;
 }
 
-function QuickAccessButton({ icon, label, onClick, wide }: QuickAccessButtonProps) {
+function QuickAccessButton({ icon, label, onClick }: QuickAccessButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 p-3 border border-primary/30 rounded-lg bg-card/50 transition-all active:scale-95 hover:border-primary hover:bg-primary/5 ${
-        wide ? "col-span-1" : ""
-      }`}
+      className="flex items-center justify-center gap-2 py-3 px-2 border border-primary/30 rounded-lg bg-card/50 transition-all active:scale-95 hover:border-primary hover:bg-primary/5 min-h-[48px]"
     >
-      <span className="text-primary">{icon}</span>
-      <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider">
+      <span className="text-primary flex-shrink-0">{icon}</span>
+      <span className="text-[10px] min-[400px]:text-xs font-mono text-muted-foreground uppercase tracking-wide truncate">
         {label}
       </span>
     </button>

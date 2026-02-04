@@ -942,4 +942,20 @@
   .active-press:active {
     transform: scale(0.98);
   }
+
+  /* Hide scrollbar utility for mobile carousels */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Safe area insets for mobile devices */
+  .safe-area-inset {
+    padding-left: env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
 }
