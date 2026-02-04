@@ -57,17 +57,17 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
   const formatDate = (date: string) => format(new Date(date), "dd/MM/yy");
 
   return (
-    <div className="w-full h-full flex flex-col p-3 gap-2 overflow-hidden select-none relative">
+    <div className="w-full h-full flex flex-col p-2 min-[400px]:p-3 gap-1.5 min-[400px]:gap-2 overflow-hidden select-none relative">
       {/* Donator Badge - positioned in top right corner */}
       {hasDonated && (
         <div 
-          className="absolute top-2 right-2 z-20"
+          className="absolute top-1 right-1 min-[400px]:top-2 min-[400px]:right-2 z-20"
           title="Thank you for your support!"
         >
           <img 
             src={donatorBadge} 
             alt="Supporter Badge" 
-            className="w-14 h-14 object-contain"
+            className="w-10 h-10 min-[400px]:w-14 min-[400px]:h-14 object-contain"
             style={{ 
               filter: 'drop-shadow(0 0 8px hsl(200, 100%, 60%))',
             }}
@@ -76,10 +76,10 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
       )}
 
       {/* Decorative Frame with Corner Accents */}
-      <div className="absolute inset-2 pointer-events-none">
+      <div className="absolute inset-1.5 min-[400px]:inset-2 pointer-events-none">
         {/* Corner accents - Top Left */}
         <div 
-          className="absolute top-0 left-0 w-5 h-5"
+          className="absolute top-0 left-0 w-4 h-4 min-[400px]:w-5 min-[400px]:h-5"
           style={{
             borderTop: `2px solid ${borderColor}`,
             borderLeft: `2px solid ${borderColor}`,
@@ -88,7 +88,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         />
         {/* Corner accents - Top Right */}
         <div 
-          className="absolute top-0 right-0 w-5 h-5"
+          className="absolute top-0 right-0 w-4 h-4 min-[400px]:w-5 min-[400px]:h-5"
           style={{
             borderTop: `2px solid ${borderColor}`,
             borderRight: `2px solid ${borderColor}`,
@@ -97,7 +97,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         />
         {/* Corner accents - Bottom Left */}
         <div 
-          className="absolute bottom-0 left-0 w-5 h-5"
+          className="absolute bottom-0 left-0 w-4 h-4 min-[400px]:w-5 min-[400px]:h-5"
           style={{
             borderBottom: `2px solid ${borderColor}`,
             borderLeft: `2px solid ${borderColor}`,
@@ -106,7 +106,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         />
         {/* Corner accents - Bottom Right */}
         <div 
-          className="absolute bottom-0 right-0 w-5 h-5"
+          className="absolute bottom-0 right-0 w-4 h-4 min-[400px]:w-5 min-[400px]:h-5"
           style={{
             borderBottom: `2px solid ${borderColor}`,
             borderRight: `2px solid ${borderColor}`,
@@ -116,33 +116,33 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
         
         {/* Outer frame lines */}
         <div 
-          className="absolute top-0 left-6 right-6 h-px"
+          className="absolute top-0 left-5 right-5 min-[400px]:left-6 min-[400px]:right-6 h-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
         <div 
-          className="absolute bottom-0 left-6 right-6 h-px"
+          className="absolute bottom-0 left-5 right-5 min-[400px]:left-6 min-[400px]:right-6 h-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
         <div 
-          className="absolute left-0 top-6 bottom-6 w-px"
+          className="absolute left-0 top-5 bottom-5 min-[400px]:top-6 min-[400px]:bottom-6 w-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
         <div 
-          className="absolute right-0 top-6 bottom-6 w-px"
+          className="absolute right-0 top-5 bottom-5 min-[400px]:top-6 min-[400px]:bottom-6 w-px"
           style={{ backgroundColor: borderColor, opacity: 0.4 }}
         />
       </div>
 
       {/* Campaign Title Box */}
       <div
-        className="border-2 px-4 py-3 flex items-center justify-center relative z-10"
+        className="border-2 px-3 min-[400px]:px-4 py-2 min-[400px]:py-3 flex items-center justify-center relative z-10"
         style={{ 
           borderColor,
           boxShadow: `0 0 15px ${borderColor}30, inset 0 0 20px ${borderColor}10`,
         }}
       >
         <h1
-          className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-wide text-center"
+          className="text-2xl min-[360px]:text-3xl min-[400px]:text-4xl md:text-5xl lg:text-6xl font-bold tracking-wide text-center truncate max-w-full"
           style={{
             color: titleColor,
             fontFamily: "'Old London', serif",
@@ -155,13 +155,13 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
 
       {/* Campaign Info Grid */}
       <div
-        className="border border-dashed px-4 py-2 relative z-10"
+        className="border border-dashed px-2 min-[400px]:px-4 py-1.5 min-[400px]:py-2 relative z-10"
         style={{ 
           borderColor: `${borderColor}60`,
           boxShadow: `0 0 10px ${borderColor}10`,
         }}
       >
-        <div className="flex items-center justify-evenly gap-6 flex-wrap">
+        <div className="flex items-center justify-center gap-3 min-[400px]:gap-4 md:gap-6 flex-wrap">
           {displaySettings.showId && (
             <IconField
               icon={<Hash className="w-4 h-4" />}

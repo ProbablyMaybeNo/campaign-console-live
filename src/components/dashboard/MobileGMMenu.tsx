@@ -53,17 +53,18 @@ export const MobileGMMenu = memo(function MobileGMMenu({
 
   return (
     <>
-      {/* FAB Button */}
+      {/* FAB Button - safe area aware positioning */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 h-14 px-5 rounded-full bg-primary text-primary-foreground font-bold flex items-center gap-2 transition-all active:scale-95"
+        className="fixed bottom-4 right-4 z-50 h-12 px-4 rounded-full bg-primary text-primary-foreground font-bold flex items-center gap-2 transition-all active:scale-95"
         style={{ 
           boxShadow: "0 0 25px hsl(var(--primary) / 0.5), 0 0 50px hsl(var(--primary) / 0.25)",
           animation: "pulse 3s ease-in-out infinite",
+          marginBottom: "env(safe-area-inset-bottom, 0)",
         }}
       >
-        <Zap className="w-5 h-5" />
-        <span className="text-sm font-mono uppercase tracking-wider">Menu</span>
+        <Zap className="w-4 h-4" />
+        <span className="text-xs font-mono uppercase tracking-wider">Menu</span>
       </button>
 
       {/* Bottom Sheet */}
