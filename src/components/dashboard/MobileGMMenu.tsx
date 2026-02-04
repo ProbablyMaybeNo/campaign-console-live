@@ -53,18 +53,17 @@ export const MobileGMMenu = memo(function MobileGMMenu({
 
   return (
     <>
-      {/* FAB Button - safe area aware positioning */}
+      {/* FAB Button - positioned above the bottom quick-action bar */}
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 right-4 z-50 h-12 px-4 rounded-full bg-primary text-primary-foreground font-bold flex items-center gap-2 transition-all active:scale-95"
+        className="fixed bottom-20 right-3 z-50 h-10 w-10 rounded-full bg-primary text-primary-foreground font-bold flex items-center justify-center transition-all active:scale-95"
         style={{ 
-          boxShadow: "0 0 25px hsl(var(--primary) / 0.5), 0 0 50px hsl(var(--primary) / 0.25)",
-          animation: "pulse 3s ease-in-out infinite",
+          boxShadow: "0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.25)",
           marginBottom: "env(safe-area-inset-bottom, 0)",
         }}
+        aria-label="GM Menu"
       >
-        <Zap className="w-4 h-4" />
-        <span className="text-xs font-mono uppercase tracking-wider">Menu</span>
+        <Zap className="w-5 h-5" />
       </button>
 
       {/* Bottom Sheet */}
