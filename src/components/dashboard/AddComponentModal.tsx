@@ -131,9 +131,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     // Determine component size based on type
     let width = 350;
     let height = 300;
-    if (selectedType === "counter" || selectedType === "dice_roller") {
+    if (selectedType === "counter") {
       width = 200;
       height = 200;
+    } else if (selectedType === "dice_roller") {
+      width = 220;
+      height = 320;
     } else if (selectedType === "map") {
       width = 450;
       height = 400;
