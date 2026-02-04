@@ -396,7 +396,7 @@ export function BillingSettings() {
 
         <div className="space-y-4">
           <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 85%)" }}>
-            One-time contributors won't unlock supporter features, but you will get a neat supporter badge to add flair to your campaign dashboard. Plus, all donations include a direct message you can use to offer your expertise, suggest new features, voice your annoyances, confess your darkest secrets, or talk smack about your partner.
+            Want to play a role in the Campaign Console development? All contributions are sent with a direct message where you can offer your expertise, suggest features, voice annoyances, confess your sins, or just talk some smack about someone you know. You'll also get an exclusive supporter badge to add some flair to your campaign console dashboard.
           </p>
 
           {/* Preset Buttons */}
