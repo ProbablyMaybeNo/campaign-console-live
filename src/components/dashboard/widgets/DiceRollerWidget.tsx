@@ -1,9 +1,14 @@
 import { useState, useEffect } from "react";
-import { Dices, History, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Dices, History, Trash2 } from "lucide-react";
 import { DashboardComponent, useUpdateComponent } from "@/hooks/useDashboardComponents";
 import { useRecordRoll } from "@/hooks/useRollHistory";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -236,106 +241,112 @@ export function DiceRollerWidget({ component, campaignId, isGM }: DiceRollerWidg
           />
         </button>
 
-        {/* Toggle History Button */}
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors mt-1"
-        >
-          <History className="w-3 h-3" />
-          <span>History</span>
-          {showHistory ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        </button>
-      </div>
-
-      {/* Slide-out Roll History Panel - slides down below the roller */}
-      <div 
-        className={`border-t transition-all duration-300 overflow-hidden ${showHistory ? 'flex-1 min-h-0' : 'h-0'}`}
-        style={{ borderColor: "hsl(142, 76%, 35%)" }}
-      >
-        {showHistory && (
-          <div className="flex flex-col h-full">
-            {/* Header with clear all */}
-            <div 
-              className="flex items-center justify-between px-2 py-1.5 border-b shrink-0"
-              style={{ borderColor: "hsl(142, 76%, 35%)" }}
+        {/* History Popover Dropdown */}
+        <Popover open={showHistory} onOpenChange={setShowHistory}>
+          <PopoverTrigger asChild>
+            <button
+              className="flex items-center gap-1 text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors mt-1"
             >
-              <span className="text-[10px] font-mono uppercase tracking-wider text-primary text-glow-primary">
-                Roll Log
-              </span>
-              {isGM && rollHistory.length > 0 && (
-                <button
-                  onClick={handleClearAll}
-                  className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
-                  title="Clear all"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </button>
+              <History className="w-3 h-3" />
+              <span>History</span>
+              {rollHistory.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-[9px] bg-primary/20 text-primary rounded-full">
+                  {rollHistory.length}
+                </span>
               )}
-            </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-72 p-0 bg-background border-primary/40"
+            style={{ boxShadow: "0 0 20px hsl(142, 76%, 55%, 0.15)" }}
+            align="center"
+            side="bottom"
+            sideOffset={8}
+          >
+            <div className="flex flex-col max-h-64">
+              {/* Header with clear all */}
+              <div 
+                className="flex items-center justify-between px-3 py-2 border-b shrink-0"
+                style={{ borderColor: "hsl(142, 76%, 35%)" }}
+              >
+                <span className="text-[10px] font-mono uppercase tracking-wider text-primary text-glow-primary">
+                  Roll Log
+                </span>
+                {isGM && rollHistory.length > 0 && (
+                  <button
+                    onClick={handleClearAll}
+                    className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                    title="Clear all"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
 
-            {/* Roll History Table */}
-            <ScrollArea className="flex-1" data-scrollable="true">
-              {rollHistory.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
-                  <Dices className="w-6 h-6 mb-1 opacity-50" />
-                  <p className="text-[10px] font-mono">No rolls yet</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-b-primary/30 hover:bg-transparent">
-                      <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground">Player</TableHead>
-                      <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground">Dice</TableHead>
-                      <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground text-right">Roll</TableHead>
-                      {isGM && <TableHead className="h-6 w-6 px-1"></TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rollHistory.map((roll) => (
-                      <TableRow 
-                        key={roll.id} 
-                        className="group border-b-primary/10 hover:bg-primary/5"
-                      >
-                        <TableCell 
-                          className="py-1 px-2 text-[10px] font-medium truncate max-w-[80px]"
-                          style={{
-                            color: "hsl(195, 100%, 65%)",
-                            textShadow: "0 0 4px hsl(195, 100%, 50%, 0.4)",
-                          }}
-                          title={roll.player_name}
-                        >
-                          {roll.player_name}
-                        </TableCell>
-                        <TableCell className="py-1 px-2 text-[10px] text-muted-foreground font-mono">
-                          {roll.dice_config}
-                        </TableCell>
-                        <TableCell 
-                          className="py-1 px-2 text-[10px] font-mono font-bold text-right"
-                          style={{ 
-                            color: "hsl(45, 100%, 60%)",
-                            textShadow: "0 0 4px hsl(45, 100%, 50%, 0.4)",
-                          }}
-                        >
-                          {roll.total}
-                        </TableCell>
-                        {isGM && (
-                          <TableCell className="py-1 px-1 w-6">
-                            <button
-                              onClick={() => handleDeleteRoll(roll.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="w-2.5 h-2.5" />
-                            </button>
-                          </TableCell>
-                        )}
+              {/* Roll History Table */}
+              <ScrollArea className="flex-1 max-h-52" data-scrollable="true">
+                {rollHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
+                    <Dices className="w-6 h-6 mb-1 opacity-50" />
+                    <p className="text-[10px] font-mono">No rolls yet</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-b-primary/30 hover:bg-transparent">
+                        <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground">Player</TableHead>
+                        <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground">Dice</TableHead>
+                        <TableHead className="h-6 px-2 text-[9px] font-mono uppercase text-muted-foreground text-right">Roll</TableHead>
+                        {isGM && <TableHead className="h-6 w-6 px-1"></TableHead>}
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </ScrollArea>
-          </div>
-        )}
+                    </TableHeader>
+                    <TableBody>
+                      {rollHistory.map((roll) => (
+                        <TableRow 
+                          key={roll.id} 
+                          className="group border-b-primary/10 hover:bg-primary/5"
+                        >
+                          <TableCell 
+                            className="py-1 px-2 text-[10px] font-medium truncate max-w-[80px]"
+                            style={{
+                              color: "hsl(195, 100%, 65%)",
+                              textShadow: "0 0 4px hsl(195, 100%, 50%, 0.4)",
+                            }}
+                            title={roll.player_name}
+                          >
+                            {roll.player_name}
+                          </TableCell>
+                          <TableCell className="py-1 px-2 text-[10px] text-muted-foreground font-mono">
+                            {roll.dice_config}
+                          </TableCell>
+                          <TableCell 
+                            className="py-1 px-2 text-[10px] font-mono font-bold text-right"
+                            style={{ 
+                              color: "hsl(45, 100%, 60%)",
+                              textShadow: "0 0 4px hsl(45, 100%, 50%, 0.4)",
+                            }}
+                          >
+                            {roll.total}
+                          </TableCell>
+                          {isGM && (
+                            <TableCell className="py-1 px-1 w-6">
+                              <button
+                                onClick={() => handleDeleteRoll(roll.id)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-destructive"
+                              >
+                                <Trash2 className="w-2.5 h-2.5" />
+                              </button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </ScrollArea>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );
