@@ -204,8 +204,7 @@ export function BillingSettings() {
       >
         {/* Mission Statement */}
         <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 95%)" }}>
-          Support Campaign Console to help its sole developer keep the app alive,
-          ship new features faster, and continue offering the major tools free for everyone.
+          Campaign Console is a one-person passion project that grew out of my personal need for a better way to host and manage tabletop campaigns. Your support helps keep Campaign Console alive and lets me spend more time developing new features and upgrades. Below is a list of some core and supporter features I'm working on right now.
         </p>
 
         {/* Section Header - Pipeline Features */}
@@ -260,6 +259,11 @@ export function BillingSettings() {
             ...AND MORE // new components, integrations, upgrades, QoL improvements
           </p>
         </div>
+
+        {/* Supporter Benefits Intro */}
+        <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 95%)" }}>
+          In return for your support, you'll receive extra perks like customization options, quality-of-life upgrades, and early access to future features. The core tools will always stay available to everyone.
+        </p>
 
         {/* Subscribe Section */}
         {/* Section Header - Subscribe */}
@@ -380,9 +384,8 @@ export function BillingSettings() {
         </div>
 
         <div className="space-y-4">
-          <p className="text-sm" style={{ color: "hsl(0, 0%, 85%)" }}>
-            Keep the dream alive with a one-off contribution.<br />
-            Help shape the future of Campaign Console with a direct message to its creator.
+          <p className="text-sm leading-relaxed" style={{ color: "hsl(0, 0%, 85%)" }}>
+            One-time contributors won't unlock supporter features, but you will get a neat supporter badge to add flair to your campaign dashboard. Plus, all donations include a direct message you can use to offer your expertise, suggest new features, voice your annoyances, confess your darkest secrets, or talk smack about your partner.
           </p>
 
           {/* Preset Buttons */}
@@ -444,12 +447,12 @@ export function BillingSettings() {
             color: neonGreen 
           }}
         >
-          SUPPORT WITHOUT $$$
+          OTHER WAYS TO SHOW YOUR SUPPORT
         </div>
 
         <div className="space-y-3">
           <p className="text-sm" style={{ color: "hsl(0, 0%, 85%)" }}>
-            Join the community: suggest features, report bugs, share ideas.
+            Join the community: share suggestions, report bugs, discuss ideas, or organize campaigns.
           </p>
           <a
             href="https://discord.gg/quKEdF6yaf"
