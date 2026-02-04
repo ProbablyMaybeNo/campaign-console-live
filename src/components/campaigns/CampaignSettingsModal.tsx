@@ -13,6 +13,7 @@ import { useCampaign, useUpdateCampaign, DisplaySettings } from "@/hooks/useCamp
 import { useEntitlements } from "@/hooks/useEntitlements";
 import { LockedFeature } from "@/components/ui/LockedFeature";
 import { THEMES } from "@/lib/themes";
+import { PermissionsTab } from "@/components/settings/PermissionsTab";
 import { 
   Settings2, 
   Copy, 
@@ -22,6 +23,7 @@ import {
   Info,
   CalendarIcon,
   Lock,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, parse, isValid } from "date-fns";
@@ -180,7 +182,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
         </DialogHeader>
 
         <Tabs defaultValue="general" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
+          <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="general" className="text-xs">
               <Info className="w-3 h-3 mr-1.5" />
               General
@@ -188,6 +190,10 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
             <TabsTrigger value="appearance" className="text-xs">
               <Palette className="w-3 h-3 mr-1.5" />
               Appearance
+            </TabsTrigger>
+            <TabsTrigger value="permissions" className="text-xs">
+              <Users className="w-3 h-3 mr-1.5" />
+              Permissions
             </TabsTrigger>
             <TabsTrigger value="security" className="text-xs">
               <Shield className="w-3 h-3 mr-1.5" />
@@ -584,6 +590,11 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
               <p className="text-xs text-muted-foreground -mt-2">
                 {password ? "Password will be securely hashed when saved." : "If set, players will need to enter this password when joining."}
               </p>
+            </TabsContent>
+
+            {/* Permissions Tab */}
+            <TabsContent value="permissions" className="mt-0">
+              <PermissionsTab campaignId={campaignId} />
             </TabsContent>
           </div>
         </Tabs>
