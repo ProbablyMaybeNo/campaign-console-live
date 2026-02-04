@@ -39,7 +39,8 @@ import {
   UserCog,
   PanelLeftOpen,
   PanelLeftClose,
-  Command
+  Command,
+  Swords
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ const sidebarItems: {
 }[] = [
   { id: "home", label: "Home", icon: LayoutGrid },
   { id: "components", label: "Components", icon: Database, gmOnly: true },
+  { id: "battles", label: "Battles", icon: Swords, gmOnly: true },
   { id: "player-settings", label: "My Settings", icon: UserCog, playerOnly: true },
   { id: "players", label: "Players", icon: Users },
   { id: "rules", label: "Rules", icon: Scroll },

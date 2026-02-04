@@ -18,6 +18,7 @@ import { RollRecorderWidget } from "./widgets/RollRecorderWidget";
 import { AnnouncementsWidget } from "./widgets/AnnouncementsWidget";
 import { TextWidget } from "./widgets/TextWidget";
 import { StickerWidget } from "./widgets/StickerWidget";
+import { BattleTrackerWidget } from "./widgets/BattleTrackerWidget";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -56,6 +57,7 @@ const COMPONENT_ICONS: Record<string, string> = {
   "campaign-console": "⚔️",
   text: "📝",
   sticker: "⭐",
+  battle_tracker: "⚔️",
 };
 
 function DraggableComponentInner({
@@ -194,6 +196,8 @@ function DraggableComponentInner({
         return <TextWidget component={component} isGM={isGM} />;
       case "sticker":
         return <StickerWidget component={component} isGM={isGM} />;
+      case "battle_tracker":
+        return <BattleTrackerWidget campaignId={campaignId} isGM={isGM} />;
       default:
         return (
           <div className="text-center py-8">

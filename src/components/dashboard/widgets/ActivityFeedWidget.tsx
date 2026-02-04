@@ -51,7 +51,7 @@ import {
 
 interface ActivityEvent {
   id: string;
-  type: "player_join" | "message" | "warband" | "schedule" | "narrative";
+  type: "player_join" | "message" | "warband" | "schedule" | "narrative" | "battle";
   title: string;
   description: string;
   timestamp: string;
@@ -69,6 +69,7 @@ const eventIcons: Record<string, React.ElementType> = {
   warband: Swords,
   schedule: Calendar,
   narrative: BookOpen,
+  battle: Swords,
 };
 
 const eventColors: Record<string, string> = {
@@ -77,6 +78,7 @@ const eventColors: Record<string, string> = {
   warband: "text-[hsl(45,100%,60%)]",
   schedule: "text-[hsl(280,100%,70%)]",
   narrative: "text-[hsl(340,80%,60%)]",
+  battle: "text-[hsl(25,100%,60%)]",
 };
 
 export function ActivityFeedWidget({ campaignId, isGM }: ActivityFeedWidgetProps) {
@@ -188,6 +190,41 @@ export function ActivityFeedWidget({ campaignId, isGM }: ActivityFeedWidgetProps
         });
       }
 
+      // Fetch approved battle reports
+      const { data: battleReports } = await supabase
+        .from("battle_reports")
+        .select(`
+          id, 
+          outcome, 
+          player_side,
+          approved_at,
+          match_id,
+          battle_matches!inner(
+            campaign_id,
+            participants
+          )
+        `)
+        .not("approved_at", "is", null)
+        .order("approved_at", { ascending: false })
+        .limit(10);
+
+      if (battleReports) {
+        battleReports.forEach((report) => {
+          const match = report.battle_matches as unknown as { campaign_id: string; participants: Array<{ playerName?: string }> };
+          if (match?.campaign_id === campaignId) {
+            const participants = match.participants || [];
+            const playerNames = participants.map((p) => p.playerName || "Unknown").join(" vs ");
+            events.push({
+              id: `battle-${report.id}`,
+              type: "battle",
+              title: "Battle Completed",
+              description: `${playerNames} - ${report.outcome}`,
+              timestamp: report.approved_at!,
+            });
+          }
+        });
+      }
+
       // Sort all events by timestamp descending
       events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
@@ -252,12 +289,12 @@ export function ActivityFeedWidget({ campaignId, isGM }: ActivityFeedWidgetProps
             </TooltipTrigger>
             <TooltipContent side="bottom" className="max-w-[200px]">
               <p className="text-[10px]">
-                Tracks: Player Joins, Messages, Warband Updates, Schedule Events, and Narrative Entries
+                Tracks: Player Joins, Messages, Warband Updates, Schedule Events, Narrative Entries, and Battle Results
               </p>
             </TooltipContent>
           </Tooltip>
         </div>
-        <TerminalButton 
+        <TerminalButton
           variant="ghost" 
           size="sm" 
           onClick={handleRefresh}
