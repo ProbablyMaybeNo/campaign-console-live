@@ -101,7 +101,8 @@ export function NarrativeTableWidget({ campaignId }: NarrativeTableWidgetProps) 
                 e.stopPropagation();
                 setSelectedEvent(null);
               }}
-              className="p-1 hover:bg-accent rounded transition-colors ml-2 flex-shrink-0"
+              className="min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center hover:bg-accent rounded transition-colors ml-2 flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Close entry details"
             >
               <X className="w-4 h-4 text-muted-foreground" />
             </button>

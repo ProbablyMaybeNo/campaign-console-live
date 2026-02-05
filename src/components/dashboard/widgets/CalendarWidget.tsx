@@ -84,7 +84,8 @@ export function CalendarWidget({ campaignId }: CalendarWidgetProps) {
       <div className="flex items-center justify-between mb-2 px-1">
         <button
           onClick={() => navigateMonth("prev")}
-          className="p-1 hover:bg-primary/20 rounded transition-colors"
+          className="min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center hover:bg-primary/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Previous month"
         >
           <ChevronLeft className="w-4 h-4 text-primary" />
         </button>
@@ -93,7 +94,8 @@ export function CalendarWidget({ campaignId }: CalendarWidgetProps) {
         </span>
         <button
           onClick={() => navigateMonth("next")}
-          className="p-1 hover:bg-primary/20 rounded transition-colors"
+          className="min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center hover:bg-primary/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Next month"
         >
           <ChevronRight className="w-4 h-4 text-primary" />
         </button>
@@ -175,7 +177,8 @@ export function CalendarWidget({ campaignId }: CalendarWidgetProps) {
             </div>
             <button
               onClick={() => setSelectedEntry(null)}
-              className="p-1 hover:bg-primary/20 rounded"
+              className="min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center hover:bg-primary/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Close event details"
             >
               <X className="w-4 h-4 text-muted-foreground" />
             </button>

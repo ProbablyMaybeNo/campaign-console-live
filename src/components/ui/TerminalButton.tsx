@@ -23,7 +23,8 @@ const terminalButtonVariants = cva(
         default: "h-10 px-4 py-2",
         sm: "h-8 px-3 text-xs",
         lg: "h-12 px-6 text-base",
-        icon: "h-10 w-10",
+        icon: "min-w-[48px] min-h-[48px] w-12 h-12",
+        "icon-sm": "min-w-[32px] min-h-[32px] w-8 h-8 text-xs",
       },
     },
     defaultVariants: {
