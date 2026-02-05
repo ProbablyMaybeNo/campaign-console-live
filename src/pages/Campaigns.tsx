@@ -68,6 +68,14 @@ export default function Campaigns() {
     }
   };
 
+  // Handle keyboard navigation for campaign list
+  const handleKeyDown = (e: React.KeyboardEvent, campaignId: string) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      navigate(`/campaign/${campaignId}`);
+    }
+  };
+
   const handleCopyId = async (e: React.MouseEvent, campaignId: string) => {
     e.stopPropagation();
     try {
@@ -179,7 +187,11 @@ export default function Campaigns() {
                         key={campaign.id}
                         onClick={() => handleRowClick(campaign.id)}
                         onDoubleClick={() => navigate(`/campaign/${campaign.id}`)}
-                        className={`cursor-pointer transition-all duration-200 border-b border-primary/20 ${
+                        onKeyDown={(e) => handleKeyDown(e, campaign.id)}
+                        tabIndex={0}
+                        role="button"
+                        aria-selected={selectedCampaignId === campaign.id}
+                        className={`cursor-pointer transition-all duration-200 border-b border-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
                           selectedCampaignId === campaign.id 
                             ? "bg-primary/15 shadow-[inset_0_0_25px_hsl(var(--primary)/0.15)]" 
                             : "hover:bg-primary/5 hover:shadow-[inset_0_0_15px_hsl(var(--primary)/0.05)]"
@@ -212,10 +224,12 @@ export default function Campaigns() {
                               <TooltipTrigger asChild>
                                 <button
                                   onClick={(e) => handleCopyId(e, campaign.id)}
-                                  className="p-1 hover:bg-primary/20 rounded transition-colors"
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                  className="min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center hover:bg-primary/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                  aria-label="Copy campaign ID to clipboard"
                                 >
                                   {copiedId === campaign.id ? (
-                                    <Check className="w-3 h-3 text-green-400" />
+                                    <Check className="w-3 h-3 text-primary" />
                                   ) : (
                                     <Copy className="w-3 h-3 text-muted-foreground hover:text-primary" />
                                   )}

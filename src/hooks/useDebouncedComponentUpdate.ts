@@ -1,19 +1,23 @@
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardComponent, UpdateComponentInput } from "./useDashboardComponents";
+import type { SaveStatus } from "@/components/ui/SaveIndicator";
 
 const DEBOUNCE_MS = 400;
+const SAVED_DISPLAY_MS = 2000;
 
 /**
- * Hook that provides debounced component updates with optimistic UI.
+ * Hook that provides debounced component updates with optimistic UI and save status.
  * Updates are batched and sent to the database after a delay,
  * while the UI updates immediately.
  */
 export function useDebouncedComponentUpdate(campaignId: string) {
   const queryClient = useQueryClient();
   const pendingUpdates = useRef<Map<string, UpdateComponentInput>>(new Map());
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const flushUpdates = useCallback(async () => {
     const updates = Array.from(pendingUpdates.current.values());
@@ -21,22 +25,38 @@ export function useDebouncedComponentUpdate(campaignId: string) {
 
     if (updates.length === 0) return;
 
+    setSaveStatus("saving");
+
     // Execute all updates in parallel
-    const promises = updates.map(async (input) => {
-      const { id, ...changes } = input;
-      const { error } = await supabase
-        .from("dashboard_components")
-        .update(changes)
-        .eq("id", id);
+    const results = await Promise.all(
+      updates.map(async (input) => {
+        const { id, ...changes } = input;
+        const { error } = await supabase
+          .from("dashboard_components")
+          .update(changes)
+          .eq("id", id);
 
-      if (error) {
-        console.error("Failed to update component:", error);
-        // Rollback on error - invalidate to refetch from server
-        queryClient.invalidateQueries({ queryKey: ["dashboard-components", campaignId] });
+        return { id, error };
+      })
+    );
+
+    const hasError = results.some((r) => r.error);
+
+    if (hasError) {
+      console.error("Failed to update components:", results.filter((r) => r.error));
+      setSaveStatus("failed");
+      // Rollback on error - invalidate to refetch from server
+      queryClient.invalidateQueries({ queryKey: ["dashboard-components", campaignId] });
+    } else {
+      setSaveStatus("saved");
+      // Clear saved status after display duration
+      if (savedTimeoutRef.current) {
+        clearTimeout(savedTimeoutRef.current);
       }
-    });
-
-    await Promise.all(promises);
+      savedTimeoutRef.current = setTimeout(() => {
+        setSaveStatus("idle");
+      }, SAVED_DISPLAY_MS);
+    }
   }, [campaignId, queryClient]);
 
   const update = useCallback(
@@ -79,5 +99,11 @@ export function useDebouncedComponentUpdate(campaignId: string) {
     flushUpdates();
   }, [flushUpdates]);
 
-  return { update, flushNow };
+  // Retry failed saves
+  const retry = useCallback(() => {
+    setSaveStatus("idle");
+    flushUpdates();
+  }, [flushUpdates]);
+
+  return { update, flushNow, saveStatus, retry };
 }

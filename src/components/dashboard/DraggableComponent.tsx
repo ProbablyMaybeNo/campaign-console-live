@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, memo, useMemo, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { DashboardComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
 import { GripVertical, X, Maximize2 } from "lucide-react";
-import { TerminalButton } from "@/components/ui/TerminalButton";
+import { IconButton } from "@/components/ui/IconButton";
 import { TableWidget } from "./widgets/TableWidget";
 import { CounterWidget } from "./widgets/CounterWidget";
 import { DiceRollerWidget } from "./widgets/DiceRollerWidget";
@@ -281,12 +281,16 @@ function DraggableComponentInner({
                 <GripVertical className="w-4 h-4 text-[hsl(142,76%,50%)] opacity-60 hover:opacity-100" />
               </div>
               
-              {/* Resize handle - bottom right */}
+              {/* Resize handle - bottom right with 32x32 hit target */}
               <div
-                className="absolute bottom-1 right-1 w-5 h-5 cursor-se-resize group z-10"
+                className="absolute -bottom-1 -right-1 w-8 h-8 cursor-se-resize group z-10 flex items-center justify-center"
                 onMouseDown={handleResizeStart}
+                aria-label="Resize widget"
+                role="button"
+                tabIndex={0}
               >
-                <Maximize2 className="w-4 h-4 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] rotate-90" />
+                <div className="absolute inset-0 rounded-bl bg-transparent group-hover:bg-primary/10 transition-colors" />
+                <Maximize2 className="w-4 h-4 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] group-hover:drop-shadow-[0_0_4px_hsl(142,76%,50%)] rotate-90 relative z-10 transition-all" />
               </div>
             </>
           )}
@@ -333,18 +337,19 @@ function DraggableComponentInner({
             </span>
           </div>
           {isGM && (
-            <TerminalButton
-              variant="ghost"
-              size="sm"
+            <IconButton
+              variant="destructive"
+              size="default"
               onClick={(e) => {
                 e.stopPropagation();
                 handleDelete();
               }}
               onPointerDown={(e) => e.stopPropagation()}
-              className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+              aria-label={`Delete ${component.name} widget`}
+              className="flex-shrink-0 -mr-1"
             >
-              <X className="w-3 h-3" />
-            </TerminalButton>
+              <X className="w-4 h-4" />
+            </IconButton>
           )}
         </div>
 
@@ -353,13 +358,17 @@ function DraggableComponentInner({
           {componentContent}
         </div>
 
-        {/* Resize Handle (GM only) */}
+        {/* Resize Handle (GM only) - 32x32 hit target with visual feedback */}
         {isGM && (
           <div
-            className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize group"
+            className="absolute -bottom-1 -right-1 w-8 h-8 cursor-se-resize group flex items-center justify-center"
             onMouseDown={handleResizeStart}
+            aria-label="Resize widget"
+            role="button"
+            tabIndex={0}
           >
-            <Maximize2 className="w-3 h-3 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] absolute bottom-1 right-1 rotate-90" />
+            <div className="absolute inset-0 rounded-tl bg-transparent group-hover:bg-primary/10 transition-colors" />
+            <Maximize2 className="w-4 h-4 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] group-hover:drop-shadow-[0_0_4px_hsl(142,76%,50%)] rotate-90 relative z-10 transition-all" />
           </div>
         )}
       </div>

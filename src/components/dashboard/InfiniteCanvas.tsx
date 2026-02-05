@@ -49,7 +49,7 @@ export function InfiniteCanvas({
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
 
-  const { update: debouncedUpdate, flushNow } = useDebouncedComponentUpdate(campaignId);
+  const { update: debouncedUpdate, flushNow, saveStatus, retry: retrySave } = useDebouncedComponentUpdate(campaignId);
 
   // Calculate responsive canvas dimensions based on viewport
   const canvasDimensions = useMemo(
@@ -397,6 +397,8 @@ export function InfiniteCanvas({
         onRecenter={handleRecenter}
         snapToGrid={snapToGrid}
         onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+        saveStatus={saveStatus}
+        onRetry={retrySave}
       />
 
       {/* Zoom/Pan Container */}

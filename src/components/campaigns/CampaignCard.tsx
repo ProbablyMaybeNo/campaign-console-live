@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Campaign } from "@/hooks/useCampaigns";
 import { TerminalButton } from "@/components/ui/TerminalButton";
-import { Pencil, Trash2, Users, Target } from "lucide-react";
+import { Pencil, Trash2, Target } from "lucide-react";
 
 interface CampaignCardProps {
   campaign: Campaign;
@@ -64,28 +64,26 @@ export function CampaignCard({ campaign, isOwner, onEdit, onDelete }: CampaignCa
           
           {isOwner && (
             <>
-              <TerminalButton
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={(e) => {
                   e.preventDefault();
                   onEdit();
                 }}
-                className="h-8 w-8"
+                className="min-w-[48px] min-h-[48px] w-12 h-12 flex items-center justify-center hover:bg-primary/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Edit ${campaign.name} campaign`}
               >
-                <Pencil className="w-4 h-4" />
-              </TerminalButton>
-              <TerminalButton
-                variant="ghost"
-                size="icon"
+                <Pencil className="w-4 h-4 text-muted-foreground hover:text-primary" />
+              </button>
+              <button
                 onClick={(e) => {
                   e.preventDefault();
                   onDelete();
                 }}
-                className="h-8 w-8 hover:text-destructive hover:border-destructive"
+                className="min-w-[48px] min-h-[48px] w-12 h-12 flex items-center justify-center hover:bg-destructive/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={`Delete ${campaign.name} campaign`}
               >
-                <Trash2 className="w-4 h-4" />
-              </TerminalButton>
+                <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+              </button>
             </>
           )}
         </div>
