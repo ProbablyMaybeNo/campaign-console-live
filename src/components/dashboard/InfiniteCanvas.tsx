@@ -1,17 +1,21 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
-import { DndContext, DragEndEvent, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core";
 import { DraggableComponent } from "./DraggableComponent";
+import { WidgetDragPreview } from "./WidgetDragPreview";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasGrid } from "./CanvasGrid";
 import { DashboardComponent } from "@/hooks/useDashboardComponents";
 import { useDebouncedComponentUpdate } from "@/hooks/useDebouncedComponentUpdate";
-import { 
-  getCanvasDimensions,
-  getInitialTransform, 
-  getTransformForComponent,
-  clampTransform,
-} from "@/lib/canvasPlacement";
+import { getCanvasDimensions, getInitialTransform, getTransformForComponent, clampTransform } from "@/lib/canvasPlacement";
 
 interface InfiniteCanvasProps {
   components: DashboardComponent[];
@@ -41,10 +45,13 @@ export function InfiniteCanvas({
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
-  
+
   // Track canvas-wide interaction state for paint reduction
   const [isAnyDragging, setIsAnyDragging] = useState(false);
   const [isAnyResizing, setIsAnyResizing] = useState(false);
+
+  // DragOverlay state
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
@@ -138,14 +145,16 @@ export function InfiniteCanvas({
   }, [snapToGrid]);
 
   // Handle drag start - set interaction mode for paint reduction
-  const handleDragStart = useCallback((_event: DragStartEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     setIsAnyDragging(true);
+    setActiveDragId(event.active.id as string);
   }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       setIsAnyDragging(false);
-      
+      setActiveDragId(null);
+
       const { active, delta } = event;
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
@@ -164,6 +173,11 @@ export function InfiniteCanvas({
     },
     [components, isGM, scale, debouncedUpdate, flushNow, snapPosition]
   );
+
+  const handleDragCancel = useCallback(() => {
+    setIsAnyDragging(false);
+    setActiveDragId(null);
+  }, []);
 
   // Recenter on the anchor component (Campaign Console) or top of canvas
   const handleRecenter = useCallback(() => {
@@ -360,8 +374,13 @@ export function InfiniteCanvas({
     // Flush already happens in handleComponentResize
   }, []);
 
+  const activeDragComponent = useMemo(() => {
+    if (!activeDragId) return null;
+    return components.find((c) => c.id === activeDragId) ?? null;
+  }, [activeDragId, components]);
+
   return (
-    <div 
+    <div
       ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-background"
       onWheel={handleCanvasWheel}
@@ -422,7 +441,12 @@ export function InfiniteCanvas({
           <CanvasGrid />
 
           {/* DnD Context for draggable components */}
-          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
             {components.map((component) => (
               <DraggableComponent
                 key={component.id}
@@ -439,18 +463,25 @@ export function InfiniteCanvas({
                 onResizeEnd={handleResizeEnd}
                 isAnyDragging={isAnyDragging}
                 isAnyResizing={isAnyResizing}
+                useDragOverlay={true}
               />
             ))}
+
+            <DragOverlay dropAnimation={null}>
+              {activeDragComponent ? (
+                <WidgetDragPreview component={activeDragComponent} mode="overlay" scale={scale} />
+              ) : null}
+            </DragOverlay>
           </DndContext>
 
           {/* Empty state */}
           {components.length === 0 && (
-            <div 
+            <div
               className="absolute text-center pointer-events-none"
               style={{
                 left: `${canvasDimensions.width / 2}px`,
                 top: `${canvasDimensions.height / 2}px`,
-                transform: 'translate(-50%, -50%)',
+                transform: "translate(-50%, -50%)",
               }}
             >
               <div className="text-muted-foreground text-sm space-y-2">

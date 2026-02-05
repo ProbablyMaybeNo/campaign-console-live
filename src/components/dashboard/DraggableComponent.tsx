@@ -19,6 +19,8 @@ import { AnnouncementsWidget } from "./widgets/AnnouncementsWidget";
 import { TextWidget } from "./widgets/TextWidget";
 import { StickerWidget } from "./widgets/StickerWidget";
 import { BattleTrackerWidget } from "./widgets/BattleTrackerWidget";
+import { WidgetDragPreview } from "./WidgetDragPreview";
+import { getWidgetIcon } from "./widgetIcons";
 
 interface DraggableComponentProps {
   component: DashboardComponent;
@@ -36,34 +38,12 @@ interface DraggableComponentProps {
   isAnyDragging?: boolean;
   /** True when ANY component on the canvas is being resized (for paint reduction) */
   isAnyResizing?: boolean;
+  /** When true, the active widget uses DragOverlay and stays as a lightweight placeholder */
+  useDragOverlay?: boolean;
 }
 
 const MIN_WIDTH = 200;
 const MIN_HEIGHT = 150;
-
-// Component icon lookup - memoized outside component
-const COMPONENT_ICONS: Record<string, string> = {
-  table: "📊",
-  rules_table: "📊",
-  custom_table: "📊",
-  card: "🃏",
-  rules_card: "🃏",
-  custom_card: "🃏",
-  counter: "🔢",
-  image: "🖼️",
-  dice_roller: "🎲",
-  map: "🗺️",
-  player_list: "👥",
-  narrative_table: "📖",
-  calendar: "📅",
-  activity_feed: "⚡",
-  roll_recorder: "📜",
-  announcements: "📢",
-  "campaign-console": "⚔️",
-  text: "📝",
-  sticker: "⭐",
-  battle_tracker: "⚔️",
-};
 
 function DraggableComponentInner({
   component,
@@ -79,6 +59,7 @@ function DraggableComponentInner({
   onResizeEnd,
   isAnyDragging = false,
   isAnyResizing = false,
+  useDragOverlay = true,
 }: DraggableComponentProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [localSize, setLocalSize] = useState({ width: component.width, height: component.height });
@@ -93,6 +74,8 @@ function DraggableComponentInner({
     disabled: !isGM || isPanning || isResizing || isLocked,
   });
 
+  const isOverlayDragging = useDragOverlay && isDragging;
+
   // Sync local size with component props when they change (e.g., from server)
   useEffect(() => {
     if (!isResizing) {
@@ -105,104 +88,126 @@ function DraggableComponentInner({
   const isCanvasInteracting = isAnyDragging || isAnyResizing;
 
   // Use GPU-accelerated transforms with will-change hint
-  // Reduce expensive paint effects during any canvas interaction
-  const style = useMemo(() => ({
-    position: "absolute" as const,
-    left: component.position_x,
-    top: component.position_y,
-    width: localSize.width,
-    height: localSize.height,
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    zIndex: isDragging || isSelected ? 50 : 1,
-    willChange: isInteracting ? "transform" : "auto",
-  }), [component.position_x, component.position_y, localSize.width, localSize.height, transform, isDragging, isSelected, isInteracting]);
+  // When using DragOverlay, keep the real widget DOM STATIC while dragging.
+  const style = useMemo(
+    () => ({
+      position: "absolute" as const,
+      left: component.position_x,
+      top: component.position_y,
+      width: localSize.width,
+      height: localSize.height,
+      transform: transform && !isOverlayDragging ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+      zIndex: isOverlayDragging ? (isSelected ? 50 : 1) : isDragging || isSelected ? 50 : 1,
+      willChange: isInteracting && !isOverlayDragging ? "transform" : "auto",
+    }),
+    [
+      component.position_x,
+      component.position_y,
+      localSize.width,
+      localSize.height,
+      transform,
+      isOverlayDragging,
+      isDragging,
+      isSelected,
+      isInteracting,
+    ]
+  );
 
   // Compute box shadow - disable expensive glow during interactions
   const boxShadowStyle = useMemo(() => {
+    if (isOverlayDragging) {
+      return { boxShadow: "none" };
+    }
     if (isCanvasInteracting) {
       // Simplified shadow during interactions for reduced paint cost
-      return { boxShadow: '0 2px 8px hsl(0 0% 0% / 0.3)' };
+      return { boxShadow: "0 2px 8px hsl(0 0% 0% / 0.3)" };
     }
-    return { boxShadow: '0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)' };
-  }, [isCanvasInteracting]);
+    return { boxShadow: "0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)" };
+  }, [isCanvasInteracting, isOverlayDragging]);
 
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
-    if (!isGM || isLocked) return;
-    e.stopPropagation();
-    e.preventDefault();
-    setIsResizing(true);
-    onResizeStart?.(); // Notify parent for canvas-wide interaction tracking
-    
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startWidth = localSize.width;
-    const startHeight = localSize.height;
-    
-    resizeRef.current = { startX, startY, startWidth, startHeight };
+  const handleResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isGM || isLocked) return;
+      e.stopPropagation();
+      e.preventDefault();
+      setIsResizing(true);
+      onResizeStart?.(); // Notify parent for canvas-wide interaction tracking
 
-    // Track pending RAF to prevent duplicate frames
-    let rafId: number | null = null;
-    let pendingSize: { width: number; height: number } | null = null;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startWidth = localSize.width;
+      const startHeight = localSize.height;
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!resizeRef.current) return;
-      
-      // Scale-compensated delta calculation
-      const deltaX = (e.clientX - resizeRef.current.startX) / scale;
-      const deltaY = (e.clientY - resizeRef.current.startY) / scale;
-      
-      const newWidth = Math.max(MIN_WIDTH, resizeRef.current.startWidth + deltaX);
-      const newHeight = Math.max(MIN_HEIGHT, resizeRef.current.startHeight + deltaY);
-      
-      // Store pending size, only update in next animation frame
-      pendingSize = { width: newWidth, height: newHeight };
-      
-      if (rafId === null) {
-        rafId = requestAnimationFrame(() => {
-          if (pendingSize) {
-            setLocalSize(pendingSize);
-          }
-          rafId = null;
-        });
-      }
-      
-      // DO NOT call onResize here - only update local state for visuals
-    };
+      resizeRef.current = { startX, startY, startWidth, startHeight };
 
-    const handleMouseUp = () => {
-      // Cancel any pending RAF
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      
-      // Get final size from resizeRef (most accurate)
-      const finalSize = pendingSize || { width: startWidth, height: startHeight };
-      
-      // Commit final size ONCE to parent (triggers cache + DB update)
-      onResize(component.id, Math.round(finalSize.width), Math.round(finalSize.height));
-      
-      setIsResizing(false);
-      resizeRef.current = null;
-      onResizeEnd();
-      
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    };
+      // Track pending RAF to prevent duplicate frames
+      let rafId: number | null = null;
+      let pendingSize: { width: number; height: number } | null = null;
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-  }, [isGM, isLocked, localSize.width, localSize.height, component.id, scale, onResize, onResizeStart, onResizeEnd]);
+      const handleMouseMove = (e: MouseEvent) => {
+        if (!resizeRef.current) return;
+
+        // Scale-compensated delta calculation
+        const deltaX = (e.clientX - resizeRef.current.startX) / scale;
+        const deltaY = (e.clientY - resizeRef.current.startY) / scale;
+
+        const newWidth = Math.max(MIN_WIDTH, resizeRef.current.startWidth + deltaX);
+        const newHeight = Math.max(MIN_HEIGHT, resizeRef.current.startHeight + deltaY);
+
+        // Store pending size, only update in next animation frame
+        pendingSize = { width: newWidth, height: newHeight };
+
+        if (rafId === null) {
+          rafId = requestAnimationFrame(() => {
+            if (pendingSize) {
+              setLocalSize(pendingSize);
+            }
+            rafId = null;
+          });
+        }
+
+        // DO NOT call onResize here - only update local state for visuals
+      };
+
+      const handleMouseUp = () => {
+        // Cancel any pending RAF
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+
+        // Get final size from resizeRef (most accurate)
+        const finalSize = pendingSize || { width: startWidth, height: startHeight };
+
+        // Commit final size ONCE to parent (triggers cache + DB update)
+        onResize(component.id, Math.round(finalSize.width), Math.round(finalSize.height));
+
+        setIsResizing(false);
+        resizeRef.current = null;
+        onResizeEnd();
+
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+    },
+    [isGM, isLocked, localSize.width, localSize.height, component.id, scale, onResize, onResizeStart, onResizeEnd]
+  );
 
   const handleDelete = useCallback(() => {
     deleteComponent.mutate({ id: component.id, campaignId });
   }, [deleteComponent, component.id, campaignId]);
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect(e.shiftKey);
-  }, [onSelect]);
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      onSelect(e.shiftKey);
+    },
+    [onSelect]
+  );
 
-  const icon = COMPONENT_ICONS[component.component_type] || "📦";
+  const icon = getWidgetIcon(component.component_type);
   const isCampaignConsole = component.component_type === "campaign-console";
 
   // Memoize component content to prevent re-renders during drag
@@ -254,6 +259,14 @@ function DraggableComponentInner({
     }
   }, [component, isGM, campaignId]);
 
+  const chromeStyle = useMemo(
+    () => ({
+      ...boxShadowStyle,
+      contain: "layout paint size",
+    }),
+    [boxShadowStyle]
+  );
+
   // Campaign Console uses a minimal chrome layout (no title bar, just corner controls)
   if (isCampaignConsole) {
     return (
@@ -261,26 +274,28 @@ function DraggableComponentInner({
         ref={setNodeRef}
         style={style}
         className={`draggable-component ${
-          isDragging ? "opacity-90" : ""
-        } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""}`}
+          isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
+        } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${
+          isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""
+        }`}
         onClick={handleClick}
       >
-        <div 
+        <div
           className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden relative"
-          style={boxShadowStyle}
+          style={chromeStyle}
         >
           {/* Corner Controls for Campaign Console (GM only) */}
           {isGM && (
             <>
               {/* Move handle - top left */}
-              <div 
-                className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-card/80 hover:bg-card border border-[hsl(142,76%,50%)]/30"
+              <div
+                className="absolute top-2 left-2 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-card/80 hover:bg-card border border-primary/30 touch-none"
                 {...listeners}
                 {...attributes}
               >
-                <GripVertical className="w-4 h-4 text-[hsl(142,76%,50%)] opacity-60 hover:opacity-100" />
+                <GripVertical className="w-4 h-4 text-primary opacity-60 hover:opacity-100" />
               </div>
-              
+
               {/* Resize handle - bottom right with 32x32 hit target */}
               <div
                 className="absolute -bottom-1 -right-1 w-8 h-8 cursor-se-resize group z-10 flex items-center justify-center"
@@ -290,14 +305,22 @@ function DraggableComponentInner({
                 tabIndex={0}
               >
                 <div className="absolute inset-0 rounded-bl bg-transparent group-hover:bg-primary/10 transition-colors" />
-                <Maximize2 className="w-4 h-4 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] group-hover:drop-shadow-[0_0_4px_hsl(142,76%,50%)] rotate-90 relative z-10 transition-all" />
+                <Maximize2 className="w-4 h-4 text-primary/50 group-hover:text-primary group-hover:drop-shadow-[0_0_4px_hsl(var(--primary))] rotate-90 relative z-10 transition-all" />
               </div>
             </>
           )}
 
           {/* Component Content - full area */}
-          <div className="flex-1 overflow-auto text-xs text-muted-foreground">
-            {componentContent}
+          <div
+            className={`flex-1 text-xs text-muted-foreground ${
+              isOverlayDragging ? "overflow-hidden pointer-events-none" : "overflow-auto"
+            }`}
+          >
+            {isOverlayDragging ? (
+              <WidgetDragPreview component={component} mode="placeholder" className="h-full w-full" />
+            ) : (
+              componentContent
+            )}
           </div>
         </div>
       </div>
@@ -309,29 +332,31 @@ function DraggableComponentInner({
       ref={setNodeRef}
       style={style}
       className={`draggable-component ${
-        isDragging ? "opacity-90" : ""
-      } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""}`}
+        isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
+      } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${
+        isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""
+      }`}
       onClick={handleClick}
     >
-      <div 
+      <div
         className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden"
-        style={boxShadowStyle}
+        style={chromeStyle}
       >
         {/* Component Header - entire bar is draggable for GM */}
-        <div 
-          className={`flex items-center justify-between px-3 py-2 bg-[hsl(142,76%,50%)]/10 border-b border-[hsl(142,76%,50%)]/30 select-none ${
+        <div
+          className={`flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/30 select-none touch-none ${
             isGM ? "cursor-grab active:cursor-grabbing" : ""
           }`}
           {...(isGM ? { ...listeners, ...attributes } : {})}
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {isGM && (
-              <GripVertical className="w-4 h-4 text-[hsl(142,76%,50%)] flex-shrink-0 opacity-50" />
-            )}
-            <span className="text-sm flex-shrink-0">{icon}</span>
-            <span 
-              className="text-xs font-mono text-[hsl(142,76%,50%)] uppercase tracking-wider truncate"
-              style={{ textShadow: '0 0 8px hsl(142 76% 50% / 0.4)' }}
+            {isGM && <GripVertical className="w-4 h-4 text-primary flex-shrink-0 opacity-50" />}
+            <span className="text-sm flex-shrink-0" aria-hidden>
+              {icon}
+            </span>
+            <span
+              className="text-xs font-mono text-primary uppercase tracking-wider truncate"
+              style={{ textShadow: "0 0 8px hsl(var(--primary) / 0.4)" }}
             >
               {component.name}
             </span>
@@ -354,8 +379,16 @@ function DraggableComponentInner({
         </div>
 
         {/* Component Content */}
-        <div className="flex-1 p-3 overflow-auto text-xs text-muted-foreground">
-          {componentContent}
+        <div
+          className={`flex-1 p-3 text-xs text-muted-foreground ${
+            isOverlayDragging ? "overflow-hidden pointer-events-none" : "overflow-auto"
+          }`}
+        >
+          {isOverlayDragging ? (
+            <WidgetDragPreview component={component} mode="placeholder" className="h-full w-full" />
+          ) : (
+            componentContent
+          )}
         </div>
 
         {/* Resize Handle (GM only) - 32x32 hit target with visual feedback */}
@@ -368,7 +401,7 @@ function DraggableComponentInner({
             tabIndex={0}
           >
             <div className="absolute inset-0 rounded-tl bg-transparent group-hover:bg-primary/10 transition-colors" />
-            <Maximize2 className="w-4 h-4 text-[hsl(142,76%,50%)]/50 group-hover:text-[hsl(142,76%,50%)] group-hover:drop-shadow-[0_0_4px_hsl(142,76%,50%)] rotate-90 relative z-10 transition-all" />
+            <Maximize2 className="w-4 h-4 text-primary/50 group-hover:text-primary group-hover:drop-shadow-[0_0_4px_hsl(var(--primary))] rotate-90 relative z-10 transition-all" />
           </div>
         )}
       </div>
@@ -394,6 +427,7 @@ export const DraggableComponent = memo(DraggableComponentInner, (prev, next) => 
     prev.campaignId === next.campaignId &&
     prev.scale === next.scale &&
     prev.isAnyDragging === next.isAnyDragging &&
-    prev.isAnyResizing === next.isAnyResizing
+    prev.isAnyResizing === next.isAnyResizing &&
+    prev.useDragOverlay === next.useDragOverlay
   );
 });
