@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { 
   UserPlus, 
   MessageSquare, 
@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Activity,
   Settings,
-  X
 } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Switch } from "@/components/ui/switch";
@@ -499,51 +498,109 @@ export function ActivityFeedWidget({
         </div>
       </div>
 
-      <ScrollArea className="flex-1 mt-2" data-scrollable="true">
-        {activities.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p className="text-xs">
-              {enabledCount === 0 ? "All event types disabled" : "No activity yet"}
-            </p>
-          </div>
-        ) : (
-          <div className={`space-y-2 pr-2 ${localConfig.compactMode ? "space-y-1" : ""}`}>
-            {activities.map((event) => {
-              const Icon = eventIcons[event.type] || Activity;
-              const colorClass = eventColors[event.type] || "text-muted-foreground";
-              
-              return (
-                <div
-                  key={event.id}
-                  className={`flex items-start gap-2 rounded bg-muted/30 hover:bg-muted/50 transition-colors ${
-                    localConfig.compactMode ? "p-1.5" : "p-2"
-                  }`}
-                >
-                  <div className={`mt-0.5 ${colorClass}`}>
-                    <Icon className={localConfig.compactMode ? "w-3 h-3" : "w-4 h-4"} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className={`font-medium truncate ${localConfig.compactMode ? "text-[10px]" : "text-xs"}`}>
-                        {event.title}
-                      </span>
-                      <span className={`text-muted-foreground whitespace-nowrap ${localConfig.compactMode ? "text-[9px]" : "text-[10px]"}`}>
-                        {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
-                      </span>
-                    </div>
-                    {!localConfig.compactMode && (
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {event.description}
-                      </p>
-                    )}
-                  </div>
+      {/* Virtualized activity list for DOM weight reduction */}
+      <VirtualizedActivityList 
+        activities={activities}
+        compactMode={localConfig.compactMode}
+        enabledCount={enabledCount}
+      />
+    </div>
+  );
+}
+
+/**
+ * Virtualized activity list component
+ * Reduces DOM weight by only rendering visible items
+ */
+function VirtualizedActivityList({ 
+  activities, 
+  compactMode,
+  enabledCount 
+}: { 
+  activities: ActivityEvent[];
+  compactMode: boolean;
+  enabledCount: number;
+}) {
+  const parentRef = useRef<HTMLDivElement>(null);
+  
+  const rowVirtualizer = useVirtualizer({
+    count: activities.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: useCallback(() => compactMode ? 32 : 48, [compactMode]),
+    overscan: 5,
+  });
+
+  if (activities.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+        <div className="text-center py-8">
+          <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-xs">
+            {enabledCount === 0 ? "All event types disabled" : "No activity yet"}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      ref={parentRef} 
+      className="flex-1 overflow-auto mt-2 pr-1"
+      data-scrollable="true"
+    >
+      <div
+        style={{
+          height: `${rowVirtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative',
+        }}
+      >
+        {rowVirtualizer.getVirtualItems().map((virtualItem) => {
+          const event = activities[virtualItem.index];
+          const Icon = eventIcons[event.type] || Activity;
+          const colorClass = eventColors[event.type] || "text-muted-foreground";
+
+          return (
+            <div
+              key={virtualItem.key}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualItem.size}px`,
+                transform: `translateY(${virtualItem.start}px)`,
+              }}
+            >
+              <div
+                className={`flex items-start gap-2 rounded bg-muted/30 hover:bg-muted/50 transition-colors ${
+                  compactMode ? "p-1.5" : "p-2"
+                }`}
+              >
+                <div className={`mt-0.5 ${colorClass}`}>
+                  <Icon className={compactMode ? "w-3 h-3" : "w-4 h-4"} />
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </ScrollArea>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className={`font-medium truncate ${compactMode ? "text-[10px]" : "text-xs"}`}>
+                      {event.title}
+                    </span>
+                    <span className={`text-muted-foreground whitespace-nowrap ${compactMode ? "text-[9px]" : "text-[10px]"}`}>
+                      {formatDistanceToNow(new Date(event.timestamp), { addSuffix: true })}
+                    </span>
+                  </div>
+                  {!compactMode && (
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {event.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

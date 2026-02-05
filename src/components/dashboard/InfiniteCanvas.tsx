@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
-import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
+import { DndContext, DragEndEvent, DragStartEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
 import { DraggableComponent } from "./DraggableComponent";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasGrid } from "./CanvasGrid";
@@ -41,6 +41,10 @@ export function InfiniteCanvas({
   const [snapToGrid, setSnapToGrid] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
+  
+  // Track canvas-wide interaction state for paint reduction
+  const [isAnyDragging, setIsAnyDragging] = useState(false);
+  const [isAnyResizing, setIsAnyResizing] = useState(false);
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
@@ -133,8 +137,15 @@ export function InfiniteCanvas({
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   }, [snapToGrid]);
 
+  // Handle drag start - set interaction mode for paint reduction
+  const handleDragStart = useCallback((_event: DragStartEvent) => {
+    setIsAnyDragging(true);
+  }, []);
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      setIsAnyDragging(false);
+      
       const { active, delta } = event;
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
@@ -360,8 +371,13 @@ export function InfiniteCanvas({
     [debouncedUpdate, flushNow, snapToGrid]
   );
 
-  // onResizeEnd is now a no-op since handleComponentResize already flushes
+  // Handle resize start/end for canvas-wide interaction tracking
+  const handleResizeStart = useCallback(() => {
+    setIsAnyResizing(true);
+  }, []);
+
   const handleResizeEnd = useCallback(() => {
+    setIsAnyResizing(false);
     // Flush already happens in handleComponentResize
   }, []);
 
@@ -425,7 +441,7 @@ export function InfiniteCanvas({
           <CanvasGrid />
 
           {/* DnD Context for draggable components */}
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             {components.map((component) => (
               <DraggableComponent
                 key={component.id}
@@ -438,7 +454,10 @@ export function InfiniteCanvas({
                 campaignId={campaignId}
                 scale={scale}
                 onResize={handleComponentResize}
+                onResizeStart={handleResizeStart}
                 onResizeEnd={handleResizeEnd}
+                isAnyDragging={isAnyDragging}
+                isAnyResizing={isAnyResizing}
               />
             ))}
           </DndContext>

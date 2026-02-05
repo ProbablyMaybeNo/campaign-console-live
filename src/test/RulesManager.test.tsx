@@ -112,8 +112,8 @@ describe('RulesManager', () => {
       wrapper: createWrapper(),
     });
 
-    expect(screen.getByText('Rules Table')).toBeInTheDocument();
-    expect(screen.getByText('Rules Card')).toBeInTheDocument();
+    expect(screen.getByText('Smart Table')).toBeInTheDocument();
+    expect(screen.getByText('Smart Card')).toBeInTheDocument();
     expect(screen.getByText('Custom Table')).toBeInTheDocument();
     expect(screen.getByText('Custom Card')).toBeInTheDocument();
   });
