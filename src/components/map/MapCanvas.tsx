@@ -307,7 +307,7 @@ export function MapCanvas({
                     <div
                       key={marker.id}
                       className={`absolute transform -translate-x-1/2 -translate-y-1/2 transition-transform ${
-                        isGM && placementMode === 'select' ? 'cursor-grab active:cursor-grabbing hover:scale-110' : isGM ? 'cursor-pointer' : ''
+                        isGM && placementMode === 'select' ? 'cursor-grab active:cursor-grabbing hover:scale-110' : isGM ? 'cursor-pointer' : 'hover:scale-105'
                       } ${isGmOnly ? 'opacity-60' : ''} ${isDragging ? 'z-50 scale-110' : ''}`}
                       style={{
                         left: `${displayX}%`,
@@ -322,16 +322,32 @@ export function MapCanvas({
                       
                       {/* Drag indicator for GM */}
                       {isGM && placementMode === 'select' && isHovered && !isDragging && !isEditing && (
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-background/90 rounded px-1.5 py-0.5 text-[10px] flex items-center gap-1 whitespace-nowrap">
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-background/90 rounded px-1.5 py-0.5 text-[10px] flex items-center gap-1 whitespace-nowrap z-10 border border-border shadow-sm">
                           <Move className="w-2.5 h-2.5" /> Drag to move
                         </div>
                       )}
                       
-                      {/* Label tooltip - below the icon */}
-                      {(isHovered || isEditing) && marker.label && !isEditing && (
-                        <div className="absolute left-1/2 -translate-x-1/2 top-9 bg-background border border-border rounded px-2 py-1 text-xs whitespace-nowrap shadow-lg">
-                          {marker.label}
-                          {isGmOnly && <span className="ml-1 text-amber-400">(GM)</span>}
+                      {/* Legend name hover tooltip - shows for ALL users when hovering */}
+                      {isHovered && !isEditing && !isDragging && (
+                        <div className="absolute left-1/2 -translate-x-1/2 top-9 bg-background border border-primary/30 rounded px-2 py-1.5 text-xs whitespace-nowrap shadow-lg z-20 pointer-events-none">
+                          {/* Legend type name */}
+                          <div className="font-medium text-primary flex items-center gap-1.5">
+                            <MarkerIcon shape={legend.shape} color={legend.color} size={12} />
+                            {legend.name}
+                          </div>
+                          {/* Custom label if set */}
+                          {marker.label && (
+                            <div className="text-muted-foreground mt-0.5 border-t border-border pt-1">
+                              {marker.label}
+                            </div>
+                          )}
+                          {/* GM-only indicator */}
+                          {isGmOnly && (
+                            <div className="text-amber-400 text-[10px] mt-0.5 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                              GM Only
+                            </div>
+                          )}
                         </div>
                       )}
                       
