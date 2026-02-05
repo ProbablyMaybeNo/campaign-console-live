@@ -340,24 +340,30 @@ export function InfiniteCanvas({
     onComponentSelect(null);
   }, [onComponentSelect]);
 
-  // Handle resize with scale compensation
+  // Handle resize COMMIT - only called once on mouseup
+  // Updates cache + triggers debounced DB write, then flushes immediately
   const handleComponentResize = useCallback(
     (id: string, width: number, height: number) => {
       const snappedWidth = snapToGrid ? Math.round(width / GRID_SIZE) * GRID_SIZE : Math.round(width);
       const snappedHeight = snapToGrid ? Math.round(height / GRID_SIZE) * GRID_SIZE : Math.round(height);
       
+      // Single cache update + DB write at resize end
       debouncedUpdate({
         id,
         width: snappedWidth,
         height: snappedHeight,
       });
+      
+      // Flush immediately since this is resize end
+      flushNow();
     },
-    [debouncedUpdate, snapToGrid]
+    [debouncedUpdate, flushNow, snapToGrid]
   );
 
+  // onResizeEnd is now a no-op since handleComponentResize already flushes
   const handleResizeEnd = useCallback(() => {
-    flushNow();
-  }, [flushNow]);
+    // Flush already happens in handleComponentResize
+  }, []);
 
   return (
     <div 
