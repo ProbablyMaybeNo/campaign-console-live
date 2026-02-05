@@ -45,8 +45,8 @@ interface ComponentTypeConfig {
 }
 
 const COMPONENT_TYPES: ComponentTypeConfig[] = [
-  { type: "rules_table", label: "Rules Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true, supporterFeature: "smart_paste" },
-  { type: "rules_card", label: "Rules Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true, supporterFeature: "smart_paste" },
+  { type: "rules_table", label: "Smart Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
+  { type: "rules_card", label: "Smart Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
   { type: "custom_table", label: "Custom Table", icon: Table, description: "Blank table for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "custom_card", label: "Custom Card", icon: LayoutList, description: "Blank card for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "narrative_table", label: "Narrative", icon: LayoutList, description: "Display narrative events" },

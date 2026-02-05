@@ -28,7 +28,7 @@ const UNLOCKED_FEATURES = [
     icon: Wand2,
     title: "Smart Paste (AI)",
     description: "Convert pasted text into structured tables and cards using AI.",
-    howToAccess: "Use 'AI Convert' in the Add Component → Rules Table/Card wizard.",
+    howToAccess: "Use 'AI Convert' in the Add Component → Smart Table/Card wizard.",
   },
   {
     icon: Palette,
