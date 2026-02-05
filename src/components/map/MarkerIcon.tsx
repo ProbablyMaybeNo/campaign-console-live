@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import type { MarkerShape } from './types';
 
 interface MarkerIconProps {
@@ -7,38 +8,42 @@ interface MarkerIconProps {
   className?: string;
 }
 
-export function MarkerIcon({ shape, color, size = 24, className = '' }: MarkerIconProps) {
-  const halfSize = size / 2;
-  
-  const getPath = () => {
-    switch (shape) {
-      case 'circle':
-        return <circle cx={halfSize} cy={halfSize} r={halfSize - 2} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
-      case 'square':
-        return <rect x={2} y={2} width={size - 4} height={size - 4} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
-      case 'triangle':
-        return <polygon points={`${halfSize},2 ${size - 2},${size - 2} 2,${size - 2}`} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
-      case 'diamond':
-        return <polygon points={`${halfSize},2 ${size - 2},${halfSize} ${halfSize},${size - 2} 2,${halfSize}`} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
-      case 'star':
-        // 5-point star
-        const outerR = halfSize - 2;
-        const innerR = outerR * 0.4;
-        const points = [];
-        for (let i = 0; i < 10; i++) {
-          const r = i % 2 === 0 ? outerR : innerR;
-          const angle = (i * 36 - 90) * (Math.PI / 180);
-          points.push(`${halfSize + r * Math.cos(angle)},${halfSize + r * Math.sin(angle)}`);
-        }
-        return <polygon points={points.join(' ')} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
-      default:
-        return <circle cx={halfSize} cy={halfSize} r={halfSize - 2} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
-    }
-  };
+export const MarkerIcon = forwardRef<SVGSVGElement, MarkerIconProps>(
+  function MarkerIcon({ shape, color, size = 24, className = '' }, ref) {
+    const halfSize = size / 2;
+    
+    const getPath = () => {
+      switch (shape) {
+        case 'circle':
+          return <circle cx={halfSize} cy={halfSize} r={halfSize - 2} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
+        case 'square':
+          return <rect x={2} y={2} width={size - 4} height={size - 4} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
+        case 'triangle':
+          return <polygon points={`${halfSize},2 ${size - 2},${size - 2} 2,${size - 2}`} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
+        case 'diamond':
+          return <polygon points={`${halfSize},2 ${size - 2},${halfSize} ${halfSize},${size - 2} 2,${halfSize}`} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
+        case 'star':
+          // 5-point star
+          const outerR = halfSize - 2;
+          const innerR = outerR * 0.4;
+          const points = [];
+          for (let i = 0; i < 10; i++) {
+            const r = i % 2 === 0 ? outerR : innerR;
+            const angle = (i * 36 - 90) * (Math.PI / 180);
+            points.push(`${halfSize + r * Math.cos(angle)},${halfSize + r * Math.sin(angle)}`);
+          }
+          return <polygon points={points.join(' ')} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
+        default:
+          return <circle cx={halfSize} cy={halfSize} r={halfSize - 2} fill={color} stroke="hsl(var(--border))" strokeWidth="1" />;
+      }
+    };
 
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
-      {getPath()}
-    </svg>
-  );
-}
+    return (
+      <svg ref={ref} width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
+        {getPath()}
+      </svg>
+    );
+  }
+);
+
+MarkerIcon.displayName = "MarkerIcon";

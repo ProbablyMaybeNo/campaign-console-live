@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, forwardRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { ErrorState } from "@/components/ui/AsyncState";
 import { 
   UserPlus, 
   MessageSquare, 
@@ -151,8 +152,10 @@ export function ActivityFeedWidget({
     updateConfig({ enabledEvents: newEnabledEvents });
   };
 
-  const { data: activities = [], refetch, isLoading } = useQuery({
+  const { data: activities = [], refetch, isLoading, isError, error } = useQuery({
     queryKey: ["campaign-activity", campaignId, localConfig.enabledEvents],
+    retry: 2,
+    retryDelay: 1000,
     queryFn: async (): Promise<ActivityEvent[]> => {
       const events: ActivityEvent[] = [];
 
@@ -344,6 +347,18 @@ export function ActivityFeedWidget({
     setIsRefreshing(false);
   };
 
+  // Handle error state
+  if (isError) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-4">
+        <ErrorState
+          message={error instanceof Error ? error.message : "Failed to load activity feed"}
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
+
   const enabledCount = Object.values(localConfig.enabledEvents).filter(Boolean).length;
 
   if (isLoading) {
@@ -508,27 +523,27 @@ export function ActivityFeedWidget({
   );
 }
 
-/**
- * Virtualized activity list component
- * Reduces DOM weight by only rendering visible items
- */
-function VirtualizedActivityList({ 
-  activities, 
-  compactMode,
-  enabledCount 
-}: { 
+interface VirtualizedActivityListProps {
   activities: ActivityEvent[];
   compactMode: boolean;
   enabledCount: number;
-}) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  
-  const rowVirtualizer = useVirtualizer({
-    count: activities.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: useCallback(() => compactMode ? 32 : 48, [compactMode]),
-    overscan: 5,
-  });
+}
+
+/**
+ * Virtualized activity list component
+ * Reduces DOM weight by only rendering visible items
+ * Uses forwardRef to properly handle refs from parent components
+ */
+const VirtualizedActivityList = forwardRef<HTMLDivElement, VirtualizedActivityListProps>(
+  function VirtualizedActivityList({ activities, compactMode, enabledCount }, ref) {
+    const parentRef = useRef<HTMLDivElement>(null);
+    
+    const rowVirtualizer = useVirtualizer({
+      count: activities.length,
+      getScrollElement: () => parentRef.current,
+      estimateSize: useCallback(() => compactMode ? 32 : 48, [compactMode]),
+      overscan: 5,
+    });
 
   if (activities.length === 0) {
     return (
@@ -543,11 +558,21 @@ function VirtualizedActivityList({
     );
   }
 
-  return (
-    <div 
-      ref={parentRef} 
-      className="flex-1 overflow-auto mt-2 pr-1"
-      data-scrollable="true"
+    return (
+      <div 
+        ref={(node) => {
+          // Handle both refs - internal parentRef and forwarded ref
+          (parentRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+          if (typeof ref === 'function') {
+            ref(node);
+          } else if (ref) {
+            ref.current = node;
+          }
+        }}
+        className="flex-1 overflow-auto mt-2 pr-1"
+        data-scrollable="true"
+        role="list"
+        aria-label="Activity feed"
     >
       <div
         style={{
@@ -603,4 +628,6 @@ function VirtualizedActivityList({
       </div>
     </div>
   );
-}
+});
+
+VirtualizedActivityList.displayName = "VirtualizedActivityList";
