@@ -30,7 +30,12 @@ interface DraggableComponentProps {
   campaignId: string;
   scale: number;
   onResize: (id: string, width: number, height: number) => void;
+  onResizeStart?: () => void;
   onResizeEnd: () => void;
+  /** True when ANY component on the canvas is being dragged (for paint reduction) */
+  isAnyDragging?: boolean;
+  /** True when ANY component on the canvas is being resized (for paint reduction) */
+  isAnyResizing?: boolean;
 }
 
 const MIN_WIDTH = 200;
@@ -70,7 +75,10 @@ function DraggableComponentInner({
   campaignId,
   scale,
   onResize,
+  onResizeStart,
   onResizeEnd,
+  isAnyDragging = false,
+  isAnyResizing = false,
 }: DraggableComponentProps) {
   const [isResizing, setIsResizing] = useState(false);
   const [localSize, setLocalSize] = useState({ width: component.width, height: component.height });
@@ -92,7 +100,12 @@ function DraggableComponentInner({
     }
   }, [component.width, component.height, isResizing]);
 
+  // Determine if we're in "interaction mode" (any widget dragging/resizing on canvas)
+  const isInteracting = isDragging || isResizing;
+  const isCanvasInteracting = isAnyDragging || isAnyResizing;
+
   // Use GPU-accelerated transforms with will-change hint
+  // Reduce expensive paint effects during any canvas interaction
   const style = useMemo(() => ({
     position: "absolute" as const,
     left: component.position_x,
@@ -101,14 +114,24 @@ function DraggableComponentInner({
     height: localSize.height,
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     zIndex: isDragging || isSelected ? 50 : 1,
-    willChange: isDragging || isResizing ? "transform" : "auto",
-  }), [component.position_x, component.position_y, localSize.width, localSize.height, transform, isDragging, isSelected, isResizing]);
+    willChange: isInteracting ? "transform" : "auto",
+  }), [component.position_x, component.position_y, localSize.width, localSize.height, transform, isDragging, isSelected, isInteracting]);
+
+  // Compute box shadow - disable expensive glow during interactions
+  const boxShadowStyle = useMemo(() => {
+    if (isCanvasInteracting) {
+      // Simplified shadow during interactions for reduced paint cost
+      return { boxShadow: '0 2px 8px hsl(0 0% 0% / 0.3)' };
+    }
+    return { boxShadow: '0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)' };
+  }, [isCanvasInteracting]);
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     if (!isGM || isLocked) return;
     e.stopPropagation();
     e.preventDefault();
     setIsResizing(true);
+    onResizeStart?.(); // Notify parent for canvas-wide interaction tracking
     
     const startX = e.clientX;
     const startY = e.clientY;
@@ -168,7 +191,7 @@ function DraggableComponentInner({
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-  }, [isGM, isLocked, localSize.width, localSize.height, component.id, scale, onResize, onResizeEnd]);
+  }, [isGM, isLocked, localSize.width, localSize.height, component.id, scale, onResize, onResizeStart, onResizeEnd]);
 
   const handleDelete = useCallback(() => {
     deleteComponent.mutate({ id: component.id, campaignId });
@@ -238,13 +261,13 @@ function DraggableComponentInner({
         ref={setNodeRef}
         style={style}
         className={`draggable-component ${
-          isDragging ? "opacity-90 shadow-2xl" : ""
+          isDragging ? "opacity-90" : ""
         } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""}`}
         onClick={handleClick}
       >
         <div 
           className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden relative"
-          style={{ boxShadow: '0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
+          style={boxShadowStyle}
         >
           {/* Corner Controls for Campaign Console (GM only) */}
           {isGM && (
@@ -282,13 +305,13 @@ function DraggableComponentInner({
       ref={setNodeRef}
       style={style}
       className={`draggable-component ${
-        isDragging ? "opacity-90 shadow-2xl" : ""
+        isDragging ? "opacity-90" : ""
       } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""}`}
       onClick={handleClick}
     >
       <div 
         className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden"
-        style={{ boxShadow: '0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)' }}
+        style={boxShadowStyle}
       >
         {/* Component Header - entire bar is draggable for GM */}
         <div 
@@ -360,6 +383,8 @@ export const DraggableComponent = memo(DraggableComponentInner, (prev, next) => 
     prev.isSelected === next.isSelected &&
     prev.isMultiSelected === next.isMultiSelected &&
     prev.campaignId === next.campaignId &&
-    prev.scale === next.scale
+    prev.scale === next.scale &&
+    prev.isAnyDragging === next.isAnyDragging &&
+    prev.isAnyResizing === next.isAnyResizing
   );
 });
