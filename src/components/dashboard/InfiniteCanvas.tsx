@@ -261,7 +261,8 @@ export function InfiniteCanvas({
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
   
-  // Clamp position when panning stops to keep view within bounds
+  // Clamp position when panning stops to keep view within reasonable bounds
+  // Only clamp if significantly out of bounds to avoid jarring snap-back
   const handlePanningStop = useCallback(() => {
     setIsPanning(false);
     
@@ -272,7 +273,7 @@ export function InfiniteCanvas({
     const state = ref.instance?.transformState;
     if (!state) return;
     
-    const { positionX, positionY } = clampTransform(
+    const clamped = clampTransform(
       state.positionX,
       state.positionY,
       state.scale,
@@ -282,9 +283,13 @@ export function InfiniteCanvas({
       canvasDimensions.height
     );
     
-    // Only update if position changed
-    if (positionX !== state.positionX || positionY !== state.positionY) {
-      ref.setTransform(positionX, positionY, state.scale, 150, "easeOut");
+    // Only snap back if significantly out of bounds (more than 50px difference)
+    const threshold = 50;
+    const xDiff = Math.abs(clamped.positionX - state.positionX);
+    const yDiff = Math.abs(clamped.positionY - state.positionY);
+    
+    if (xDiff > threshold || yDiff > threshold) {
+      ref.setTransform(clamped.positionX, clamped.positionY, state.scale, 200, "easeOut");
     }
   }, [canvasDimensions.width, canvasDimensions.height]);
 
