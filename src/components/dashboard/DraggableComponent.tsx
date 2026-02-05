@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, memo, useMemo } from "react";
+import { useState, useRef, useCallback, memo, useMemo, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { DashboardComponent, useDeleteComponent } from "@/hooks/useDashboardComponents";
 import { GripVertical, X, Maximize2 } from "lucide-react";
@@ -86,7 +86,7 @@ function DraggableComponentInner({
   });
 
   // Sync local size with component props when they change (e.g., from server)
-  useMemo(() => {
+  useEffect(() => {
     if (!isResizing) {
       setLocalSize({ width: component.width, height: component.height });
     }
@@ -109,12 +109,17 @@ function DraggableComponentInner({
     e.stopPropagation();
     e.preventDefault();
     setIsResizing(true);
-    resizeRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      startWidth: localSize.width,
-      startHeight: localSize.height,
-    };
+    
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = localSize.width;
+    const startHeight = localSize.height;
+    
+    resizeRef.current = { startX, startY, startWidth, startHeight };
+
+    // Track pending RAF to prevent duplicate frames
+    let rafId: number | null = null;
+    let pendingSize: { width: number; height: number } | null = null;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizeRef.current) return;
@@ -126,26 +131,44 @@ function DraggableComponentInner({
       const newWidth = Math.max(MIN_WIDTH, resizeRef.current.startWidth + deltaX);
       const newHeight = Math.max(MIN_HEIGHT, resizeRef.current.startHeight + deltaY);
       
-      setLocalSize({
-        width: newWidth,
-        height: newHeight,
-      });
+      // Store pending size, only update in next animation frame
+      pendingSize = { width: newWidth, height: newHeight };
       
-      // Notify parent for optimistic updates
-      onResize(component.id, newWidth, newHeight);
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          if (pendingSize) {
+            setLocalSize(pendingSize);
+          }
+          rafId = null;
+        });
+      }
+      
+      // DO NOT call onResize here - only update local state for visuals
     };
 
     const handleMouseUp = () => {
+      // Cancel any pending RAF
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      
+      // Get final size from resizeRef (most accurate)
+      const finalSize = pendingSize || { width: startWidth, height: startHeight };
+      
+      // Commit final size ONCE to parent (triggers cache + DB update)
+      onResize(component.id, Math.round(finalSize.width), Math.round(finalSize.height));
+      
       setIsResizing(false);
       resizeRef.current = null;
       onResizeEnd();
+      
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
-  }, [isGM, isLocked, localSize, component.id, scale, onResize, onResizeEnd]);
+  }, [isGM, isLocked, localSize.width, localSize.height, component.id, scale, onResize, onResizeEnd]);
 
   const handleDelete = useCallback(() => {
     deleteComponent.mutate({ id: component.id, campaignId });
