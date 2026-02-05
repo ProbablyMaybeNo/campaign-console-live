@@ -148,7 +148,7 @@ export function RulesManager({ campaignId, isGM }: RulesManagerProps) {
           >
             <Plus className="w-3 h-3" />
             <Table className="w-3 h-3" />
-            Rules Table
+            Smart Table
           </TerminalButton>
           <TerminalButton
             size="sm"
@@ -157,7 +157,7 @@ export function RulesManager({ campaignId, isGM }: RulesManagerProps) {
           >
             <Plus className="w-3 h-3" />
             <LayoutList className="w-3 h-3" />
-            Rules Card
+            Smart Card
           </TerminalButton>
           <div className="h-4 w-px bg-border" />
           <TerminalButton

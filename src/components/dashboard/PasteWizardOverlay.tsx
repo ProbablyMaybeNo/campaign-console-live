@@ -264,7 +264,7 @@ export function PasteWizardOverlay({
         height,
       });
 
-      toast.success(`${componentType === 'table' ? 'Rules Table' : 'Rules Card'} added to dashboard!`);
+      toast.success(`${componentType === 'table' ? 'Smart Table' : 'Smart Card'} added to dashboard!`);
     } else {
       // Save to dashboard_components only
       const config = componentType === 'table' 

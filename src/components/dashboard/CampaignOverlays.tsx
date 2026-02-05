@@ -197,7 +197,7 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
 
     case "rules":
       return (
-        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle="Manage rules tables and cards" icon={config.icon} size="lg">
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle="Manage smart tables and cards" icon={config.icon} size="lg">
           <RulesManager campaignId={campaignId} isGM={isGM} />
         </OverlayPanel>
       );
