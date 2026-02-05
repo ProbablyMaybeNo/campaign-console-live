@@ -261,37 +261,11 @@ export function InfiniteCanvas({
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
   
-  // Clamp position when panning stops to keep view within reasonable bounds
-  // Only clamp if significantly out of bounds to avoid jarring snap-back
+  // No auto-snap on panning stop - let user pan freely
+  // The visible boundary border shows the canvas limits
   const handlePanningStop = useCallback(() => {
     setIsPanning(false);
-    
-    const ref = transformRef.current;
-    const container = containerRef.current;
-    if (!ref || !container) return;
-    
-    const state = ref.instance?.transformState;
-    if (!state) return;
-    
-    const clamped = clampTransform(
-      state.positionX,
-      state.positionY,
-      state.scale,
-      container.clientWidth,
-      container.clientHeight,
-      canvasDimensions.width,
-      canvasDimensions.height
-    );
-    
-    // Only snap back if significantly out of bounds (more than 50px difference)
-    const threshold = 50;
-    const xDiff = Math.abs(clamped.positionX - state.positionX);
-    const yDiff = Math.abs(clamped.positionY - state.positionY);
-    
-    if (xDiff > threshold || yDiff > threshold) {
-      ref.setTransform(clamped.positionX, clamped.positionY, state.scale, 200, "easeOut");
-    }
-  }, [canvasDimensions.width, canvasDimensions.height]);
+  }, []);
 
   // Auto-center when anchor component first appears or on campaign switch
   useEffect(() => {
