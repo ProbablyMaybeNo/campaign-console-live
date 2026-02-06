@@ -10,6 +10,7 @@ import {
   DragOverlay,
 } from "@dnd-kit/core";
 import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { AnimatePresence } from "framer-motion";
 import { DraggableComponent } from "./DraggableComponent";
 import { WidgetDragPreview } from "./WidgetDragPreview";
 import { CanvasControls } from "./CanvasControls";
@@ -494,9 +495,11 @@ export function InfiniteCanvas({
 
         {/* DragOverlay is OUTSIDE TransformWrapper - renders in viewport coordinates */}
         <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
-          {activeDragComponent ? (
-            <WidgetDragPreview component={activeDragComponent} mode="overlay" />
-          ) : null}
+          <AnimatePresence>
+            {activeDragComponent ? (
+              <WidgetDragPreview key={activeDragComponent.id} component={activeDragComponent} mode="overlay" />
+            ) : null}
+          </AnimatePresence>
         </DragOverlay>
       </DndContext>
     </div>

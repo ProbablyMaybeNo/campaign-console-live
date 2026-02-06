@@ -36,6 +36,7 @@ function WidgetDragPreviewInner({
       <motion.div
         initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.92 }}
         transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
         className={cn(
           "rounded border-2 border-primary/60 bg-card/95 text-card-foreground",
