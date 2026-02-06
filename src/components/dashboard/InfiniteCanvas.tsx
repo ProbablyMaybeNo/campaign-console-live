@@ -9,6 +9,7 @@ import {
   useSensors,
   DragOverlay,
 } from "@dnd-kit/core";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { DraggableComponent } from "./DraggableComponent";
 import { WidgetDragPreview } from "./WidgetDragPreview";
 import { CanvasControls } from "./CanvasControls";
@@ -399,54 +400,55 @@ export function InfiniteCanvas({
         onRetry={retrySave}
       />
 
-      {/* Zoom/Pan Container */}
-      <TransformWrapper
-        ref={transformRef}
-        initialScale={INITIAL_SCALE}
-        initialPositionX={0}
-        initialPositionY={0}
-        minScale={0.25}
-        maxScale={2}
-        limitToBounds={false}
-        onPanningStart={handlePanningStart}
-        onPanningStop={handlePanningStop}
-        onTransformed={handleTransform}
-        smooth={true}
-        panning={{
-          velocityDisabled: false,
-          excluded: ["draggable-component"],
-        }}
-        wheel={{
-          disabled: true,
-        }}
-        doubleClick={{
-          disabled: true,
-        }}
-        velocityAnimation={{
-          sensitivity: 1,
-          animationTime: 200,
-        }}
+      {/* DnD Context wraps everything - DragOverlay is OUTSIDE TransformWrapper */}
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
-        <TransformComponent
-          wrapperStyle={{
-            width: "100%",
-            height: "100%",
+        {/* Zoom/Pan Container */}
+        <TransformWrapper
+          ref={transformRef}
+          initialScale={INITIAL_SCALE}
+          initialPositionX={0}
+          initialPositionY={0}
+          minScale={0.25}
+          maxScale={2}
+          limitToBounds={false}
+          onPanningStart={handlePanningStart}
+          onPanningStop={handlePanningStop}
+          onTransformed={handleTransform}
+          smooth={true}
+          panning={{
+            velocityDisabled: false,
+            excluded: ["draggable-component"],
           }}
-          contentStyle={{
-            width: `${canvasDimensions.width}px`,
-            height: `${canvasDimensions.height}px`,
+          wheel={{
+            disabled: true,
+          }}
+          doubleClick={{
+            disabled: true,
+          }}
+          velocityAnimation={{
+            sensitivity: 1,
+            animationTime: 200,
           }}
         >
-          {/* Grid Background */}
-          <CanvasGrid />
-
-          {/* DnD Context for draggable components */}
-          <DndContext
-            sensors={sensors}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDragCancel={handleDragCancel}
+          <TransformComponent
+            wrapperStyle={{
+              width: "100%",
+              height: "100%",
+            }}
+            contentStyle={{
+              width: `${canvasDimensions.width}px`,
+              height: `${canvasDimensions.height}px`,
+            }}
           >
+            {/* Grid Background */}
+            <CanvasGrid />
+
+            {/* Draggable components inside the scaled canvas */}
             {components.map((component) => (
               <DraggableComponent
                 key={component.id}
@@ -467,35 +469,36 @@ export function InfiniteCanvas({
               />
             ))}
 
-            <DragOverlay dropAnimation={null}>
-              {activeDragComponent ? (
-                <WidgetDragPreview component={activeDragComponent} mode="overlay" scale={scale} />
-              ) : null}
-            </DragOverlay>
-          </DndContext>
-
-          {/* Empty state */}
-          {components.length === 0 && (
-            <div
-              className="absolute text-center pointer-events-none"
-              style={{
-                left: `${canvasDimensions.width / 2}px`,
-                top: `${canvasDimensions.height / 2}px`,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <div className="text-muted-foreground text-sm space-y-2">
-                <p className="text-lg font-mono text-primary/70">[ EMPTY DASHBOARD ]</p>
-                <p className="text-xs max-w-xs">
-                  {isGM
-                    ? "Click the + button to add components to your campaign dashboard"
-                    : "No dashboard components have been published for players yet. Check back later or contact your Games Master."}
-                </p>
+            {/* Empty state */}
+            {components.length === 0 && (
+              <div
+                className="absolute text-center pointer-events-none"
+                style={{
+                  left: `${canvasDimensions.width / 2}px`,
+                  top: `${canvasDimensions.height / 2}px`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <div className="text-muted-foreground text-sm space-y-2">
+                  <p className="text-lg font-mono text-primary/70">[ EMPTY DASHBOARD ]</p>
+                  <p className="text-xs max-w-xs">
+                    {isGM
+                      ? "Click the + button to add components to your campaign dashboard"
+                      : "No dashboard components have been published for players yet. Check back later or contact your Games Master."}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-        </TransformComponent>
-      </TransformWrapper>
+            )}
+          </TransformComponent>
+        </TransformWrapper>
+
+        {/* DragOverlay is OUTSIDE TransformWrapper - renders in viewport coordinates */}
+        <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
+          {activeDragComponent ? (
+            <WidgetDragPreview component={activeDragComponent} mode="overlay" />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }

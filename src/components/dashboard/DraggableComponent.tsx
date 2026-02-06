@@ -72,6 +72,7 @@ function DraggableComponentInner({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: component.id,
     disabled: !isGM || isPanning || isResizing || isLocked,
+    data: { component }, // Pass component data for the modifier
   });
 
   const isOverlayDragging = useDragOverlay && isDragging;

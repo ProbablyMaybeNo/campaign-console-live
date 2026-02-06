@@ -5,10 +5,8 @@ import { getWidgetIcon } from "./widgetIcons";
 
 interface WidgetDragPreviewProps {
   component: DashboardComponent;
-  /** Canvas scale; used to approximate on-screen size in the DragOverlay */
-  scale?: number;
   /**
-   * - overlay: rendered inside DragOverlay (portal) → must size itself
+   * - overlay: rendered inside DragOverlay (portal) → fixed size, cursor-anchored
    * - placeholder: rendered inside the original widget box → fills parent
    */
   mode: "overlay" | "placeholder";
@@ -17,33 +15,34 @@ interface WidgetDragPreviewProps {
 
 function WidgetDragPreviewInner({
   component,
-  scale = 1,
   mode,
   className,
 }: WidgetDragPreviewProps) {
   const icon = getWidgetIcon(component.component_type);
 
+  // Overlay uses fixed dimensions for consistency (not scaled)
+  // This ensures the preview always appears at a readable size
   const style =
     mode === "overlay"
       ? {
-          width: Math.max(160, Math.round(component.width * scale)),
-          height: Math.max(80, Math.round(component.height * scale)),
+          width: 200,
+          height: 80,
         }
       : undefined;
 
   return (
     <div
       className={cn(
-        "h-full w-full rounded border border-primary/40 bg-card text-card-foreground",
-        "shadow-none",
-        mode === "overlay" && "pointer-events-none",
+        "rounded border-2 border-primary/60 bg-card/95 text-card-foreground",
+        "backdrop-blur-sm",
+        mode === "overlay" && "pointer-events-none shadow-lg shadow-primary/20",
         className
       )}
       style={style}
     >
       <div className="h-full w-full grid place-items-center p-3">
         <div className="flex items-center gap-2 max-w-full">
-          <span className="text-base flex-shrink-0" aria-hidden>
+          <span className="text-lg flex-shrink-0" aria-hidden>
             {icon}
           </span>
           <div className="min-w-0">
@@ -51,7 +50,7 @@ function WidgetDragPreviewInner({
               {component.name}
             </div>
             <div className="text-[10px] text-muted-foreground truncate">
-              {mode === "overlay" ? "Dragging" : "Moving…"}
+              {mode === "overlay" ? "Drop to place" : "Moving…"}
             </div>
           </div>
         </div>
