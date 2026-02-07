@@ -29,7 +29,7 @@ interface InfiniteCanvasProps {
 }
 
 const ZOOM_STEP = 0.15;
-const GRID_SIZE = 20;
+const GRID_SIZE = 40; // Matches the visual grid in CanvasGrid
 const INITIAL_SCALE = 1.0;
 
 export function InfiniteCanvas({
@@ -44,7 +44,6 @@ export function InfiniteCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [scale, setScale] = useState(INITIAL_SCALE);
-  const [snapToGrid, setSnapToGrid] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
 
@@ -142,9 +141,8 @@ export function InfiniteCanvas({
   );
 
   const snapPosition = useCallback((value: number) => {
-    if (!snapToGrid) return Math.round(value);
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
-  }, [snapToGrid]);
+  }, []);
 
   // Handle drag start - set interaction mode for paint reduction
   const handleDragStart = useCallback((event: DragStartEvent) => {
@@ -356,8 +354,8 @@ export function InfiniteCanvas({
   // Updates cache + triggers debounced DB write, then flushes immediately
   const handleComponentResize = useCallback(
     (id: string, width: number, height: number) => {
-      const snappedWidth = snapToGrid ? Math.round(width / GRID_SIZE) * GRID_SIZE : Math.round(width);
-      const snappedHeight = snapToGrid ? Math.round(height / GRID_SIZE) * GRID_SIZE : Math.round(height);
+      const snappedWidth = Math.round(width / GRID_SIZE) * GRID_SIZE;
+      const snappedHeight = Math.round(height / GRID_SIZE) * GRID_SIZE;
       
       // Single cache update + DB write at resize end
       debouncedUpdate({
@@ -369,7 +367,7 @@ export function InfiniteCanvas({
       // Flush immediately since this is resize end
       flushNow();
     },
-    [debouncedUpdate, flushNow, snapToGrid]
+    [debouncedUpdate, flushNow]
   );
 
   // Handle resize start/end for canvas-wide interaction tracking
@@ -401,8 +399,6 @@ export function InfiniteCanvas({
         onZoomOut={handleZoomOut}
         onReset={handleReset}
         onRecenter={handleRecenter}
-        snapToGrid={snapToGrid}
-        onToggleSnap={() => setSnapToGrid(!snapToGrid)}
         saveStatus={saveStatus}
         onRetry={retrySave}
       />

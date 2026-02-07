@@ -1,4 +1,4 @@
-import { ZoomIn, ZoomOut, Maximize2, Crosshair, Grid3X3, HelpCircle } from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, Crosshair, HelpCircle } from "lucide-react";
 import { IconButton } from "@/components/ui/IconButton";
 import { SaveIndicator, SaveStatus } from "@/components/ui/SaveIndicator";
 import {
@@ -14,8 +14,6 @@ interface CanvasControlsProps {
   onZoomOut: () => void;
   onReset: () => void;
   onRecenter: () => void;
-  snapToGrid: boolean;
-  onToggleSnap: () => void;
   saveStatus?: SaveStatus;
   onRetry?: () => void;
 }
@@ -26,8 +24,6 @@ export function CanvasControls({
   onZoomOut, 
   onReset, 
   onRecenter,
-  snapToGrid,
-  onToggleSnap,
   saveStatus = "idle",
   onRetry,
 }: CanvasControlsProps) {
@@ -113,25 +109,6 @@ export function CanvasControls({
           </TooltipTrigger>
           <TooltipContent side="bottom">
             <p>Reset zoom (Ctrl + 0)</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <IconButton 
-              variant="ghost" 
-              size="md" 
-              onClick={onToggleSnap}
-              aria-label={`Snap to grid ${snapToGrid ? "(ON)" : "(OFF)"}`}
-              className={snapToGrid ? "bg-[hsl(142,76%,50%)]/20" : ""}
-            >
-              <Grid3X3 className={`w-4 h-4 ${snapToGrid ? "text-primary" : "text-foreground"}`} />
-            </IconButton>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>Snap to grid {snapToGrid ? "(ON)" : "(OFF)"}</p>
           </TooltipContent>
         </Tooltip>
 
