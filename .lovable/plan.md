@@ -1,720 +1,84 @@
-# Mobile Mode Implementation Plan
+
+# Full-Size Drag Preview Implementation
 
 ## Overview
+Replace the current compact drag preview (fixed 200x80px) with a full-size ghost outline that matches the actual widget dimensions. This will help users visualize exactly how much space the widget will occupy at the drop location.
 
-Implement a responsive mobile experience for Campaign Console that provides full functionality on tablets while offering a streamlined, view-focused experience on phones. The infinite canvas paradigm doesn't translate well to small screens, so phones will use a simplified scrollable card layout with a management FAB for GMs.
+## Approach
+Instead of rendering the full widget content (which would cause performance issues), we'll render a **ghost outline** that:
+- Matches the exact width and height of the widget being dragged
+- Shows just the header bar (icon + name) for context
+- Uses a semi-transparent appearance with a dashed border
+- Scales with the current canvas zoom level for accurate placement visualization
+
+This gives users spatial awareness without the rendering cost of the full widget internals.
+
+## Visual Design
+```text
+┌─────────────────────────────────────┐
+│ ⊞ Widget Name                       │  ← Colored header bar
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│                                     │
+│         (semi-transparent           │
+│          background)                │
+│                                     │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+- Dashed neon green border (2px)
+- Header bar with icon and widget name
+- Body area with 40% opacity background
+- Subtle backdrop blur for polish
 
 ---
 
-## Device Breakpoints
+## Technical Details
 
-| Device | Width | Experience |
-|--------|-------|------------|
-| Phone | < 768px | Mobile Mode (scrollable cards) |
-| Tablet | 768px - 1024px | Full dashboard (InfiniteCanvas) |
-| Desktop | > 1024px | Full dashboard (InfiniteCanvas) |
+### 1. Update WidgetDragPreview.tsx
+**Changes:**
+- Accept `scale` prop to adjust preview size based on zoom level
+- Use `component.width` and `component.height` for overlay mode dimensions
+- Render a simplified "ghost" layout:
+  - Header bar with icon and widget name (similar to real widget)
+  - Empty body with dashed border and translucent fill
+- Apply Framer Motion animations for smooth entrance/exit
 
----
+### 2. Update dragOverlayModifiers.ts
+**Changes:**
+- Modify `snapDragPreviewToCursor` to work with variable-size previews
+- Calculate offset based on the grab point within the original widget
+- Preserve the relative grab position so the preview doesn't "jump"
+- Account for the scaled dimensions when determining cursor anchor point
 
-## Current State
+### 3. Update InfiniteCanvas.tsx
+**Changes:**
+- Pass `scale` to `WidgetDragPreview` via the DragOverlay
+- Pass the component's actual dimensions for the preview to use
+- Ensure the modifier receives accurate size information for positioning
 
-**Existing responsive logic:**
-- `src/hooks/use-mobile.tsx` - Simple `useIsMobile()` hook with 768px breakpoint
-- Desktop sidebar hidden on `md:` breakpoint (`hidden md:flex`)
-- No dedicated mobile dashboard component exists
-
-**Files to modify:**
-- `src/pages/CampaignDashboard.tsx` - Add mobile/tablet routing
-- `src/hooks/use-mobile.tsx` - Extend with tablet detection
-
-**New files to create:**
-- `src/components/dashboard/MobileDashboard.tsx` - Phone-only scrollable view
-- `src/components/dashboard/MobileGMMenu.tsx` - GM quick-action bottom sheet
-- `src/components/dashboard/MobileWidgetCard.tsx` - Compact widget renderer
-
----
-
-## Phase 1: Enhanced Device Detection
-
-**File: `src/hooks/use-mobile.tsx`**
-
-Extend the hook to differentiate phone vs tablet:
-
-```typescript
-const PHONE_BREAKPOINT = 768;
-const TABLET_BREAKPOINT = 1024;
-
-export function useDeviceType() {
-  const [deviceType, setDeviceType] = useState<'phone' | 'tablet' | 'desktop'>('desktop');
-
-  useEffect(() => {
-    const updateDeviceType = () => {
-      const width = window.innerWidth;
-      if (width < PHONE_BREAKPOINT) {
-        setDeviceType('phone');
-      } else if (width < TABLET_BREAKPOINT) {
-        setDeviceType('tablet');
-      } else {
-        setDeviceType('desktop');
-      }
-    };
-    
-    updateDeviceType();
-    window.addEventListener('resize', updateDeviceType);
-    return () => window.removeEventListener('resize', updateDeviceType);
-  }, []);
-
-  return {
-    deviceType,
-    isPhone: deviceType === 'phone',
-    isTablet: deviceType === 'tablet',
-    isDesktop: deviceType === 'desktop',
-    isMobile: deviceType === 'phone', // Keep backward compatibility
-  };
-}
-
-// Keep original hook for backward compatibility
-export function useIsMobile() {
-  const { isPhone } = useDeviceType();
-  return isPhone;
-}
-```
+### 4. Performance Optimizations
+- Use `contain: layout paint` on the preview container
+- Keep the preview DOM minimal (header + empty body only)
+- No heavy child components (maps, tables, etc.) in the preview
+- Use CSS `will-change: transform` during drag for GPU acceleration
 
 ---
 
-## Phase 2: Mobile Dashboard Component (Phone Only)
+## Files to Modify
 
-**New File: `src/components/dashboard/MobileDashboard.tsx`**
-
-A vertically-scrollable card layout replacing the infinite canvas on phones:
-
-### Layout Structure
-
-```
-┌──────────────────────────────────────┐
-│ ← CAMPAIGNS    [Player/GM]  [Logout] │  ← Simplified header
-├──────────────────────────────────────┤
-│                                      │
-│  ┌────────────────────────────────┐  │
-│  │     CAMPAIGN CONSOLE HERO      │  │  ← Always first (anchor)
-│  │   Campaign name, description,  │  │
-│  │   round info, join code, etc.  │  │
-│  └────────────────────────────────┘  │
-│                                      │
-│  ──── WIDGETS ────────────────────   │  ← Section divider
-│                                      │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ │
-│  │ Widget  │ │ Widget  │ │ Widget  │ │  ← Horizontal scroll carousel
-│  │   1     │ │   2     │ │   3     │ │
-│  └─────────┘ └─────────┘ └─────────┘ │
-│         ◀ swipe for more ▶          │
-│                                      │
-│  ──── QUICK ACCESS ───────────────   │
-│                                      │
-│  [Rules] [Map] [Schedule] [Messages] │  ← Quick nav buttons
-│                                      │
-└──────────────────────────────────────┘
-         ┌─────────────────┐
-         │   ⚡ ACTIONS    │             ← GM FAB (bottom-right)
-         └─────────────────┘
-```
-
-### Component Hierarchy
-
-```
-MobileDashboard
-├── MobileHeader (simplified header)
-├── ScrollArea (main content)
-│   ├── CampaignConsoleCard (hero section, always visible)
-│   ├── WidgetCarousel (horizontal scrolling widgets)
-│   │   └── MobileWidgetCard[] (compact widget renderers)
-│   └── QuickAccessGrid (overlay quick links)
-└── MobileGMMenu (FAB + bottom sheet for GMs)
-```
-
-### Key Features
-
-1. **Campaign Console Hero** - Full-width card at top showing:
-   - Campaign name/description
-   - Current round & status
-   - Join code (with copy button)
-   - GM/Player count
-
-2. **Widget Carousel** - Horizontally scrollable row:
-   - Uses `embla-carousel-react` (already installed)
-   - Each widget rendered as a compact card
-   - Tap to expand into a modal/sheet view
-   - Shows widget name + mini preview
-
-3. **Quick Access Grid** - 2x2 or 4-column grid of overlay buttons:
-   - Rules, Map, Schedule, Messages
-   - Opens the same `CampaignOverlays` as desktop
-
-4. **Read-Only for Players** - No editing, just consumption
-
----
-
-## Phase 3: Mobile GM Menu (Phone Only)
-
-**New File: `src/components/dashboard/MobileGMMenu.tsx`**
-
-A floating action button that opens a bottom sheet with GM management actions:
-
-### FAB Appearance
-
-```
-┌───────────────────┐
-│  ⚡ Quick Actions │  ← Rounded pill button
-└───────────────────┘
-```
-
-- Fixed position: bottom-right (bottom-20 right-4)
-- Neon green glow matching app aesthetic
-- Pulse animation to draw attention
-
-### Bottom Sheet Contents
-
-When tapped, slides up a sheet with:
-
-```
-┌──────────────────────────────────────┐
-│ ━━━ drag handle ━━━                  │
-├──────────────────────────────────────┤
-│ CAMPAIGN MANAGEMENT                  │
-│                                      │
-│ ┌────────┐ ┌────────┐ ┌────────┐     │
-│ │ Add    │ │ Edit   │ │ Players│     │
-│ │ Widget │ │ Widgets│ │        │     │
-│ └────────┘ └────────┘ └────────┘     │
-│                                      │
-│ ┌────────┐ ┌────────┐ ┌────────┐     │
-│ │Settings│ │ Export │ │ Theme  │     │
-│ │        │ │        │ │        │     │
-│ └────────┘ └────────┘ └────────┘     │
-│                                      │
-│ ─────────────────────────────────    │
-│ CONTENT                              │
-│                                      │
-│ ┌────────┐ ┌────────┐ ┌────────┐     │
-│ │ Add    │ │ Send   │ │ Add    │     │
-│ │ Rule   │ │ Message│ │ Event  │     │
-│ └────────┘ └────────┘ └────────┘     │
-│                                      │
-│         [Copy Join Code]             │
-└──────────────────────────────────────┘
-```
-
-### Actions Available
-
-**Campaign Management:**
-- Add Widget → Opens `AddComponentModal`
-- Edit Widgets → Opens a list view to select/edit widgets
-- Players → Opens Players overlay
-- Settings → Opens Campaign Settings overlay
-- Export → Opens Export modal
-- Theme → Opens theme picker (for supporters)
-
-**Content:**
-- Add Rule → Opens Rules overlay with focus on add
-- Send Message → Opens Messages overlay
-- Add Event → Opens Narrative overlay with focus on add
-
-**Quick Actions:**
-- Copy Join Code → Copies to clipboard with toast
-
----
-
-## Phase 4: Mobile Widget Card
-
-**New File: `src/components/dashboard/MobileWidgetCard.tsx`**
-
-Compact card representation of each widget for the carousel:
-
-```typescript
-interface MobileWidgetCardProps {
-  component: DashboardComponent;
-  onExpand: () => void;
-}
-```
-
-### Card Appearance
-
-```
-┌─────────────────────┐
-│ 📊 Table Widget     │  ← Icon + name
-├─────────────────────┤
-│                     │
-│  [Mini Preview]     │  ← Condensed content preview
-│                     │
-├─────────────────────┤
-│       Tap to view   │  ← Action hint
-└─────────────────────┘
-```
-
-### Preview Strategies by Widget Type
-
-| Widget Type | Mini Preview |
-|-------------|--------------|
-| `campaign-console` | *(Not shown in carousel - always hero)* |
-| `table` | Row count + first 2 column headers |
-| `card` | Title only |
-| `counter` | Current value prominently displayed |
-| `image` | Thumbnail of image |
-| `dice-roller` | Dice icons |
-| `text` | First 50 chars truncated |
-| `sticker` | The sticker icon |
-| `map` | "Map" with icon |
-| `schedule` | Next event date |
-| `narrative` | Latest entry title |
-
-### Expanded View
-
-When tapped, opens a `Sheet` (using vaul) showing:
-- Full widget header
-- Scrollable widget content
-- Close button
-
----
-
-## Phase 5: Integration into CampaignDashboard
-
-**File: `src/pages/CampaignDashboard.tsx`**
-
-Update to conditionally render mobile vs desktop:
-
-```tsx
-import { useDeviceType } from "@/hooks/use-mobile";
-import { MobileDashboard } from "@/components/dashboard/MobileDashboard";
-
-export default function CampaignDashboard() {
-  const { isPhone } = useDeviceType();
-  
-  // ... existing state and logic ...
-
-  // Phone: Use mobile dashboard
-  if (isPhone) {
-    return (
-      <div data-theme={themeId}>
-        <MobileDashboard
-          campaign={campaign}
-          components={visibleComponents}
-          isGM={effectiveIsGM}
-          campaignId={campaignId!}
-          onOpenOverlay={openOverlay}
-          onSignOut={signOut}
-        />
-        
-        {/* Overlays still work the same */}
-        <CampaignOverlays ... />
-        <AddComponentModal ... />
-        {/* etc. */}
-      </div>
-    );
-  }
-
-  // Tablet/Desktop: Use infinite canvas
-  return (
-    <div data-theme={themeId}>
-      {/* Existing layout */}
-    </div>
-  );
-}
-```
-
----
-
-## Phase 6: Tablet Optimizations
-
-Tablets (768px-1024px) keep the full `InfiniteCanvas` but with adjustments:
-
-1. **Sidebar** - Auto-collapse by default on tablet (already `hidden md:flex`)
-2. **Touch-friendly** - Increase hit targets for resize handles
-3. **Zoom controls** - Make slightly larger on touch
-4. **FAB** - Position further from edge for thumb reach
-
-Minor CSS adjustments only - no new components needed.
-
----
-
-## Technical Considerations
-
-### Shared State
-
-Both mobile and desktop views share:
-- Campaign data (`useCampaign`)
-- Components data (`useDashboardComponents`)
-- Overlays (`useOverlayState`)
-- Auth state (`useAuth`)
-
-### Real-time Updates
-
-Mobile dashboard must subscribe to the same real-time updates so widgets refresh when GMs make changes on desktop.
-
-### Performance
-
-- Lazy-load widget content in carousel (only render visible + 1 on each side)
-- Use `React.memo` on `MobileWidgetCard`
-- Virtualize if > 20 widgets (rare case)
-
-### PWA Considerations (Future)
-
-This architecture sets up well for future PWA:
-- Mobile view already optimized for standalone mode
-- Quick access to core features
-- Works offline with cached data (future enhancement)
-
----
-
-## Files Summary
-
-| File | Action |
+| File | Change |
 |------|--------|
-| `src/hooks/use-mobile.tsx` | Extend with `useDeviceType()` |
-| `src/components/dashboard/MobileDashboard.tsx` | **Create** - Phone-only view |
-| `src/components/dashboard/MobileGMMenu.tsx` | **Create** - GM action FAB + sheet |
-| `src/components/dashboard/MobileWidgetCard.tsx` | **Create** - Compact widget card |
-| `src/components/dashboard/MobileWidgetSheet.tsx` | **Create** - Expanded widget view |
-| `src/pages/CampaignDashboard.tsx` | Modify - Add device routing |
+| `src/components/dashboard/WidgetDragPreview.tsx` | Accept scale prop, use actual widget dimensions, render ghost layout |
+| `src/components/dashboard/dragOverlayModifiers.ts` | Update modifier to handle variable-size previews with grab-point preservation |
+| `src/components/dashboard/InfiniteCanvas.tsx` | Pass scale to the DragOverlay preview component |
 
 ---
 
-## Phase 6.5: Mobile Onboarding Overlay
-
-**New File: `src/components/dashboard/MobileOnboardingModal.tsx`**
-
-A first-time overlay that appears when users access the mobile version, explaining the differences from desktop.
-
-### Trigger Condition
-
-- Shows on first mobile visit (stored in `localStorage` as `campaign-console-mobile-onboarding-seen`)
-- Only appears on phone devices (`isPhone === true`)
-- Can be dismissed and won't show again
-- Optional: "Show again" button in GM Menu for reference
-
-### Visual Layout
-
-```
-┌──────────────────────────────────────┐
-│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
-│                                      │
-│         📱 MOBILE MODE               │
-│                                      │
-│   Welcome to Campaign Console        │
-│   on your phone!                     │
-│                                      │
-│ ─────────────────────────────────    │
-│                                      │
-│ ✅ WHAT'S INCLUDED                   │
-│                                      │
-│ • View all campaign widgets          │
-│ • Access Rules, Map, Schedule        │
-│ • Read & send messages               │
-│ • Roll dice & view activity          │
-│ • GMs: Add widgets & manage players  │
-│ • Copy & share join codes            │
-│                                      │
-│ ─────────────────────────────────    │
-│                                      │
-│ ❌ DESKTOP ONLY                      │
-│                                      │
-│ • Drag-and-drop dashboard layout     │
-│ • Resize & reposition widgets        │
-│ • Infinite canvas & zoom controls    │
-│ • Multi-select & bulk editing        │
-│ • Keyboard shortcuts (Ctrl+K, etc.)  │
-│                                      │
-│ ─────────────────────────────────    │
-│                                      │
-│ 💡 TIP                               │
-│                                      │
-│ For full dashboard editing,          │
-│ switch to a tablet or desktop.       │
-│ Your changes sync instantly!         │
-│                                      │
-│         ┌────────────────┐           │
-│         │   Got it! 👍   │           │
-│         └────────────────┘           │
-│                                      │
-└──────────────────────────────────────┘
-```
-
-### Content Sections
-
-**What's Included (Mobile):**
-- View all campaign widgets in carousel
-- Access Rules, Map, Schedule, and Narrative overlays
-- Read and send player messages
-- Roll dice and view activity feed
-- GMs: Add new widgets via Quick Actions menu
-- GMs: Manage players and campaign settings
-- Copy and share join codes
-
-**Desktop Only:**
-- Drag-and-drop dashboard canvas
-- Resize and reposition widgets freely
-- Infinite canvas with zoom/pan controls
-- Multi-select widgets for bulk operations
-- Keyboard shortcuts (Ctrl+K command palette, etc.)
-- Full widget editing interface
-
-### Implementation
-
-```typescript
-// MobileOnboardingModal.tsx
-import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { TerminalButton } from "@/components/ui/TerminalButton";
-import { Smartphone, Check, X, Lightbulb } from "lucide-react";
-
-const STORAGE_KEY = "campaign-console-mobile-onboarding-seen";
-
-interface MobileOnboardingModalProps {
-  isPhone: boolean;
-}
-
-export function MobileOnboardingModal({ isPhone }: MobileOnboardingModalProps) {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    if (isPhone && !localStorage.getItem(STORAGE_KEY)) {
-      setOpen(true);
-    }
-  }, [isPhone]);
-
-  const handleDismiss = () => {
-    localStorage.setItem(STORAGE_KEY, "true");
-    setOpen(false);
-  };
-
-  // ... render content
-}
-```
-
-### Styling
-
-- Uses terminal aesthetic with glowing borders
-- Section headers with neon green dividers
-- Icon accents for visual scanning
-- Large, touch-friendly dismiss button
-- Scrollable content if needed (ScrollArea)
-
-### Integration
-
-Add to `MobileDashboard.tsx`:
-
-```tsx
-<MobileOnboardingModal isPhone={isPhone} />
-```
-
----
-
-## Implementation Order
-
-1. **Phase 1**: Update `use-mobile.tsx` with device detection
-2. **Phase 2**: Create `MobileWidgetCard` (reusable component)
-3. **Phase 3**: Create `MobileWidgetSheet` (expanded view)
-4. **Phase 4**: Create `MobileGMMenu` (FAB + bottom sheet)
-5. **Phase 5**: Create `MobileDashboard` (main container)
-6. **Phase 6**: Integrate into `CampaignDashboard` with routing
-7. **Phase 6.5**: Create `MobileOnboardingModal` (first-time instructions)
-8. **Phase 7**: Tablet touch optimizations (CSS only)
-9. **Phase 8**: Testing and polish
-
----
-
-## Visual Preview
-
-### Phone - Player View
-```
-┌──────────────────────┐
-│ ← CAMPS    Player    │
-├──────────────────────┤
-│ ┌──────────────────┐ │
-│ │  CRUSADE OF     │ │
-│ │  THE GOLDEN SUN │ │
-│ │  Round 3 of 8   │ │
-│ │  🎲 Join: ABC12 │ │
-│ └──────────────────┘ │
-│                      │
-│ ─── WIDGETS ───      │
-│ ┌────┐┌────┐┌────┐   │
-│ │ 📊 ││ 🎲 ││ 📝 │ ← │
-│ └────┘└────┘└────┘   │
-│                      │
-│ ─── QUICK ACCESS ─── │
-│ [📜][🗺️][📅][💬]    │
-│                      │
-└──────────────────────┘
-```
-
-### Phone - GM View
-```
-┌──────────────────────┐
-│ ← CAMPS   GM   [Out] │
-├──────────────────────┤
-│         ...          │
-│   (same as player)   │
-│         ...          │
-│                      │
-│            ┌───────┐ │
-│            │⚡ Menu│ │
-│            └───────┘ │
-└──────────────────────┘
-```
-
-### GM Menu Expanded
-```
-┌──────────────────────┐
-│ ━━━━━━━━━━━━━━━━━━━ │
-│ CAMPAIGN MANAGEMENT  │
-│ [Add][Edit][Players] │
-│ [Set][Export][Theme] │
-│                      │
-│ CONTENT              │
-│ [Rule][Msg][Event]   │
-│                      │
-│   [Copy Join Code]   │
-└──────────────────────┘
-```
-
----
-
-## Phase 7: Mobile Campaign Directory
-
-**File: `src/pages/Campaigns.tsx`**
-
-The Campaign Directory table needs responsive adjustments for phone screens. Keep the same component but conditionally hide columns and stack action buttons.
-
-### Mobile Table Strategy
-
-| Column | Desktop | Phone |
-|--------|---------|-------|
-| Role | ✅ Show (icon + label) | ✅ Show (icon only) |
-| Campaign Name | ✅ Show | ✅ Show (full width) |
-| Players | ✅ Show | ✅ Show |
-| Campaign ID | ✅ Show | ❌ Hide |
-| Start Date | ✅ Show | ❌ Hide |
-| Status | ✅ Show | ❌ Hide |
-
-### Visual Layout - Phone
-
-```
-┌──────────────────────────────────────┐
-│ ←                          [?] [⚙️]  │  ← Simplified header
-├──────────────────────────────────────┤
-│       CAMPAIGN DIRECTORY             │
-│ ═══════════════════════════════════  │
-│                                      │
-│ [Active (3)] [Archived (1)]          │  ← Toggle stays same
-│                                      │
-│ ┌──────────────────────────────────┐ │
-│ │ 👑  Crusade of Golden Sun    3 👥│ │  ← Role + Name + Players
-│ ├──────────────────────────────────┤ │
-│ │ 👤  Blood & Iron Campaign    5 👥│ │
-│ ├──────────────────────────────────┤ │
-│ │ 👤  Necromunda Uprising      8 👥│ │
-│ └──────────────────────────────────┘ │
-│                                      │
-│ ─────────────────────────────────    │
-│                                      │
-│         ┌──────────────────┐         │
-│         │    [ Create ]    │         │  ← Stacked buttons
-│         └──────────────────┘         │
-│         ┌──────────────────┐         │
-│         │     [ Join ]     │         │
-│         └──────────────────┘         │
-│         ┌──────────────────┐         │
-│         │     [ Open ]     │         │
-│         └──────────────────┘         │
-│         ┌──────────────────┐         │
-│         │    [ Remove ]    │         │
-│         └──────────────────┘         │
-│                                      │
-│ Operative: user@email.com   [Logout] │
-└──────────────────────────────────────┘
-```
-
-### Implementation Details
-
-1. **Responsive Table Headers**
-   - Use `hidden md:table-cell` on Campaign ID, Start Date, Status columns
-   - Role column: hide text on mobile, keep icon via `hidden sm:inline`
-
-2. **Mobile Row Layout**
-   - Campaign Name spans more width on mobile
-   - Player count stays visible (compact)
-   - Tap row to select, double-tap to open (same as desktop)
-
-3. **Stacked Action Buttons**
-   - Use `flex flex-col sm:flex-row` on button container
-   - Full-width buttons on mobile with `w-full sm:w-auto`
-   - Consistent spacing with `gap-3`
-
-4. **Font Size Adjustments**
-   - Campaign name: `text-base` (readable on small screens)
-   - Keep monospace styling for terminal aesthetic
-
-### Code Changes
-
-```tsx
-// In Campaigns.tsx table header
-<thead>
-  <tr className="border-b border-primary/40">
-    <th className="text-left py-3 px-4 ...">Role</th>
-    <th className="text-left py-3 px-4 ...">Campaign Name</th>
-    <th className="text-left py-3 px-4 ...">Players</th>
-    <th className="hidden md:table-cell text-left py-3 px-4 ...">Campaign ID</th>
-    <th className="hidden md:table-cell text-left py-3 px-4 ...">Start Date</th>
-    <th className="hidden md:table-cell text-left py-3 px-4 ...">Status</th>
-  </tr>
-</thead>
-
-// In table body cells
-<td className="hidden md:table-cell py-3 px-4">
-  {/* Campaign ID content */}
-</td>
-
-// Action buttons container
-<div className="flex flex-col sm:flex-row justify-center gap-3">
-  <TerminalButton className="w-full sm:w-auto" onClick={() => setShowCreateModal(true)}>
-    [ Create ]
-  </TerminalButton>
-  {/* ... other buttons with same pattern */}
-</div>
-```
-
-### Mobile-Specific UX
-
-1. **Selection feedback** - Selected row gets stronger highlight on touch
-2. **Swipe hint** - Optional horizontal scroll indicator if needed
-3. **Touch targets** - Rows have adequate height (48px min)
-4. **Archive toggle** - Stays horizontal, pills are touch-friendly
-
----
-
-## Updated Files Summary
-
-| File | Action |
-|------|--------|
-| `src/hooks/use-mobile.tsx` | Extend with `useDeviceType()` |
-| `src/components/dashboard/MobileDashboard.tsx` | **Create** - Phone-only view |
-| `src/components/dashboard/MobileGMMenu.tsx` | **Create** - GM action FAB + sheet |
-| `src/components/dashboard/MobileWidgetCard.tsx` | **Create** - Compact widget card |
-| `src/components/dashboard/MobileWidgetSheet.tsx` | **Create** - Expanded widget view |
-| `src/pages/CampaignDashboard.tsx` | Modify - Add device routing |
-| `src/pages/Campaigns.tsx` | Modify - Responsive table + stacked buttons |
-
----
-
-## Updated Implementation Order
-
-1. **Phase 1**: Update `use-mobile.tsx` with device detection
-2. **Phase 2**: Create `MobileWidgetCard` (reusable component)
-3. **Phase 3**: Create `MobileWidgetSheet` (expanded view)
-4. **Phase 4**: Create `MobileGMMenu` (FAB + bottom sheet)
-5. **Phase 5**: Create `MobileDashboard` (main container)
-6. **Phase 6**: Integrate into `CampaignDashboard` with routing
-7. **Phase 7**: Update `Campaigns.tsx` for responsive table + buttons
-8. **Phase 8**: Tablet touch optimizations (CSS only)
-9. **Phase 9**: Testing and polish
-
+## Expected Behavior
+1. User begins dragging a widget
+2. A full-size ghost outline appears under the cursor
+3. The ghost matches the widget's exact dimensions (scaled to current zoom)
+4. The grab point is preserved (cursor stays where user grabbed)
+5. Ghost snaps to grid positions as user moves
+6. On drop, widget lands exactly where the ghost was shown
