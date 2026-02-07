@@ -9,7 +9,7 @@ import {
   useSensors,
   DragOverlay,
 } from "@dnd-kit/core";
-import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { restrictToWindowEdges } from "@dnd-kit/modifiers";
 import { AnimatePresence } from "framer-motion";
 import { DraggableComponent } from "./DraggableComponent";
 import { WidgetDragPreview } from "./WidgetDragPreview";
@@ -162,8 +162,14 @@ export function InfiniteCanvas({
       const component = components.find((c) => c.id === componentId);
 
       if (component && isGM) {
-        const newX = snapPosition(component.position_x + delta.x / scale);
-        const newY = snapPosition(component.position_y + delta.y / scale);
+        // Delta from @dnd-kit is in viewport pixels
+        // We only need to divide by scale to convert to canvas coordinates
+        // (pan offset doesn't affect delta - delta is just movement distance)
+        const deltaCanvasX = delta.x / scale;
+        const deltaCanvasY = delta.y / scale;
+
+        const newX = snapPosition(component.position_x + deltaCanvasX);
+        const newY = snapPosition(component.position_y + deltaCanvasY);
 
         debouncedUpdate({
           id: componentId,
@@ -494,7 +500,7 @@ export function InfiniteCanvas({
         </TransformWrapper>
 
         {/* DragOverlay is OUTSIDE TransformWrapper - renders in viewport coordinates */}
-        <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
+        <DragOverlay dropAnimation={null} modifiers={[restrictToWindowEdges]}>
           <AnimatePresence>
             {activeDragComponent ? (
               <WidgetDragPreview key={activeDragComponent.id} component={activeDragComponent} mode="overlay" />
