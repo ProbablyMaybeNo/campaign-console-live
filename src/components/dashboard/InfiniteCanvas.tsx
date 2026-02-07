@@ -9,7 +9,7 @@ import {
   useSensors,
   DragOverlay,
 } from "@dnd-kit/core";
-import { snapDragPreviewToCursor } from "./dragOverlayModifiers";
+import { createGrabPointPreservingModifier } from "./dragOverlayModifiers";
 import { AnimatePresence } from "framer-motion";
 import { DraggableComponent } from "./DraggableComponent";
 import { WidgetDragPreview } from "./WidgetDragPreview";
@@ -496,10 +496,15 @@ export function InfiniteCanvas({
         </TransformWrapper>
 
         {/* DragOverlay is OUTSIDE TransformWrapper - renders in viewport coordinates */}
-        <DragOverlay dropAnimation={null} modifiers={[snapDragPreviewToCursor]}>
+        <DragOverlay dropAnimation={null} modifiers={[createGrabPointPreservingModifier(scale)]}>
           <AnimatePresence>
             {activeDragComponent ? (
-              <WidgetDragPreview key={activeDragComponent.id} component={activeDragComponent} mode="overlay" />
+              <WidgetDragPreview
+                key={activeDragComponent.id}
+                component={activeDragComponent}
+                mode="overlay"
+                scale={scale}
+              />
             ) : null}
           </AnimatePresence>
         </DragOverlay>
