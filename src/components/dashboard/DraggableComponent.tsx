@@ -89,7 +89,9 @@ function DraggableComponentInner({
   const isCanvasInteracting = isAnyDragging || isAnyResizing;
 
   // Use GPU-accelerated transforms with will-change hint
-  // When using DragOverlay, keep the real widget DOM STATIC while dragging.
+  // When using DragOverlay, keep the real widget DOM STATIC for the entire drag lifecycle.
+  // Otherwise, on drag-end there can be a 1-frame "handoff" where @dnd-kit still provides
+  // the last transform while the overlay has already been removed, causing a visible jitter.
   const style = useMemo(
     () => ({
       position: "absolute" as const,
@@ -97,9 +99,13 @@ function DraggableComponentInner({
       top: component.position_y,
       width: localSize.width,
       height: localSize.height,
-      transform: transform && !isOverlayDragging ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+      // Only apply @dnd-kit transform when we are NOT using DragOverlay.
+      transform:
+        !useDragOverlay && transform
+          ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+          : undefined,
       zIndex: isOverlayDragging ? (isSelected ? 50 : 1) : isDragging || isSelected ? 50 : 1,
-      willChange: isInteracting && !isOverlayDragging ? "transform" : "auto",
+      willChange: isInteracting && !useDragOverlay ? "transform" : "auto",
     }),
     [
       component.position_x,
@@ -107,6 +113,7 @@ function DraggableComponentInner({
       localSize.width,
       localSize.height,
       transform,
+      useDragOverlay,
       isOverlayDragging,
       isDragging,
       isSelected,
