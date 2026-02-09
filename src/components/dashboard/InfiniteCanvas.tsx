@@ -60,6 +60,10 @@ export function InfiniteCanvas({
     { id: string; x: number; y: number } | null
   >(null);
 
+  // Track grab offset for accurate drop position calculation at any zoom level
+  const grabOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragStartCursorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
 
@@ -167,11 +171,29 @@ export function InfiniteCanvas({
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   }, []);
 
-  // Handle drag start - set interaction mode for paint reduction
+  // Handle drag start - set interaction mode for paint reduction and capture grab offset
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setPendingDrop(null);
     setIsAnyDragging(true);
     setActiveDragId(event.active.id as string);
+
+    // Capture the cursor position at drag start
+    const pointerEvent = event.activatorEvent as PointerEvent;
+    const cursorX = pointerEvent.clientX;
+    const cursorY = pointerEvent.clientY;
+    dragStartCursorRef.current = { x: cursorX, y: cursorY };
+
+    // Find the dragged element and calculate grab offset (cursor position within widget)
+    const element = document.querySelector(`[data-id="${event.active.id}"]`);
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      grabOffsetRef.current = {
+        x: cursorX - rect.left,
+        y: cursorY - rect.top,
+      };
+    } else {
+      grabOffsetRef.current = { x: 0, y: 0 };
+    }
   }, []);
 
   const handleDragEnd = useCallback(
@@ -188,13 +210,25 @@ export function InfiniteCanvas({
         return;
       }
 
-      // Delta from @dnd-kit is in viewport pixels
-      // We only need to divide by scale to convert to canvas coordinates
-      const deltaCanvasX = delta.x / scale;
-      const deltaCanvasY = delta.y / scale;
+      // Get the pan offset from TransformWrapper
+      const transformState = transformRef.current?.instance?.transformState;
+      const panX = transformState?.positionX ?? 0;
+      const panY = transformState?.positionY ?? 0;
 
-      const newX = snapPosition(component.position_x + deltaCanvasX);
-      const newY = snapPosition(component.position_y + deltaCanvasY);
+      // Calculate where the overlay's top-left is in viewport coordinates.
+      // The cursor moved by delta, and the overlay is offset from the cursor
+      // by the grab offset (so the cursor appears at the same relative position).
+      const overlayViewportX = dragStartCursorRef.current.x + delta.x - grabOffsetRef.current.x;
+      const overlayViewportY = dragStartCursorRef.current.y + delta.y - grabOffsetRef.current.y;
+
+      // Convert viewport coordinates to canvas coordinates
+      // Canvas position = (viewport position - pan offset) / scale
+      const canvasX = (overlayViewportX - panX) / scale;
+      const canvasY = (overlayViewportY - panY) / scale;
+
+      // Snap to grid
+      const newX = snapPosition(canvasX);
+      const newY = snapPosition(canvasY);
 
       // No meaningful move → don't keep the overlay around.
       if (newX === component.position_x && newY === component.position_y) {
