@@ -60,11 +60,9 @@ export function InfiniteCanvas({
     { id: string; x: number; y: number } | null
   >(null);
 
-  // Track grab point + cursor for accurate drop position calculation at any zoom level
-  const grabOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const dragStartCursorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const latestCursorRef = useRef<{ x: number; y: number } | null>(null);
-  const stopPointerTrackingRef = useRef<(() => void) | null>(null);
+  // Drop coordinates are derived from @dnd-kit’s translated rect (which already includes
+  // modifiers like grab-point preservation), then converted from viewport → canvas
+  // space using current pan/zoom.
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
@@ -173,60 +171,18 @@ export function InfiniteCanvas({
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   }, []);
 
-  // Handle drag start - set interaction mode for paint reduction and capture grab offset
+  // Handle drag start - set interaction mode for paint reduction
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setPendingDrop(null);
     setIsAnyDragging(true);
     setActiveDragId(event.active.id as string);
-
-    // Clean up any prior pointer tracking (safety)
-    stopPointerTrackingRef.current?.();
-
-    const activator = event.activatorEvent;
-    if (!activator || !("clientX" in activator) || !("clientY" in activator)) {
-      grabOffsetRef.current = { x: 0, y: 0 };
-      dragStartCursorRef.current = { x: 0, y: 0 };
-      latestCursorRef.current = null;
-      return;
-    }
-
-    // Capture cursor position at drag start
-    const cursorX = (activator as MouseEvent).clientX;
-    const cursorY = (activator as MouseEvent).clientY;
-    dragStartCursorRef.current = { x: cursorX, y: cursorY };
-    latestCursorRef.current = { x: cursorX, y: cursorY };
-
-    // Calculate grab offset using dnd-kit measured rect (more reliable than querying DOM)
-    const initialRect = event.active.rect.current?.initial;
-    if (initialRect) {
-      grabOffsetRef.current = {
-        x: cursorX - initialRect.left,
-        y: cursorY - initialRect.top,
-      };
-    } else {
-      grabOffsetRef.current = { x: 0, y: 0 };
-    }
-
-    // Track live cursor position during the drag; use this at drag-end instead of delta.
-    const handlePointerMove = (e: PointerEvent) => {
-      latestCursorRef.current = { x: e.clientX, y: e.clientY };
-    };
-
-    window.addEventListener("pointermove", handlePointerMove, { passive: true });
-    stopPointerTrackingRef.current = () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      stopPointerTrackingRef.current = null;
-    };
   }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      const { active, delta } = event;
+      const { active } = event;
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
-
-      // Stop tracking cursor now that drag ended (prevents leaks)
-      stopPointerTrackingRef.current?.();
 
       // If we can't resolve the component (or user isn't GM), just clean up.
       if (!component || !isGM) {
@@ -247,14 +203,18 @@ export function InfiniteCanvas({
       const originX = containerRect?.left ?? 0;
       const originY = containerRect?.top ?? 0;
 
-      // Prefer the live cursor position at drag end; fall back to start+delta.
-      const cursorEnd = latestCursorRef.current;
-      const cursorEndX = cursorEnd?.x ?? dragStartCursorRef.current.x + delta.x;
-      const cursorEndY = cursorEnd?.y ?? dragStartCursorRef.current.y + delta.y;
+      // Use dnd-kit's computed rect (includes modifiers) to match the DragOverlay's
+      // visual position exactly, regardless of zoom/pan.
+      const rect = active.rect.current.translated ?? active.rect.current.initial;
+      if (!rect) {
+        setIsAnyDragging(false);
+        setActiveDragId(null);
+        setPendingDrop(null);
+        return;
+      }
 
-      // Overlay top-left in viewport coordinates (cursor minus grab offset).
-      const overlayViewportX = cursorEndX - grabOffsetRef.current.x;
-      const overlayViewportY = cursorEndY - grabOffsetRef.current.y;
+      const overlayViewportX = rect.left;
+      const overlayViewportY = rect.top;
 
       // Canvas position = (viewport - containerOrigin - pan) / scale
       const canvasX = (overlayViewportX - originX - panX) / scale;
@@ -287,7 +247,6 @@ export function InfiniteCanvas({
   );
 
   const handleDragCancel = useCallback(() => {
-    stopPointerTrackingRef.current?.();
     setIsAnyDragging(false);
     setActiveDragId(null);
     setPendingDrop(null);
