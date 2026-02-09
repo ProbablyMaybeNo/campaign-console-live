@@ -60,9 +60,11 @@ export function InfiniteCanvas({
     { id: string; x: number; y: number } | null
   >(null);
 
-  // Track grab offset for accurate drop position calculation at any zoom level
+  // Track grab point + cursor for accurate drop position calculation at any zoom level
   const grabOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragStartCursorRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const latestCursorRef = useRef<{ x: number; y: number } | null>(null);
+  const stopPointerTrackingRef = useRef<(() => void) | null>(null);
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
@@ -177,23 +179,44 @@ export function InfiniteCanvas({
     setIsAnyDragging(true);
     setActiveDragId(event.active.id as string);
 
-    // Capture the cursor position at drag start
-    const pointerEvent = event.activatorEvent as PointerEvent;
-    const cursorX = pointerEvent.clientX;
-    const cursorY = pointerEvent.clientY;
-    dragStartCursorRef.current = { x: cursorX, y: cursorY };
+    // Clean up any prior pointer tracking (safety)
+    stopPointerTrackingRef.current?.();
 
-    // Find the dragged element and calculate grab offset (cursor position within widget)
-    const element = document.querySelector(`[data-id="${event.active.id}"]`);
-    if (element) {
-      const rect = element.getBoundingClientRect();
+    const activator = event.activatorEvent;
+    if (!activator || !("clientX" in activator) || !("clientY" in activator)) {
+      grabOffsetRef.current = { x: 0, y: 0 };
+      dragStartCursorRef.current = { x: 0, y: 0 };
+      latestCursorRef.current = null;
+      return;
+    }
+
+    // Capture cursor position at drag start
+    const cursorX = (activator as MouseEvent).clientX;
+    const cursorY = (activator as MouseEvent).clientY;
+    dragStartCursorRef.current = { x: cursorX, y: cursorY };
+    latestCursorRef.current = { x: cursorX, y: cursorY };
+
+    // Calculate grab offset using dnd-kit measured rect (more reliable than querying DOM)
+    const initialRect = event.active.rect.current?.initial;
+    if (initialRect) {
       grabOffsetRef.current = {
-        x: cursorX - rect.left,
-        y: cursorY - rect.top,
+        x: cursorX - initialRect.left,
+        y: cursorY - initialRect.top,
       };
     } else {
       grabOffsetRef.current = { x: 0, y: 0 };
     }
+
+    // Track live cursor position during the drag; use this at drag-end instead of delta.
+    const handlePointerMove = (e: PointerEvent) => {
+      latestCursorRef.current = { x: e.clientX, y: e.clientY };
+    };
+
+    window.addEventListener("pointermove", handlePointerMove, { passive: true });
+    stopPointerTrackingRef.current = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      stopPointerTrackingRef.current = null;
+    };
   }, []);
 
   const handleDragEnd = useCallback(
@@ -201,6 +224,9 @@ export function InfiniteCanvas({
       const { active, delta } = event;
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
+
+      // Stop tracking cursor now that drag ended (prevents leaks)
+      stopPointerTrackingRef.current?.();
 
       // If we can't resolve the component (or user isn't GM), just clean up.
       if (!component || !isGM) {
@@ -215,16 +241,24 @@ export function InfiniteCanvas({
       const panX = transformState?.positionX ?? 0;
       const panY = transformState?.positionY ?? 0;
 
-      // Calculate where the overlay's top-left is in viewport coordinates.
-      // The cursor moved by delta, and the overlay is offset from the cursor
-      // by the grab offset (so the cursor appears at the same relative position).
-      const overlayViewportX = dragStartCursorRef.current.x + delta.x - grabOffsetRef.current.x;
-      const overlayViewportY = dragStartCursorRef.current.y + delta.y - grabOffsetRef.current.y;
+      // TransformWrapper positions are relative to the canvas container, not the viewport.
+      // Convert viewport coordinates → container-local → canvas coords.
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      const originX = containerRect?.left ?? 0;
+      const originY = containerRect?.top ?? 0;
 
-      // Convert viewport coordinates to canvas coordinates
-      // Canvas position = (viewport position - pan offset) / scale
-      const canvasX = (overlayViewportX - panX) / scale;
-      const canvasY = (overlayViewportY - panY) / scale;
+      // Prefer the live cursor position at drag end; fall back to start+delta.
+      const cursorEnd = latestCursorRef.current;
+      const cursorEndX = cursorEnd?.x ?? dragStartCursorRef.current.x + delta.x;
+      const cursorEndY = cursorEnd?.y ?? dragStartCursorRef.current.y + delta.y;
+
+      // Overlay top-left in viewport coordinates (cursor minus grab offset).
+      const overlayViewportX = cursorEndX - grabOffsetRef.current.x;
+      const overlayViewportY = cursorEndY - grabOffsetRef.current.y;
+
+      // Canvas position = (viewport - containerOrigin - pan) / scale
+      const canvasX = (overlayViewportX - originX - panX) / scale;
+      const canvasY = (overlayViewportY - originY - panY) / scale;
 
       // Snap to grid
       const newX = snapPosition(canvasX);
@@ -253,6 +287,7 @@ export function InfiniteCanvas({
   );
 
   const handleDragCancel = useCallback(() => {
+    stopPointerTrackingRef.current?.();
     setIsAnyDragging(false);
     setActiveDragId(null);
     setPendingDrop(null);
