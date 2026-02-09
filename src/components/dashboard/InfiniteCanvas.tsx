@@ -52,12 +52,19 @@ export function InfiniteCanvas({
   const [isAnyResizing, setIsAnyResizing] = useState(false);
 
   // DragOverlay state
+  // NOTE: we keep the overlay active for a short "handoff" after drop so the real
+  // widget doesn't flash at its old position for 1 frame before the optimistic
+  // cache update propagates through React Query.
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [pendingDrop, setPendingDrop] = useState<
+    { id: string; x: number; y: number } | null
+  >(null);
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
 
-  const { update: debouncedUpdate, flushNow, saveStatus, retry: retrySave } = useDebouncedComponentUpdate(campaignId);
+  const { update: debouncedUpdate, flushNow, saveStatus, retry: retrySave } =
+    useDebouncedComponentUpdate(campaignId);
 
   // Calculate responsive canvas dimensions based on viewport
   const canvasDimensions = useMemo(
@@ -95,7 +102,7 @@ export function InfiniteCanvas({
   // Center on mount once the transform wrapper is ready
   useEffect(() => {
     if (isReady) return;
-    
+
     const ref = transformRef.current;
     const container = containerRef.current;
     if (!ref || !container) return;
@@ -113,7 +120,15 @@ export function InfiniteCanvas({
           anchorComponent.height,
           INITIAL_SCALE
         );
-        const clamped = clampTransform(positionX, positionY, INITIAL_SCALE, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
+        const clamped = clampTransform(
+          positionX,
+          positionY,
+          INITIAL_SCALE,
+          container.clientWidth,
+          container.clientHeight,
+          canvasDimensions.width,
+          canvasDimensions.height
+        );
         ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
       } else {
         // No anchor - show top-center of canvas
@@ -122,7 +137,15 @@ export function InfiniteCanvas({
           container.clientHeight,
           INITIAL_SCALE
         );
-        const clamped = clampTransform(positionX, positionY, INITIAL_SCALE, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
+        const clamped = clampTransform(
+          positionX,
+          positionY,
+          INITIAL_SCALE,
+          container.clientWidth,
+          container.clientHeight,
+          canvasDimensions.width,
+          canvasDimensions.height
+        );
         ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
       }
       setIsReady(true);
@@ -146,36 +169,51 @@ export function InfiniteCanvas({
 
   // Handle drag start - set interaction mode for paint reduction
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    setPendingDrop(null);
     setIsAnyDragging(true);
     setActiveDragId(event.active.id as string);
   }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      setIsAnyDragging(false);
-      setActiveDragId(null);
-
       const { active, delta } = event;
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
 
-      if (component && isGM) {
-        // Delta from @dnd-kit is in viewport pixels
-        // We only need to divide by scale to convert to canvas coordinates
-        // (pan offset doesn't affect delta - delta is just movement distance)
-        const deltaCanvasX = delta.x / scale;
-        const deltaCanvasY = delta.y / scale;
-
-        const newX = snapPosition(component.position_x + deltaCanvasX);
-        const newY = snapPosition(component.position_y + deltaCanvasY);
-
-        debouncedUpdate({
-          id: componentId,
-          position_x: newX,
-          position_y: newY,
-        });
-        flushNow(); // Flush immediately on drag end
+      // If we can't resolve the component (or user isn't GM), just clean up.
+      if (!component || !isGM) {
+        setIsAnyDragging(false);
+        setActiveDragId(null);
+        setPendingDrop(null);
+        return;
       }
+
+      // Delta from @dnd-kit is in viewport pixels
+      // We only need to divide by scale to convert to canvas coordinates
+      const deltaCanvasX = delta.x / scale;
+      const deltaCanvasY = delta.y / scale;
+
+      const newX = snapPosition(component.position_x + deltaCanvasX);
+      const newY = snapPosition(component.position_y + deltaCanvasY);
+
+      // No meaningful move → don't keep the overlay around.
+      if (newX === component.position_x && newY === component.position_y) {
+        setIsAnyDragging(false);
+        setActiveDragId(null);
+        setPendingDrop(null);
+        return;
+      }
+
+      // Keep overlay + placeholder active until the optimistic cache update
+      // has propagated and the widget has re-rendered at its final snapped position.
+      setPendingDrop({ id: componentId, x: newX, y: newY });
+
+      debouncedUpdate({
+        id: componentId,
+        position_x: newX,
+        position_y: newY,
+      });
+      flushNow(); // Flush immediately on drag end
     },
     [components, isGM, scale, debouncedUpdate, flushNow, snapPosition]
   );
@@ -183,7 +221,30 @@ export function InfiniteCanvas({
   const handleDragCancel = useCallback(() => {
     setIsAnyDragging(false);
     setActiveDragId(null);
+    setPendingDrop(null);
   }, []);
+
+  // Resolve the drag-end "handoff" once the underlying widget reflects the snapped position.
+  useEffect(() => {
+    if (!pendingDrop) return;
+
+    const c = components.find((x) => x.id === pendingDrop.id);
+    if (c && c.position_x === pendingDrop.x && c.position_y === pendingDrop.y) {
+      setActiveDragId(null);
+      setIsAnyDragging(false);
+      setPendingDrop(null);
+      return;
+    }
+
+    // Safety valve: avoid getting stuck if something unexpected happens.
+    const t = setTimeout(() => {
+      setActiveDragId(null);
+      setIsAnyDragging(false);
+      setPendingDrop(null);
+    }, 250);
+
+    return () => clearTimeout(t);
+  }, [pendingDrop, components]);
 
   // Recenter on the anchor component (Campaign Console) or top of canvas
   const handleRecenter = useCallback(() => {
@@ -468,6 +529,7 @@ export function InfiniteCanvas({
                 onResizeEnd={handleResizeEnd}
                 isAnyDragging={isAnyDragging}
                 isAnyResizing={isAnyResizing}
+                isOverlayActive={activeDragId === component.id}
                 useDragOverlay={true}
               />
             ))}

@@ -38,6 +38,11 @@ interface DraggableComponentProps {
   isAnyDragging?: boolean;
   /** True when ANY component on the canvas is being resized (for paint reduction) */
   isAnyResizing?: boolean;
+  /**
+   * True when THIS component should stay in lightweight placeholder mode because
+   * the DragOverlay is active (including the short handoff after drop).
+   */
+  isOverlayActive?: boolean;
   /** When true, the active widget uses DragOverlay and stays as a lightweight placeholder */
   useDragOverlay?: boolean;
 }
@@ -59,6 +64,7 @@ function DraggableComponentInner({
   onResizeEnd,
   isAnyDragging = false,
   isAnyResizing = false,
+  isOverlayActive = false,
   useDragOverlay = true,
 }: DraggableComponentProps) {
   const [isResizing, setIsResizing] = useState(false);
@@ -75,7 +81,7 @@ function DraggableComponentInner({
     data: { component }, // Pass component data for the modifier
   });
 
-  const isOverlayDragging = useDragOverlay && isDragging;
+  const isOverlayDragging = useDragOverlay && (isDragging || isOverlayActive);
 
   // Sync local size with component props when they change (e.g., from server)
   useEffect(() => {
@@ -436,6 +442,7 @@ export const DraggableComponent = memo(DraggableComponentInner, (prev, next) => 
     prev.scale === next.scale &&
     prev.isAnyDragging === next.isAnyDragging &&
     prev.isAnyResizing === next.isAnyResizing &&
+    prev.isOverlayActive === next.isOverlayActive &&
     prev.useDragOverlay === next.useDragOverlay
   );
 });
