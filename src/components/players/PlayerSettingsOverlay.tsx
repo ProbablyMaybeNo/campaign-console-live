@@ -156,6 +156,7 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
         {/* Save Button */}
         {!isGMPreview && (
           <TerminalButton
+            variant="secondary"
             onClick={handleSaveSettings}
             disabled={isSaving}
             className="w-full"
