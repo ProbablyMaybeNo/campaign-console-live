@@ -37,7 +37,7 @@ export default function Index() {
         
         <div className="space-y-2">
           <h1 className="text-lg text-white uppercase tracking-wider text-glow-white">
-            Campaign Manager for Tabletop Wargames and RPGs
+            Tabletop Campaign Tracker for Wargames &amp; RPGs
           </h1>
           <p className="text-xs text-white/90 font-mono text-glow-white animate-pulse">
             BOOT: CAMPAIGN OPTIMIZATION — INITIALIZING...
@@ -46,7 +46,7 @@ export default function Index() {
 
         <section className="space-y-2 pt-2" aria-label="Features">
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Track battles, manage players, maps, schedule, and build narratives, rules, and much more. The free, all in one, tabletop gaming tool for wargamers and dungeon masters.
+            A rules-agnostic campaign hub built for tabletop games. Track rounds and battles, organize players and warbands, manage maps and schedules, and publish rules and narrative updates to your group.
           </p>
         </section>
 
