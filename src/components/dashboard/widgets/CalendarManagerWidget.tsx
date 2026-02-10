@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, Edit2, X, Check, Eye, EyeOff } from "lucide-react";
+import { Plus, Trash2, Edit2, X, Check, Eye, EyeOff, CalendarIcon, Palette } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -12,14 +12,15 @@ import {
   useDeleteScheduleEntry,
   ScheduleEntry,
 } from "@/hooks/useScheduleEntries";
-import { useBattleRounds, type BattleRound } from "@/hooks/useBattleTracker";
+import { useBattleRounds, useUpdateRound, type BattleRound } from "@/hooks/useBattleTracker";
 
 interface CalendarManagerWidgetProps {
   campaignId: string;
   isGM: boolean;
-  /** Which battle round IDs are visible on the calendar */
   visibleRoundIds?: string[];
   onVisibleRoundsChange?: (roundIds: string[]) => void;
+  roundColors?: Record<string, string>;
+  onRoundColorsChange?: (colors: Record<string, string>) => void;
 }
 
 const COLOR_PALETTE = [
@@ -33,7 +34,14 @@ const COLOR_PALETTE = [
   { hex: "#ec4899", name: "Pink" },
 ];
 
-export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], onVisibleRoundsChange }: CalendarManagerWidgetProps) {
+export function CalendarManagerWidget({
+  campaignId,
+  isGM,
+  visibleRoundIds = [],
+  onVisibleRoundsChange,
+  roundColors = {},
+  onRoundColorsChange,
+}: CalendarManagerWidgetProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -49,8 +57,8 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
   const createEntry = useCreateScheduleEntry();
   const updateEntry = useUpdateScheduleEntry();
   const deleteEntry = useDeleteScheduleEntry();
+  const updateRound = useUpdateRound();
 
-  // Only show events (not rounds) from schedule_entries
   const events = entries.filter(e => e.entry_type === "event");
 
   const resetForm = () => {
@@ -64,7 +72,7 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
     await createEntry.mutateAsync({
       campaign_id: campaignId,
       title: formData.title.trim(),
-      round_number: 0, // Not a round
+      round_number: 0,
       start_date: formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : null,
       end_date: formData.endDate ? format(formData.endDate, "yyyy-MM-dd") : formData.startDate ? format(formData.startDate, "yyyy-MM-dd") : null,
       color: formData.color,
@@ -108,6 +116,18 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
     onVisibleRoundsChange(newIds);
   };
 
+  const handleRoundDateChange = (roundId: string, field: "starts_at" | "ends_at", date: Date | undefined) => {
+    updateRound.mutate({
+      roundId,
+      updates: { [field]: date ? date.toISOString() : null },
+    });
+  };
+
+  const handleRoundColorChange = (roundId: string, color: string) => {
+    if (!onRoundColorsChange) return;
+    onRoundColorsChange({ ...roundColors, [roundId]: color });
+  };
+
   const isLoading = entriesLoading || roundsLoading;
 
   if (isLoading) {
@@ -128,15 +148,18 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
               Battle Rounds
             </p>
             <p className="text-[10px] text-muted-foreground mb-2">
-              Toggle rounds to show them on the calendar. Manage rounds in the Battles overlay.
+              Assign dates & colors, then toggle to show on the calendar.
             </p>
-            <div className="space-y-1">
+            <div className="space-y-2">
               {rounds.map((round) => (
-                <RoundToggleRow
+                <RoundConfigRow
                   key={round.id}
                   round={round}
                   isVisible={visibleRoundIds.includes(round.id)}
+                  color={roundColors[round.id] || "#a855f7"}
                   onToggle={() => handleRoundToggle(round.id)}
+                  onDateChange={(field, date) => handleRoundDateChange(round.id, field, date)}
+                  onColorChange={(color) => handleRoundColorChange(round.id, color)}
                 />
               ))}
             </div>
@@ -210,7 +233,6 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
             className="w-full bg-input border border-border rounded px-2 py-1 text-xs focus:outline-none focus:border-primary"
           />
 
-          {/* Date Pickers */}
           <div className="flex gap-2">
             <Popover>
               <PopoverTrigger asChild>
@@ -247,7 +269,6 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
             </Popover>
           </div>
 
-          {/* Color */}
           <div className="flex gap-1">
             {COLOR_PALETTE.map((color) => (
               <button
@@ -262,7 +283,6 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
             ))}
           </div>
 
-          {/* Actions */}
           <div className="flex gap-2">
             <button
               onClick={editingId ? handleUpdate : handleCreate}
@@ -283,7 +303,6 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
         </div>
       )}
 
-      {/* Add Event Button for GM */}
       {isGM && !showForm && !editingId && (
         <div className="pt-2 border-t border-border mt-auto">
           <button
@@ -298,8 +317,24 @@ export function CalendarManagerWidget({ campaignId, isGM, visibleRoundIds = [], 
   );
 }
 
-// Sub-component for round toggle rows
-function RoundToggleRow({ round, isVisible, onToggle }: { round: BattleRound; isVisible: boolean; onToggle: () => void }) {
+/** Expandable round row with date pickers & color selector */
+function RoundConfigRow({
+  round,
+  isVisible,
+  color,
+  onToggle,
+  onDateChange,
+  onColorChange,
+}: {
+  round: BattleRound;
+  isVisible: boolean;
+  color: string;
+  onToggle: () => void;
+  onDateChange: (field: "starts_at" | "ends_at", date: Date | undefined) => void;
+  onColorChange: (color: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
   const statusColors: Record<string, string> = {
     draft: "text-muted-foreground",
     open: "text-green-400",
@@ -307,44 +342,128 @@ function RoundToggleRow({ round, isVisible, onToggle }: { round: BattleRound; is
   };
 
   return (
-    <div className="flex items-center gap-2 p-2 border border-border/50 rounded bg-muted/20">
-      <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium truncate">{round.name}</p>
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          <span className={statusColors[round.status] || "text-muted-foreground"}>
-            {round.status}
-          </span>
-          {round.starts_at && (
-            <>
-              <span>•</span>
-              <span>
-                {format(parseISO(round.starts_at), "MMM d")}
-                {round.ends_at && round.ends_at !== round.starts_at && (
-                  <> - {format(parseISO(round.ends_at), "MMM d")}</>
-                )}
-              </span>
-            </>
+    <div className="border border-border/50 rounded bg-muted/20 overflow-hidden">
+      {/* Header row */}
+      <div className="flex items-center gap-2 p-2">
+        <div
+          className="w-2.5 h-2.5 rounded-full flex-shrink-0 cursor-pointer"
+          style={{ backgroundColor: color }}
+          onClick={() => setExpanded(!expanded)}
+        />
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex-1 min-w-0 text-left"
+        >
+          <p className="text-xs font-medium truncate">{round.name}</p>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className={statusColors[round.status] || "text-muted-foreground"}>
+              {round.status}
+            </span>
+            {round.starts_at && (
+              <>
+                <span>•</span>
+                <span>
+                  {format(parseISO(round.starts_at), "MMM d")}
+                  {round.ends_at && (
+                    <> – {format(parseISO(round.ends_at), "MMM d")}</>
+                  )}
+                </span>
+              </>
+            )}
+            {!round.starts_at && (
+              <>
+                <span>•</span>
+                <span className="italic text-yellow-500/70">No dates</span>
+              </>
+            )}
+          </div>
+        </button>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="p-1 hover:bg-primary/20 rounded text-muted-foreground hover:text-primary"
+            title="Edit dates & color"
+          >
+            <Edit2 className="w-3 h-3" />
+          </button>
+          {isVisible ? (
+            <Eye className="w-3 h-3 text-primary" />
+          ) : (
+            <EyeOff className="w-3 h-3 text-muted-foreground" />
           )}
-          {!round.starts_at && (
-            <>
-              <span>•</span>
-              <span className="italic">No dates set</span>
-            </>
-          )}
+          <Switch
+            checked={isVisible}
+            onCheckedChange={onToggle}
+            className="scale-75"
+          />
         </div>
       </div>
-      <div className="flex items-center gap-1">
-        {isVisible ? (
-          <Eye className="w-3 h-3 text-primary" />
-        ) : (
-          <EyeOff className="w-3 h-3 text-muted-foreground" />
-        )}
-        <Switch
-          checked={isVisible}
-          onCheckedChange={onToggle}
-          className="scale-75"
-        />
-      </div>
+
+      {/* Expanded config panel */}
+      {expanded && (
+        <div className="px-2 pb-2 space-y-2 border-t border-border/30 pt-2">
+          {/* Date pickers */}
+          <div className="flex gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex-1 flex items-center gap-1 text-[10px] py-1 px-2 border border-border rounded text-left hover:border-primary/50">
+                  <CalendarIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  <span className="truncate">
+                    {round.starts_at ? format(parseISO(round.starts_at), "MMM d, yyyy") : "Start date"}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={round.starts_at ? parseISO(round.starts_at) : undefined}
+                  onSelect={(date) => onDateChange("starts_at", date)}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="flex-1 flex items-center gap-1 text-[10px] py-1 px-2 border border-border rounded text-left hover:border-primary/50">
+                  <CalendarIcon className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  <span className="truncate">
+                    {round.ends_at ? format(parseISO(round.ends_at), "MMM d, yyyy") : "End date"}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={round.ends_at ? parseISO(round.ends_at) : undefined}
+                  onSelect={(date) => onDateChange("ends_at", date)}
+                  disabled={(date) => round.starts_at ? date < parseISO(round.starts_at) : false}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Color picker */}
+          <div className="flex items-center gap-2">
+            <Palette className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <div className="flex gap-1">
+              {COLOR_PALETTE.map((c) => (
+                <button
+                  key={c.hex}
+                  onClick={() => onColorChange(c.hex)}
+                  className={`w-4 h-4 rounded-full border-2 transition-all ${
+                    color === c.hex ? "border-foreground scale-110" : "border-transparent"
+                  }`}
+                  style={{ backgroundColor: c.hex }}
+                  title={c.name}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
