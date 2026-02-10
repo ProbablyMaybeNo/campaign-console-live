@@ -142,38 +142,17 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="space-y-6 p-1 pr-4">
-        {/* GM Preview Notice */}
-        {isGMPreview && (
-          <div className="bg-secondary/20 border border-secondary/50 rounded p-3 text-center">
-            <p className="text-xs font-mono text-secondary">
-              [ GM PREVIEW MODE ] This is what players see. Changes won't be saved.
-            </p>
-          </div>
-        )}
-
-        {/* Save Button */}
-        {!isGMPreview && (
-          <TerminalButton
-            variant="secondary"
-            onClick={handleSaveSettings}
-            disabled={isSaving}
-            className="w-full"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Save Settings
-              </>
-            )}
-          </TerminalButton>
-        )}
+    <div className="h-full flex flex-col">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-6 p-1 pr-4">
+          {/* GM Preview Notice */}
+          {isGMPreview && (
+            <div className="bg-secondary/20 border border-secondary/50 rounded p-3 text-center">
+              <p className="text-xs font-mono text-secondary">
+                [ GM PREVIEW MODE ] This is what players see. Changes won't be saved.
+              </p>
+            </div>
+          )}
 
         {/* Player Info Section */}
         <section className="space-y-4">
@@ -428,7 +407,32 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
             </AlertDialog>
           </section>
         )}
-      </div>
-    </ScrollArea>
+        </div>
+      </ScrollArea>
+
+      {/* Sticky Save Button */}
+      {!isGMPreview && (
+        <div className="shrink-0 border-t border-primary/20 p-3">
+          <TerminalButton
+            variant="secondary"
+            onClick={handleSaveSettings}
+            disabled={isSaving}
+            className="w-full"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Save Settings
+              </>
+            )}
+          </TerminalButton>
+        </div>
+      )}
+    </div>
   );
 }
