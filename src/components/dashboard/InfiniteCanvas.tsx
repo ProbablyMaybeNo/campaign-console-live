@@ -180,7 +180,7 @@ export function InfiniteCanvas({
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
-      const { active } = event;
+      const { active, delta } = event;
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
 
@@ -192,37 +192,18 @@ export function InfiniteCanvas({
         return;
       }
 
-      // Get the pan offset from TransformWrapper
-      const transformState = transformRef.current?.instance?.transformState;
-      const panX = transformState?.positionX ?? 0;
-      const panY = transformState?.positionY ?? 0;
+      // Delta is in viewport pixels; divide by scale to get canvas-coordinate movement.
+      // This is correct because PointerSensor delta = raw cursor movement (viewport px),
+      // and canvas coords = viewport coords / scale.
+      const newX = snapPosition(component.position_x + delta.x / scale);
+      const newY = snapPosition(component.position_y + delta.y / scale);
 
-      // TransformWrapper positions are relative to the canvas container, not the viewport.
-      // Convert viewport coordinates → container-local → canvas coords.
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      const originX = containerRect?.left ?? 0;
-      const originY = containerRect?.top ?? 0;
-
-      // Use dnd-kit's computed rect (includes modifiers) to match the DragOverlay's
-      // visual position exactly, regardless of zoom/pan.
-      const rect = active.rect.current.translated ?? active.rect.current.initial;
-      if (!rect) {
-        setIsAnyDragging(false);
-        setActiveDragId(null);
-        setPendingDrop(null);
-        return;
-      }
-
-      const overlayViewportX = rect.left;
-      const overlayViewportY = rect.top;
-
-      // Canvas position = (viewport - containerOrigin - pan) / scale
-      const canvasX = (overlayViewportX - originX - panX) / scale;
-      const canvasY = (overlayViewportY - originY - panY) / scale;
-
-      // Snap to grid
-      const newX = snapPosition(canvasX);
-      const newY = snapPosition(canvasY);
+      console.log('[DnD Drop]', {
+        delta,
+        scale,
+        oldPos: { x: component.position_x, y: component.position_y },
+        newPos: { x: newX, y: newY },
+      });
 
       // No meaningful move → don't keep the overlay around.
       if (newX === component.position_x && newY === component.position_y) {
