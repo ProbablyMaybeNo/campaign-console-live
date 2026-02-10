@@ -46,7 +46,7 @@ export default function Index() {
 
         <section className="space-y-2 pt-2" aria-label="Features">
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            A rules-agnostic campaign hub built for tabletop games. Track rounds and battles, organize players and warbands, manage maps and schedules, and publish rules and narrative updates to your group.
+            A rules-agnostic campaign hub built for tabletop games. Track rounds and battles, organize players and warbands, manage maps and schedules, and publish rules and narrative updates to your group. All for free.
           </p>
         </section>
 
