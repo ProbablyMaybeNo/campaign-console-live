@@ -361,7 +361,7 @@ function DraggableComponentInner({
           className="flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/30 select-none"
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {isGM && (
+            {isGM && !isCampaignConsole && (
               <div
                 className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none rounded hover:bg-[hsl(200,100%,60%)]/15 transition-colors group"
                 {...listeners}
