@@ -356,15 +356,24 @@ function DraggableComponentInner({
         className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden"
         style={chromeStyle}
       >
-        {/* Component Header - entire bar is draggable for GM */}
+        {/* Component Header */}
         <div
-          className={`flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/30 select-none touch-none ${
-            isGM ? "cursor-grab active:cursor-grabbing" : ""
-          }`}
-          {...(isGM ? { ...listeners, ...attributes } : {})}
+          className="flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/30 select-none"
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {isGM && <GripVertical className="w-4 h-4 text-primary flex-shrink-0 opacity-50" />}
+            {isGM && (
+              <div
+                className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1 rounded hover:bg-[hsl(200,100%,60%)]/20 transition-colors group"
+                {...listeners}
+                {...attributes}
+                aria-label="Drag to move widget"
+              >
+                <GripVertical
+                  className="w-5 h-5 text-[hsl(200,100%,60%)] group-hover:text-[hsl(200,100%,70%)] transition-colors"
+                  style={{ filter: "drop-shadow(0 0 4px hsl(200 100% 60% / 0.6))" }}
+                />
+              </div>
+            )}
             <span className="text-sm flex-shrink-0" aria-hidden>
               {icon}
             </span>
