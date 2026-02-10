@@ -60,31 +60,6 @@ serve(async (req) => {
   // Get user ID
   const userId = user.id;
 
-  // Check entitlements - Smart Paste requires Supporter subscription
-  const { data: entitlements, error: entitlementError } = await supabase.rpc('get_user_entitlements', {
-    _user_id: userId,
-  });
-
-  if (entitlementError) {
-    console.error("Failed to check entitlements:", entitlementError);
-    return new Response(
-      JSON.stringify({ error: "Failed to verify subscription status" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  const userEntitlements = entitlements as Entitlements;
-  
-  if (!userEntitlements?.smart_paste_enabled) {
-    return new Response(
-      JSON.stringify({ 
-        error: "SUBSCRIPTION_REQUIRED",
-        message: "Smart Paste requires a Supporter subscription. Upgrade to unlock AI-powered text conversion.",
-        code: "SUBSCRIPTION_REQUIRED"
-      }),
-      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
 
   try {
     const { rawText, hint = "table" }: ConversionRequest = await req.json();
