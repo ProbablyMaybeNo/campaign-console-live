@@ -61,7 +61,7 @@ const sidebarItems: {
   { id: "map", label: "Map", icon: Map },
   { id: "narrative", label: "Narrative", icon: BookOpen },
   { id: "messages", label: "Messages", icon: MessageSquare },
-  { id: "schedule", label: "Schedule", icon: Calendar },
+  { id: "calendar", label: "Calendar", icon: Calendar },
 ];
 
 export default function CampaignDashboard() {

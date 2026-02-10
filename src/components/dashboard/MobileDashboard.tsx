@@ -148,8 +148,8 @@ export const MobileDashboard = memo(function MobileDashboard({
             />
             <QuickActionButton 
               icon={<Calendar className="w-4 h-4" />} 
-              label="Schedule" 
-              onClick={() => onOpenOverlay("schedule")} 
+              label="Calendar" 
+              onClick={() => onOpenOverlay("calendar")} 
             />
             <QuickActionButton 
               icon={<MessageSquare className="w-4 h-4" />} 

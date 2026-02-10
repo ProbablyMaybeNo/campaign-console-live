@@ -321,7 +321,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
 
               {selectedType === "calendar" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
-                  Displays a monthly calendar with rounds and events. Manage schedule via the Schedule overlay.
+                  Displays a monthly calendar with rounds and events. Manage events and round visibility via the Calendar overlay.
                 </p>
               )}
 
