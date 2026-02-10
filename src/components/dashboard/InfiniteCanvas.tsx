@@ -26,6 +26,7 @@ interface InfiniteCanvasProps {
   onComponentSelect: (component: DashboardComponent | null, shiftKey?: boolean) => void;
   selectedComponentId: string | null;
   multiSelectedIds?: Set<string>;
+  onMarqueeSelect?: (ids: string[]) => void;
 }
 
 const ZOOM_STEP = 0.1;
@@ -39,6 +40,7 @@ export function InfiniteCanvas({
   onComponentSelect,
   selectedComponentId,
   multiSelectedIds = new Set(),
+  onMarqueeSelect,
 }: InfiniteCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,7 @@ export function InfiniteCanvas({
   // Track canvas-wide interaction state for paint reduction
   const [isAnyDragging, setIsAnyDragging] = useState(false);
   const [isAnyResizing, setIsAnyResizing] = useState(false);
+  const [shiftHeld, setShiftHeld] = useState(false);
 
   // DragOverlay state
   // NOTE: we keep the overlay active for a short "handoff" after drop so the real
@@ -59,6 +62,10 @@ export function InfiniteCanvas({
   const [pendingDrop, setPendingDrop] = useState<
     { id: string; x: number; y: number } | null
   >(null);
+
+  // Marquee selection state
+  const [marquee, setMarquee] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const marqueeStartRef = useRef<{ canvasX: number; canvasY: number } | null>(null);
 
   // Drop coordinates are derived from @dnd-kit’s translated rect (which already includes
   // modifiers like grab-point preservation), then converted from viewport → canvas
@@ -405,6 +412,20 @@ export function InfiniteCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleZoomIn, handleZoomOut, handleReset, handleRecenter]);
 
+  // Track Shift key for marquee selection (disables panning)
+  useEffect(() => {
+    if (!isGM) return;
+    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(false); };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', () => setShiftHeld(false));
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, [isGM]);
+
   // Prevent scroll on canvas - only allow scroll within focused components
   const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
     const target = e.target as HTMLElement;
@@ -455,12 +476,101 @@ export function InfiniteCanvas({
     return components.find((c) => c.id === activeDragId) ?? null;
   }, [activeDragId, components]);
 
+  // Marquee selection handlers (Shift + left-drag on empty canvas)
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isGM || !e.shiftKey || e.button !== 0) return;
+    
+    // Don't start marquee if clicking on a widget
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-draggable-component]')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const ref = transformRef.current;
+    const state = ref?.instance?.transformState;
+    if (!state) return;
+
+    // Convert viewport coords to canvas coords
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const viewportX = e.clientX - rect.left;
+    const viewportY = e.clientY - rect.top;
+    const canvasX = (viewportX - state.positionX) / state.scale;
+    const canvasY = (viewportY - state.positionY) / state.scale;
+
+    marqueeStartRef.current = { canvasX, canvasY };
+    setMarquee({ startX: canvasX, startY: canvasY, currentX: canvasX, currentY: canvasY });
+  }, [isGM]);
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!marquee || !marqueeStartRef.current) return;
+
+    const ref = transformRef.current;
+    const state = ref?.instance?.transformState;
+    if (!state) return;
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const viewportX = e.clientX - rect.left;
+    const viewportY = e.clientY - rect.top;
+    const canvasX = (viewportX - state.positionX) / state.scale;
+    const canvasY = (viewportY - state.positionY) / state.scale;
+
+    setMarquee(prev => prev ? { ...prev, currentX: canvasX, currentY: canvasY } : null);
+  }, [marquee]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (!marquee || !onMarqueeSelect) {
+      setMarquee(null);
+      marqueeStartRef.current = null;
+      return;
+    }
+
+    const left = Math.min(marquee.startX, marquee.currentX);
+    const right = Math.max(marquee.startX, marquee.currentX);
+    const top = Math.min(marquee.startY, marquee.currentY);
+    const bottom = Math.max(marquee.startY, marquee.currentY);
+
+    // Only select if marquee has meaningful size (>10px canvas units)
+    if (right - left > 10 && bottom - top > 10) {
+      const hitIds = components
+        .filter(c => {
+          const cx = c.position_x;
+          const cy = c.position_y;
+          const cw = c.width;
+          const ch = c.height;
+          // Widget overlaps the marquee rectangle
+          return cx + cw > left && cx < right && cy + ch > top && cy < bottom;
+        })
+        .map(c => c.id);
+
+      onMarqueeSelect(hitIds);
+    }
+
+    setMarquee(null);
+    marqueeStartRef.current = null;
+  }, [marquee, components, onMarqueeSelect]);
+
+  // Compute marquee rect for rendering (in canvas coordinates)
+  const marqueeRect = useMemo(() => {
+    if (!marquee) return null;
+    return {
+      left: Math.min(marquee.startX, marquee.currentX),
+      top: Math.min(marquee.startY, marquee.currentY),
+      width: Math.abs(marquee.currentX - marquee.startX),
+      height: Math.abs(marquee.currentY - marquee.startY),
+    };
+  }, [marquee]);
+
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-background"
+      className={`relative w-full h-full overflow-hidden bg-background ${shiftHeld && isGM ? 'cursor-crosshair' : ''}`}
       onWheel={handleCanvasWheel}
       onClick={handleCanvasClick}
+      onMouseDown={handleCanvasMouseDown}
+      onMouseMove={handleCanvasMouseMove}
+      onMouseUp={handleCanvasMouseUp}
+      onMouseLeave={handleCanvasMouseUp}
     >
       {/* Canvas Controls */}
       <CanvasControls
@@ -496,6 +606,7 @@ export function InfiniteCanvas({
           panning={{
             velocityDisabled: false,
             excluded: ["draggable-component"],
+            disabled: shiftHeld,
           }}
           wheel={{
             disabled: true,
@@ -520,6 +631,20 @@ export function InfiniteCanvas({
           >
             {/* Grid Background */}
             <CanvasGrid />
+
+            {/* Marquee selection rectangle */}
+            {marqueeRect && (
+              <div
+                className="absolute border-2 border-primary bg-primary/10 pointer-events-none z-50"
+                style={{
+                  left: marqueeRect.left,
+                  top: marqueeRect.top,
+                  width: marqueeRect.width,
+                  height: marqueeRect.height,
+                  boxShadow: '0 0 8px hsl(var(--primary) / 0.4)',
+                }}
+              />
+            )}
 
             {/* Draggable components inside the scaled canvas */}
             {components.map((component) => (

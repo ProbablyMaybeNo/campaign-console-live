@@ -565,6 +565,7 @@ export default function CampaignDashboard() {
             selectedComponentId={selectedComponent?.id || null}
             multiSelectedIds={multiSelect.selectedIds}
             onComponentSelect={handleComponentSelect}
+            onMarqueeSelect={multiSelect.selectByIds}
           />
 
           {/* GM: Quick Actions FAB + Help */}
