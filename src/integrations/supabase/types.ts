@@ -493,7 +493,6 @@ export type Database = {
           max_players: number | null
           name: string
           owner_id: string
-          password: string | null
           password_hash: string | null
           points_limit: number | null
           round_length: string | null
@@ -522,7 +521,6 @@ export type Database = {
           max_players?: number | null
           name: string
           owner_id: string
-          password?: string | null
           password_hash?: string | null
           points_limit?: number | null
           round_length?: string | null
@@ -551,7 +549,6 @@ export type Database = {
           max_players?: number | null
           name?: string
           owner_id?: string
-          password?: string | null
           password_hash?: string | null
           points_limit?: number | null
           round_length?: string | null
