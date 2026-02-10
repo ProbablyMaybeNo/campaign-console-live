@@ -28,7 +28,7 @@ interface InfiniteCanvasProps {
   multiSelectedIds?: Set<string>;
 }
 
-const ZOOM_STEP = 0.15;
+const ZOOM_STEP = 0.1;
 const GRID_SIZE = 40; // Matches the visual grid in CanvasGrid
 const INITIAL_SCALE = 1.0;
 
@@ -302,7 +302,7 @@ export function InfiniteCanvas({
     const currentScale = state.scale ?? scale;
     const positionX = state.positionX ?? 0;
     const positionY = state.positionY ?? 0;
-    const newScale = Math.min(2, currentScale + ZOOM_STEP);
+    const newScale = Math.min(2, Math.round((currentScale + ZOOM_STEP) * 10) / 10);
     
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
@@ -326,7 +326,7 @@ export function InfiniteCanvas({
     const currentScale = state.scale ?? scale;
     const positionX = state.positionX ?? 0;
     const positionY = state.positionY ?? 0;
-    const newScale = Math.max(0.25, currentScale - ZOOM_STEP);
+    const newScale = Math.max(0.3, Math.round((currentScale - ZOOM_STEP) * 10) / 10);
     
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
