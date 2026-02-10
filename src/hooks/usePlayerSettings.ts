@@ -143,11 +143,13 @@ export function useAllPlayerSettings(campaignId: string | undefined) {
       // Fetch profiles to get display names as fallback
       const userIds = players.map((p) => p.user_id);
       const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("id, display_name")
         .in("id", userIds);
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.warn("Failed to fetch public profiles:", profilesError);
+      }
 
       const profileMap = (profiles || []).reduce((acc, p) => {
         acc[p.id] = p.display_name;
