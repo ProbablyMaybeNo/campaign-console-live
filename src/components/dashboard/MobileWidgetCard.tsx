@@ -62,8 +62,8 @@ function getWidgetPreview(component: DashboardComponent): string {
       return "Roll dice";
     case "image":
       return "View image";
-    case "schedule":
-      return "View schedule";
+    case "calendar":
+      return "View calendar";
     case "narrative":
     case "narrative-table":
       return "View narrative";

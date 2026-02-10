@@ -11,7 +11,7 @@ export type OverlayType =
   | "map" 
   | "narrative" 
   | "messages" 
-  | "schedule" 
+  | "calendar" 
   | "settings"
   | "battles"
   | null;

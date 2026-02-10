@@ -70,7 +70,7 @@ export function MobileOnboardingModal({ isPhone }: MobileOnboardingModalProps) {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  Access Rules, Map, Schedule & Narrative
+                  Access Rules, Map, Calendar & Narrative
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
