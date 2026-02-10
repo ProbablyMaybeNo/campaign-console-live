@@ -363,14 +363,15 @@ function DraggableComponentInner({
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {isGM && (
               <div
-                className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none p-1 -ml-1 rounded hover:bg-[hsl(200,100%,60%)]/20 transition-colors group"
+                className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none rounded hover:bg-[hsl(200,100%,60%)]/15 transition-colors group"
                 {...listeners}
                 {...attributes}
                 aria-label="Drag to move widget"
               >
                 <GripVertical
-                  className="w-5 h-5 text-[hsl(200,100%,60%)] group-hover:text-[hsl(200,100%,70%)] transition-colors"
-                  style={{ filter: "drop-shadow(0 0 4px hsl(200 100% 60% / 0.6))" }}
+                  className="w-4 h-4 text-[hsl(200,100%,65%)] group-hover:text-[hsl(200,100%,80%)] transition-colors"
+                  style={{ filter: "drop-shadow(0 0 6px hsl(200 100% 60% / 0.8))" }}
+                  strokeWidth={3}
                 />
               </div>
             )}
