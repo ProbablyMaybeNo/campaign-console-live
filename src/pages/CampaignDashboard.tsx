@@ -136,6 +136,11 @@ export default function CampaignDashboard() {
       multiSelect.toggleSelect(component.id, true);
       setSelectedComponent(component);
     } else {
+      // If this widget is already part of a multi-selection, don't clear the group
+      if (multiSelect.selectedIds.size > 1 && multiSelect.selectedIds.has(component.id)) {
+        setSelectedComponent(component);
+        return;
+      }
       multiSelect.toggleSelect(component.id, false);
       setSelectedComponent(component);
     }
