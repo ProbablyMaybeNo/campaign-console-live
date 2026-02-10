@@ -387,8 +387,8 @@ export default function CampaignDashboard() {
           campaignId={campaignId!}
         />
 
-        {/* Supporter Hub for theme picker on mobile */}
-        <SupporterHub
+        {/* Supporter Hub for mobile - hidden for now, can be re-enabled later */}
+        {/* <SupporterHub
           isSupporter={isSupporter}
           currentThemeId={campaign?.theme_id || "dark"}
           onThemeSelect={(themeId) => {
@@ -401,7 +401,7 @@ export default function CampaignDashboard() {
           onAddSmartPaste={() => openOverlay("rules")}
           onAddSticker={() => setShowAddModal(true)}
           onAddText={() => setShowAddModal(true)}
-        />
+        /> */}
       </div>
     );
   }
@@ -508,8 +508,8 @@ export default function CampaignDashboard() {
                 />
               </nav>
               
-              {/* Supporter Hub - unified access point for all supporter features */}
-              <div className="mt-auto pt-4 border-t border-border">
+              {/* Supporter Hub - hidden for now, can be re-enabled later */}
+              {/* <div className="mt-auto pt-4 border-t border-border">
                 <SupporterHub
                   isSupporter={isSupporter}
                   currentThemeId={campaign?.theme_id || "dark"}
@@ -533,7 +533,7 @@ export default function CampaignDashboard() {
                     toast.info("Opening widget picker for Text");
                   }}
                 />
-              </div>
+              </div> */}
             </div>
           </aside>
         )}

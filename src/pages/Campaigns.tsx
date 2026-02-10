@@ -94,8 +94,8 @@ export default function Campaigns() {
       <div className="absolute inset-4 pointer-events-none border border-primary/40 shadow-[0_0_20px_hsl(var(--primary)/0.15)]" />
       <div className="absolute inset-6 pointer-events-none border border-primary/25" />
 
-      {/* Supporter icon - top right */}
-      <div className="absolute top-8 right-8 flex items-center gap-3">
+      {/* Supporter icon - hidden for now, can be re-enabled later */}
+      {/* <div className="absolute top-8 right-8 flex items-center gap-3">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -113,7 +113,7 @@ export default function Campaigns() {
             <p className="text-xs">Supporters</p>
           </TooltipContent>
         </Tooltip>
-      </div>
+      </div> */}
 
       {/* Help button - bottom right */}
       <div className="fixed bottom-8 right-8 z-50">
