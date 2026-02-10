@@ -48,18 +48,17 @@ serve(async (req) => {
     global: { headers: { Authorization: authHeader } },
   });
 
-  const token = authHeader.replace("Bearer ", "");
-  const { data: claimsData, error: authError } = await supabase.auth.getClaims(token);
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
   
-  if (authError || !claimsData?.claims) {
+  if (authError || !user) {
     return new Response(
       JSON.stringify({ error: "Unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
-  // Get user ID from claims
-  const userId = claimsData.claims.sub as string;
+  // Get user ID
+  const userId = user.id;
 
   // Check entitlements - Smart Paste requires Supporter subscription
   const { data: entitlements, error: entitlementError } = await supabase.rpc('get_user_entitlements', {
