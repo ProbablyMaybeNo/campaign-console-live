@@ -31,6 +31,7 @@ export function CalendarWidget({ campaignId }: CalendarWidgetProps) {
   const { displaySettings } = useCampaignDisplaySettings(campaignId);
 
   const visibleRoundIds: string[] = (displaySettings?.visible_round_ids as string[]) || [];
+  const roundColors: Record<string, string> = (displaySettings?.round_colors as Record<string, string>) || {};
 
   // Merge events + visible rounds into CalendarItems
   const calendarItems = useMemo(() => {
@@ -61,14 +62,14 @@ export function CalendarWidget({ campaignId }: CalendarWidgetProps) {
           title: r.name,
           start_date: r.starts_at!,
           end_date: r.ends_at,
-          color: "#a855f7", // purple for rounds
+          color: roundColors[r.id] || "#a855f7",
           type: "round",
           status: r.status,
         });
       });
 
     return items;
-  }, [entries, rounds, visibleRoundIds]);
+  }, [entries, rounds, visibleRoundIds, roundColors]);
 
   // Generate array of days for the calendar grid (6 weeks)
   const calendarDays = useMemo(() => {

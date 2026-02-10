@@ -269,9 +269,14 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
 function CalendarOverlay({ config, onClose, campaignId, isGM }: { config: OverlayConfig; onClose: () => void; campaignId: string; isGM: boolean }) {
   const { displaySettings, updateDisplaySettings } = useCampaignDisplaySettings(campaignId);
   const visibleRoundIds = (displaySettings?.visible_round_ids as string[]) || [];
+  const roundColors = (displaySettings?.round_colors as Record<string, string>) || {};
 
   const handleVisibleRoundsChange = (roundIds: string[]) => {
     updateDisplaySettings({ visible_round_ids: roundIds });
+  };
+
+  const handleRoundColorsChange = (colors: Record<string, string>) => {
+    updateDisplaySettings({ round_colors: colors });
   };
 
   return (
@@ -282,6 +287,8 @@ function CalendarOverlay({ config, onClose, campaignId, isGM }: { config: Overla
           isGM={isGM}
           visibleRoundIds={visibleRoundIds}
           onVisibleRoundsChange={handleVisibleRoundsChange}
+          roundColors={roundColors}
+          onRoundColorsChange={handleRoundColorsChange}
         />
       </div>
     </OverlayPanel>

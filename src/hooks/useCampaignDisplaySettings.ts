@@ -4,6 +4,7 @@ import type { Json } from "@/integrations/supabase/types";
 
 export interface DisplaySettings {
   visible_round_ids?: string[];
+  round_colors?: Record<string, string>;
   [key: string]: unknown;
 }
 
