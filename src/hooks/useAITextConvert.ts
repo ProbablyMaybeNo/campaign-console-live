@@ -38,8 +38,12 @@ export function useAITextConvert() {
 
       if (error) {
         console.error("AI conversion error:", error);
-        toast.error("AI conversion failed", { description: error.message });
-        return { success: false, error: error.message };
+        // Check if the error response contains a subscription requirement
+        const errorMessage = data?.code === "SUBSCRIPTION_REQUIRED" 
+          ? data.message 
+          : (data?.error || error.message || "Edge Function returned a non-2xx status code");
+        toast.error("AI conversion failed", { description: errorMessage });
+        return { success: false, error: errorMessage };
       }
 
       if (!data.success) {
