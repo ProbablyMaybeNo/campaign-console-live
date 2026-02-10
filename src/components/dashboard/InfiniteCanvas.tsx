@@ -200,10 +200,11 @@ export function InfiniteCanvas({
       }
 
       // Delta is in viewport pixels; divide by scale to get canvas-coordinate movement.
-      // This is correct because PointerSensor delta = raw cursor movement (viewport px),
-      // and canvas coords = viewport coords / scale.
-      const newX = snapPosition(component.position_x + delta.x / scale);
-      const newY = snapPosition(component.position_y + delta.y / scale);
+      const deltaX = delta.x / scale;
+      const deltaY = delta.y / scale;
+
+      const newX = snapPosition(component.position_x + deltaX);
+      const newY = snapPosition(component.position_y + deltaY);
 
       console.log('[DnD Drop]', {
         delta,
@@ -224,14 +225,29 @@ export function InfiniteCanvas({
       // has propagated and the widget has re-rendered at its final snapped position.
       setPendingDrop({ id: componentId, x: newX, y: newY });
 
+      // Move the dragged widget
       debouncedUpdate({
         id: componentId,
         position_x: newX,
         position_y: newY,
       });
+
+      // Also move all other multi-selected widgets by the same delta
+      if (multiSelectedIds.size > 1 && multiSelectedIds.has(componentId)) {
+        components.forEach((c) => {
+          if (c.id !== componentId && multiSelectedIds.has(c.id)) {
+            debouncedUpdate({
+              id: c.id,
+              position_x: snapPosition(c.position_x + deltaX),
+              position_y: snapPosition(c.position_y + deltaY),
+            });
+          }
+        });
+      }
+
       flushNow(); // Flush immediately on drag end
     },
-    [components, isGM, scale, debouncedUpdate, flushNow, snapPosition]
+    [components, isGM, scale, debouncedUpdate, flushNow, snapPosition, multiSelectedIds]
   );
 
   const handleDragCancel = useCallback(() => {
