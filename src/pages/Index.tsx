@@ -37,7 +37,7 @@ export default function Index() {
         
         <div className="space-y-2">
           <h1 className="text-lg text-white uppercase tracking-wider text-glow-white">
-            Tabletop Wargame Campaign Manager
+            Campaign Manager for Tabletop Wargames and RPGs
           </h1>
           <p className="text-xs text-white/90 font-mono text-glow-white animate-pulse">
             BOOT: CAMPAIGN OPTIMIZATION — INITIALIZING...
@@ -46,7 +46,7 @@ export default function Index() {
 
         <section className="space-y-2 pt-2" aria-label="Features">
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Track battles, manage warbands, build narrative campaigns & coordinate your gaming group — all in one free dashboard.
+            Track battles, manage players, maps, schedule, and build narratives, rules, and much more. The free, all in one, tabletop gaming tool for wargamers and dungeon masters.
           </p>
         </section>
 
