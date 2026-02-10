@@ -379,7 +379,7 @@ function DraggableComponentInner({
               {icon}
             </span>
             <span
-              className="text-xs font-mono text-primary uppercase tracking-wider truncate"
+              className="text-sm font-mono text-primary uppercase tracking-wider truncate leading-none"
               style={{ textShadow: "0 0 8px hsl(var(--primary) / 0.4)" }}
             >
               {component.name}
