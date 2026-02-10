@@ -111,8 +111,8 @@ export function PlayerOnboardingModal({
 
   const handleNext = () => {
     if (isLastStep) {
-      // Show supporter slide before closing
-      setShowSupporterSlide(true);
+      // Skip supporter slide, just finish
+      handleFinish();
     } else {
       setCurrentStep((prev) => prev + 1);
     }

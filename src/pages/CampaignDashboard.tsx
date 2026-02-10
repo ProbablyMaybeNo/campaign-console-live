@@ -666,11 +666,11 @@ export default function CampaignDashboard() {
         onCopyJoinCode={handleCopyJoinCode}
       />
 
-      {/* Supporter Welcome Modal */}
-      <SupporterWelcomeModal
+      {/* Supporter Welcome Modal - hidden for now */}
+      {/* <SupporterWelcomeModal
         open={showSupporterWelcome}
         onClose={() => setShowSupporterWelcome(false)}
-      />
+      /> */}
     </div>
   );
 }
