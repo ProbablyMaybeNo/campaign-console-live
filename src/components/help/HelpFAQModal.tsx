@@ -371,7 +371,8 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
                 Change Password
               </Button>
 
-              <Link to="/settings" onClick={onClose} className="block">
+              {/* App Settings link - hidden for now since it only has billing */}
+              {/* <Link to="/settings" onClick={onClose} className="block">
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2 font-mono text-xs uppercase tracking-wider"
@@ -379,7 +380,7 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
                   <Settings className="w-4 h-4" />
                   App Settings
                 </Button>
-              </Link>
+              </Link> */}
 
               <Button
                 variant="outline"
@@ -449,7 +450,8 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
                 Can't find what you're looking for? Contact your Games Master or check back for updates.
               </p>
               
-              <Link
+              {/* Support CTA - hidden for now */}
+              {/* <Link
                 to="/settings?tab=billing"
                 onClick={onClose}
                 className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-sm font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
@@ -461,7 +463,7 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
               >
                 <Heart className="w-4 h-4" />
                 Support Campaign Console
-              </Link>
+              </Link> */}
             </div>
           </>
         )}

@@ -46,7 +46,7 @@ export function CampaignLimitModal({
           
           <p className="text-muted-foreground text-sm">
             You currently have {activeCampaignCount} active campaign{activeCampaignCount !== 1 ? 's' : ''}. 
-            You can archive a campaign to start a new one, or upgrade to Supporter to keep up to 5 active campaigns.
+            You can archive a campaign to start a new one.
           </p>
 
           <div className="bg-muted/30 p-3 rounded border border-border">
@@ -67,13 +67,14 @@ export function CampaignLimitModal({
             Archive a Campaign
           </TerminalButton>
           
-          <TerminalButton
+          {/* Upgrade button - hidden for now */}
+          {/* <TerminalButton
             onClick={handleUpgrade}
             className="flex-1 gap-2"
           >
             <Unlock className="w-4 h-4" />
             Upgrade ($2.99/mo)
-          </TerminalButton>
+          </TerminalButton> */}
         </div>
       </DialogContent>
     </Dialog>

@@ -58,8 +58,8 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
 
   return (
     <div className="w-full h-full flex flex-col p-2 min-[400px]:p-3 gap-1.5 min-[400px]:gap-2 overflow-hidden select-none relative">
-      {/* Donator Badge - positioned in top right corner */}
-      {hasDonated && (
+      {/* Donator Badge - hidden for now, can be re-enabled later */}
+      {/* {hasDonated && (
         <div 
           className="absolute top-1 right-1 min-[400px]:top-2 min-[400px]:right-2 z-20"
           title="Thank you for your support!"
@@ -73,7 +73,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
             }}
           />
         </div>
-      )}
+      )} */}
 
       {/* Decorative Frame with Corner Accents */}
       <div className="absolute inset-1.5 min-[400px]:inset-2 pointer-events-none">
