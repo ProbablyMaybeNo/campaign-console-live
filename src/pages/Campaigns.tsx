@@ -179,6 +179,7 @@ export default function Campaigns() {
                     <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign ID</th>
                     <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Start Date</th>
                     <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Status</th>
+                    <th className="w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -247,6 +248,32 @@ export default function Campaigns() {
                       </td>
                       <td className={`hidden md:table-cell py-3 px-4 ${getStatusColor()}`}>
                         {getStatusLabel()}
+                      </td>
+                      <td className="py-3 px-1">
+                        {campaign.owner_id === user?.id && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  archiveCampaign.mutate({ campaignId: campaign.id, isArchived: !campaign.is_archived });
+                                }}
+                                onKeyDown={(e) => e.stopPropagation()}
+                                className="min-w-[32px] min-h-[32px] w-8 h-8 flex items-center justify-center hover:bg-primary/20 rounded transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                aria-label={campaign.is_archived ? "Restore campaign" : "Archive campaign"}
+                              >
+                                {campaign.is_archived ? (
+                                  <ArchiveRestore className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                                ) : (
+                                  <Archive className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{campaign.is_archived ? "Restore campaign" : "Archive campaign"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </td>
                     </tr>
                   ))}
