@@ -107,7 +107,7 @@ export const ROLE_LABELS: Record<CampaignRole, string> = {
   owner: "Owner",
   gm: "Games Master",
   co_gm: "Co-GM",
-  assistant: "Assistant",
+  assistant: "Moderator",
   player: "Player",
 };
 
