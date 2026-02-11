@@ -1,152 +1,54 @@
 
-# Fix: Widget Position Jump on Drop at Non-100% Zoom
 
-## Problem Summary
-Widgets are visually "jumping to the right" after drag-and-drop operations, particularly at zoom levels other than 100%. The session replay and network logs confirm that incorrect position values are being calculated and sent to the database, with the widget position overshooting its intended location.
+## Revamp Campaign Limit Modal + Add Archive Button to Campaign Table
 
-## Root Cause Analysis
-After investigating the code and researching known @dnd-kit issues with scaled containers (GitHub issues #50, #1852), the problem stems from a coordinate mismatch between the drag overlay positioning and the drop position calculation:
-
-1. **The DragOverlay renders outside the TransformWrapper** (in viewport coordinates)
-2. **The modifier adjusts the overlay position** to preserve the grab point offset
-3. **But the `delta` from @dnd-kit remains unchanged** - it represents raw cursor movement
-4. **The visual position of the overlay doesn't match** what the position calculation expects
-
-When the modifier subtracts `grabOffsetX/Y` from the transform, it visually moves the overlay. However, on drop, we use the raw `delta` which doesn't account for this adjustment. This creates a mismatch that becomes more pronounced at non-100% zoom levels due to the scaling factor.
-
-## The Fix
-We need to ensure the drop position calculation matches what the user visually sees. There are two approaches:
-
-### Approach A: Track the visual drop position directly (Recommended)
-Instead of calculating the drop position from `delta`, track where the overlay actually appears on screen and convert that back to canvas coordinates.
-
-### Approach B: Remove the grab-point offset from delta calculation
-If the modifier offsets the overlay by `grabOffsetX`, we should add that offset back when calculating the final position.
+This plan covers two things you asked for: (1) rewriting the Campaign Limit Modal with better copy, a subscriber interest button, and a secondary "interest" popup, and (2) adding an Archive/Restore button directly to each campaign row in the directory table.
 
 ---
 
-## Implementation Plan
+### 1. Rewrite the Campaign Limit Modal
 
-### 1. Update the modifier to expose the grab offset
-Modify `createGrabPointPreservingModifier` to also return/store the grab offset values so they can be used in the drop calculation.
+**Updated content flow:**
 
-**File:** `src/components/dashboard/dragOverlayModifiers.ts`
+- **Title**: "Campaign Limit Reached" (keep existing)
+- **Body**: Explain the free-tier limit, how to archive (via the new Archive button on the table or Campaign Settings), that archived campaigns persist indefinitely and can be restored anytime, and the 10-archive limit for created campaigns. Mention that players can join unlimited campaigns for free.
+- **"Become a Subscriber" button**: Opens a secondary "Coming Soon" dialog
+- **"Close" or "Got it" button**: Dismisses the modal
 
-Changes:
-- Create a mechanism to capture the grab offset when drag starts
-- Either use a ref/state to store these values, or recalculate them in `handleDragEnd`
+**Secondary "Coming Soon" dialog:**
+- Thanks the user for their interest
+- Mentions the planned ~$2.99/mo subscription tier with increased limits and exclusive features
+- Includes a link to the Discord server (https://discord.gg/PmMn3NVt)
+- "Close" button to dismiss
 
-### 2. Update handleDragEnd to account for grab offset
-The key fix is in `InfiniteCanvas.tsx`. When calculating the new position, we need to account for the fact that the overlay was offset from the cursor.
-
-**File:** `src/components/dashboard/InfiniteCanvas.tsx`
-
-Changes:
-- Store the grab offset when drag starts
-- In `handleDragEnd`, don't use the raw `delta` directly
-- Instead, calculate the overlay's intended canvas position
-
-### 3. Alternative: Use overlay position tracking
-A more robust approach is to track where the overlay is actually positioned (in viewport coordinates) and convert that to canvas coordinates.
-
-**File:** `src/components/dashboard/InfiniteCanvas.tsx`
-
-Changes:
-- Track the cursor position on drag end
-- Calculate the overlay's top-left position (cursor position minus grab offset)
-- Convert viewport position to canvas position using scale and pan offset
-- Snap to grid and save
+This will be implemented as internal state within the `CampaignLimitModal` component (a `showComingSoon` boolean toggling between the two views, or a nested dialog).
 
 ---
 
-## Technical Details
+### 2. Add Archive/Restore Button to Campaign Table Rows
 
-### Current buggy flow:
-```text
-1. Drag starts, grab offset = 200px (into widget)
-2. Modifier offsets overlay by -200px (so cursor appears at grab point)
-3. User moves cursor 100px right (delta.x = 100)
-4. Overlay moves 100px right (cursor still at grab point within overlay)
-5. Drop: newX = oldX + (100 / scale) = oldX + 200 (at 50% zoom)
-6. But visually, the overlay was at oldX * scale + (cursorX - grabOffset)
-7. This mismatch causes the jump
-```
+Currently, archiving is only accessible from Campaign Settings inside the dashboard. We will add a small Archive (or Restore, for archived tab) icon button directly on each campaign row in the directory table, visible only for campaigns the user owns (GM role).
 
-### Fixed flow:
-```text
-1. Drag starts, capture grab offset in viewport coords
-2. Modifier positions overlay correctly
-3. User drops at cursor position cursorEndX
-4. Overlay top-left = cursorEndX - grabOffset
-5. Canvas position = (overlayLeft - panX) / scale
-6. Snap and save
-```
-
-### Code changes (InfiniteCanvas.tsx):
-
-```typescript
-// New state to track grab offset
-const [grabOffset, setGrabOffset] = useState({ x: 0, y: 0 });
-
-const handleDragStart = useCallback((event: DragStartEvent) => {
-  // Calculate grab offset from the event
-  const element = document.querySelector(`[data-id="${event.active.id}"]`);
-  if (element) {
-    const rect = element.getBoundingClientRect();
-    const coords = { 
-      x: (event.activatorEvent as PointerEvent).clientX,
-      y: (event.activatorEvent as PointerEvent).clientY 
-    };
-    setGrabOffset({
-      x: coords.x - rect.left,
-      y: coords.y - rect.top
-    });
-  }
-  // ... rest of existing code
-}, []);
-
-const handleDragEnd = useCallback((event: DragEndEvent) => {
-  const { active, delta } = event;
-  // ... existing validation code ...
-
-  // Get the pan offset from TransformWrapper
-  const transformState = transformRef.current?.instance?.transformState;
-  const panX = transformState?.positionX ?? 0;
-  const panY = transformState?.positionY ?? 0;
-
-  // The overlay top-left in viewport coords
-  const overlayViewportX = (event.activatorEvent as PointerEvent).clientX + delta.x - grabOffset.x;
-  const overlayViewportY = (event.activatorEvent as PointerEvent).clientY + delta.y - grabOffset.y;
-
-  // Convert to canvas coordinates
-  const canvasX = (overlayViewportX - panX) / scale;
-  const canvasY = (overlayViewportY - panY) / scale;
-
-  // Snap to grid
-  const newX = snapPosition(canvasX);
-  const newY = snapPosition(canvasY);
-
-  // ... rest of existing code ...
-}, [scale, grabOffset, snapPosition, ...]);
-```
+**For the button row at the bottom of the table** -- rather than adding more buttons to the already-crowded bottom row, the archive action will be an inline icon button on each table row (similar to the existing Copy ID button). This keeps the table clean and makes the action contextual to each campaign.
 
 ---
 
-## Files to Modify
+### Technical Details
 
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/InfiniteCanvas.tsx` | Track grab offset on drag start, update handleDragEnd to calculate position based on overlay viewport position and pan offset |
-| `src/components/dashboard/dragOverlayModifiers.ts` | Potentially simplify or document the relationship between modifier offset and drop calculation |
+**Files to modify:**
 
----
+1. **`src/components/campaigns/CampaignLimitModal.tsx`**
+   - Rewrite the modal body with the new copy
+   - Add a `showComingSoon` state for the secondary popup
+   - Replace the "Archive a Campaign" button with a "Become a Subscriber" button that toggles the coming-soon view
+   - Add the coming-soon content with Discord link
+   - Keep a "Close" / "Got it" button to dismiss
 
-## Testing Checklist
-After implementation, test the following scenarios:
-- Drag and drop at 100% zoom (should work as before)
-- Drag and drop at 50% zoom (no jump to the right)
-- Drag and drop at 25% zoom (no jump)
-- Drag and drop at 200% zoom (no jump)
-- Drag from center of widget vs edge of widget (grab point should be preserved)
-- Drag with canvas panned to different positions
-- Quick successive drags (no accumulating offset errors)
+2. **`src/pages/Campaigns.tsx`**
+   - Add an inline Archive/Restore icon button on each campaign table row (only for GM-owned campaigns)
+   - Wire it to the existing `archiveCampaign` mutation (already imported but unused in the action buttons)
+   - Show `Archive` icon on active tab rows, `ArchiveRestore` icon on archived tab rows
+   - Add a tooltip explaining the action
+
+No database or backend changes needed -- the archive mutation and `is_archived` column already exist.
+
