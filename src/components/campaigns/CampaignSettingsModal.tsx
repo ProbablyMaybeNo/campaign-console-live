@@ -137,8 +137,8 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       status: status ? "active" : "inactive",
       title_color: titleColor,
       border_color: borderColor,
-      theme_id: isSupporter ? themeId : "dark",
-      banner_url: isSupporter ? (bannerUrl || undefined) : undefined,
+      theme_id: themeId,
+      banner_url: bannerUrl || undefined,
       display_settings: displaySettings,
     });
     
