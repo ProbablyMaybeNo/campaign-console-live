@@ -253,8 +253,8 @@ export function useUpdateCampaign() {
       if (display_settings) {
         updatePayload.display_settings = display_settings as unknown as Json;
       }
-      // Never include password in regular update - use edge function
-      updatePayload.password = null;
+      // Password is handled separately via edge function - don't include in update payload
+      delete updatePayload.password;
       
       const { data, error } = await supabase
         .from("campaigns")
