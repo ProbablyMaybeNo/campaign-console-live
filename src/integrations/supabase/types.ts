@@ -1432,6 +1432,24 @@ export type Database = {
           },
         ]
       }
+      subscriber_interest: {
+        Row: {
+          clicked_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          clicked_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          clicked_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

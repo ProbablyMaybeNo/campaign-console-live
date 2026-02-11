@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Unlock, ExternalLink } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CampaignLimitModalProps {
   open: boolean;
@@ -17,6 +19,17 @@ export function CampaignLimitModal({
   maxCampaigns,
 }: CampaignLimitModalProps) {
   const [showComingSoon, setShowComingSoon] = useState(false);
+  const { user } = useAuth();
+
+  const handleSubscriberClick = async () => {
+    if (user) {
+      // Record unique interest — upsert so duplicates are ignored
+      await supabase
+        .from("subscriber_interest")
+        .upsert({ user_id: user.id }, { onConflict: "user_id" });
+    }
+    setShowComingSoon(true);
+  };
 
   const handleClose = () => {
     setShowComingSoon(false);
@@ -61,7 +74,7 @@ export function CampaignLimitModal({
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <TerminalButton
-                onClick={() => setShowComingSoon(true)}
+                onClick={handleSubscriberClick}
                 className="flex-1 gap-2"
               >
                 <Unlock className="w-4 h-4" />
