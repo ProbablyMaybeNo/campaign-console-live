@@ -132,8 +132,8 @@ export const THEMES: ThemeMeta[] = [
       card: "0 0% 4%",
       primary: "41 100% 50%",
       secondary: "186 100% 50%",
-      accent: "41 100% 18%",
-      border: "43 100% 11%",
+      accent: "41 100% 22%",
+      border: "43 100% 25%",
     },
     fonts: {
       ui: "IBM Plex Mono, ui-monospace",
@@ -206,10 +206,10 @@ export const THEMES: ThemeMeta[] = [
     preview: {
       background: "41 8% 40%",
       card: "42 14% 81%",
-      primary: "175 59% 40%",
+      primary: "175 59% 48%",
       secondary: "205 69% 49%",
       accent: "331 64% 52%",
-      border: "35 5% 45%",
+      border: "35 5% 58%",
     },
     fonts: {
       ui: "IBM Plex Mono, system-ui",
@@ -226,7 +226,7 @@ export const THEMES: ThemeMeta[] = [
       background: "207 11% 19%",
       card: "210 8% 80%",
       primary: "182 100% 36%",
-      secondary: "255 30% 42%",
+      secondary: "255 30% 50%",
       accent: "29 100% 50%",
       border: "213 4% 50%",
     },
