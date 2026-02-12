@@ -113,6 +113,9 @@
     --chart-4: 38 95% 55%;
     --chart-5: 280 85% 65%;
 
+    /* Console accent – default neon green */
+    --console-accent: 142 76% 55%;
+
     /* Font variables */
     --font-ui: "IBM Plex Mono", ui-monospace, monospace;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -204,6 +207,9 @@
     --chart-4: 36 100% 35%;
     --chart-5: 328 61% 45%;
 
+    /* Console accent – Win95 navy blue */
+    --console-accent: 240 100% 25%;
+
     --font-ui: "IBM Plex Mono", "Tahoma", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
@@ -266,6 +272,9 @@
     --chart-3: 0 66% 47%;
     --chart-4: 38 100% 38%;
     --chart-5: 254 60% 50%;
+
+    /* Console accent – Mac OS blue */
+    --console-accent: 227 100% 45%;
 
     --font-ui: "IBM Plex Mono", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -330,6 +339,9 @@
     --chart-4: 28 100% 50%;
     --chart-5: 248 53% 58%;
 
+    /* Console accent – Amiga orange */
+    --console-accent: 33 100% 50%;
+
     --font-ui: "IBM Plex Mono", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
@@ -392,6 +404,9 @@
     --chart-3: 3 100% 59%;
     --chart-4: 41 100% 50%;
     --chart-5: 280 60% 55%;
+
+    /* Console accent – VT320 amber */
+    --console-accent: 41 100% 50%;
 
     --font-ui: "IBM Plex Mono", ui-monospace, monospace;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -456,6 +471,9 @@
     --chart-4: 60 100% 60%;
     --chart-5: 300 100% 67%;
 
+    /* Console accent – DOS cyan */
+    --console-accent: 180 100% 50%;
+
     --font-ui: "IBM Plex Mono", ui-monospace, monospace;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
@@ -518,6 +536,9 @@
     --chart-3: 349 100% 45%;
     --chart-4: 54 100% 42%;
     --chart-5: 300 100% 45%;
+
+    /* Console accent – Atari cyan (dark for light cards) */
+    --console-accent: 186 100% 30%;
 
     --font-ui: "IBM Plex Mono", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -582,6 +603,9 @@
     --chart-4: 25 100% 50%;
     --chart-5: 280 60% 55%;
 
+    /* Console accent – NeXT yellow */
+    --console-accent: 50 100% 50%;
+
     --font-ui: "IBM Plex Mono", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
@@ -645,6 +669,9 @@
     --chart-4: 45 100% 35%;
     --chart-5: 331 64% 42%;
 
+    /* Console accent – Solaris deep teal */
+    --console-accent: 175 80% 25%;
+
     --font-ui: "IBM Plex Mono", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
@@ -707,6 +734,9 @@
     --chart-3: 1 77% 50%;
     --chart-4: 42 100% 45%;
     --chart-5: 255 30% 42%;
+
+    /* Console accent – IRIX teal */
+    --console-accent: 182 100% 25%;
 
     --font-ui: "IBM Plex Mono", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
