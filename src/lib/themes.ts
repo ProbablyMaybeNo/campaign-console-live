@@ -47,7 +47,7 @@ export interface ThemeMeta {
 export const THEMES: ThemeMeta[] = [
   {
     id: "dark",
-    name: "Dark",
+    name: "Campaign Console",
     tagline: "Default terminal theme with neon green.",
     icon: Moon,
     supporterOnly: false,
