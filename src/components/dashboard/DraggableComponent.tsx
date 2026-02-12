@@ -136,7 +136,7 @@ function DraggableComponentInner({
       // Simplified shadow during interactions for reduced paint cost
       return { boxShadow: "0 2px 8px hsl(0 0% 0% / 0.3)" };
     }
-    return { boxShadow: "0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)" };
+    return { boxShadow: "0 0 15px hsl(var(--border) / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)" };
   }, [isCanvasInteracting, isOverlayDragging]);
 
   const handleResizeStart = useCallback(
@@ -289,13 +289,13 @@ function DraggableComponentInner({
         style={style}
         className={`draggable-component ${
           isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
-        } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${
-          isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""
+        } ${isSelected ? "ring-2 ring-secondary ring-offset-2 ring-offset-background" : ""} ${
+          isMultiSelected ? "ring-2 ring-warning ring-offset-1 ring-offset-background" : ""
         }`}
         onClick={handleClick}
       >
         <div
-          className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden relative"
+          className="h-full flex flex-col bg-card border-2 border-border rounded overflow-hidden relative"
           style={chromeStyle}
         >
           {/* Corner Controls for Campaign Console (GM only) */}
@@ -345,32 +345,31 @@ function DraggableComponentInner({
     <div
       ref={setNodeRef}
       style={style}
-      className={`draggable-component ${
-        isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
-      } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${
-        isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""
-      }`}
-      onClick={handleClick}
-    >
-      <div
-        className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden"
+        className={`draggable-component ${
+          isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
+        } ${isSelected ? "ring-2 ring-secondary ring-offset-2 ring-offset-background" : ""} ${
+          isMultiSelected ? "ring-2 ring-warning ring-offset-1 ring-offset-background" : ""
+        }`}
+        onClick={handleClick}
+      >
+        <div
+          className="h-full flex flex-col bg-card border-2 border-border rounded overflow-hidden"
         style={chromeStyle}
       >
         {/* Component Header */}
         <div
-          className="flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/30 select-none"
+          className="flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-border select-none"
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
             {isGM && !isCampaignConsole && (
               <div
-                className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none rounded hover:bg-[hsl(200,100%,60%)]/15 transition-colors group"
+                className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none rounded hover:bg-secondary/15 transition-colors group"
                 {...listeners}
                 {...attributes}
                 aria-label="Drag to move widget"
               >
                 <GripVertical
-                  className="w-4 h-4 text-[hsl(200,100%,65%)] group-hover:text-[hsl(200,100%,80%)] transition-colors"
-                  style={{ filter: "drop-shadow(0 0 6px hsl(200 100% 60% / 0.8))" }}
+                  className="w-4 h-4 text-secondary group-hover:text-foreground transition-colors"
                   strokeWidth={3}
                 />
               </div>

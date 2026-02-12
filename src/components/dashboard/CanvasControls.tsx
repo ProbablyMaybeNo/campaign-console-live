@@ -30,8 +30,8 @@ export function CanvasControls({
   return (
     <TooltipProvider>
       <div 
-        className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-card/90 backdrop-blur-sm border-2 border-[hsl(142,76%,65%)] rounded px-1 py-1" 
-        style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.3)' }}
+        className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-card/90 backdrop-blur-sm border-2 border-border rounded px-1 py-1" 
+        style={{ boxShadow: '0 0 15px hsl(var(--border) / 0.3)' }}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -39,7 +39,7 @@ export function CanvasControls({
         <SaveIndicator status={saveStatus} onRetry={onRetry} />
         
         {saveStatus !== "idle" && (
-          <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
+          <div className="w-px h-4 bg-border/30" />
         )}
 
         <Tooltip>
@@ -50,7 +50,7 @@ export function CanvasControls({
               onClick={onZoomOut}
               aria-label="Zoom out (Ctrl + -)"
             >
-              <ZoomOut className="w-4 h-4 text-foreground" />
+              <ZoomOut className="w-4 h-4 text-card-foreground" />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -58,7 +58,7 @@ export function CanvasControls({
           </TooltipContent>
         </Tooltip>
 
-        <span className="text-xs font-mono text-foreground/80 min-w-[50px] text-center">
+        <span className="text-xs font-mono text-card-foreground/80 min-w-[50px] text-center">
           {Math.round(scale * 100)}%
         </span>
 
@@ -70,7 +70,7 @@ export function CanvasControls({
               onClick={onZoomIn}
               aria-label="Zoom in (Ctrl + +)"
             >
-              <ZoomIn className="w-4 h-4 text-foreground" />
+              <ZoomIn className="w-4 h-4 text-card-foreground" />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -78,7 +78,7 @@ export function CanvasControls({
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
+        <div className="w-px h-4 bg-border/30" />
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -88,7 +88,7 @@ export function CanvasControls({
               onClick={onRecenter}
               aria-label="Recenter on Campaign Console (Home)"
             >
-              <Crosshair className="w-4 h-4 text-foreground" />
+              <Crosshair className="w-4 h-4 text-card-foreground" />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -104,7 +104,7 @@ export function CanvasControls({
               onClick={onReset}
               aria-label="Reset zoom (Ctrl + 0)"
             >
-              <Maximize2 className="w-4 h-4 text-foreground" />
+              <Maximize2 className="w-4 h-4 text-card-foreground" />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
@@ -112,7 +112,7 @@ export function CanvasControls({
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
+        <div className="w-px h-4 bg-border/30" />
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -122,7 +122,7 @@ export function CanvasControls({
               className="opacity-70"
               aria-label="Keyboard shortcuts help"
             >
-              <HelpCircle className="w-4 h-4 text-foreground" />
+              <HelpCircle className="w-4 h-4 text-card-foreground" />
             </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs">

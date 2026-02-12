@@ -415,12 +415,11 @@ export default function CampaignDashboard() {
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" data-theme={themeId}>
       {/* Fixed Header */}
-      <header className="border-b-2 border-[hsl(142,76%,65%)] bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 15px hsl(142 76% 50% / 0.3)' }}>
+      <header className="border-b-2 border-border bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 15px hsl(var(--border) / 0.3)' }}>
         <div className="flex items-center justify-between">
           <Link 
             to="/campaigns" 
-            className="text-[hsl(200,100%,70%)] hover:text-[hsl(200,100%,80%)] transition-all"
-            style={{ textShadow: '0 0 12px hsl(200 100% 60% / 0.7), 0 0 25px hsl(200 100% 50% / 0.4)' }}
+            className="text-secondary hover:text-foreground transition-all"
           >
             <span className="flex items-center gap-1 font-mono text-sm font-medium uppercase tracking-wider">
               <ArrowLeft className="w-4 h-4" />
@@ -437,22 +436,16 @@ export default function CampaignDashboard() {
                 }}
                 className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-90 ${
                   previewAsPlayer 
-                    ? "bg-[hsl(142,76%,50%)] text-black ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" 
-                    : "bg-[hsl(200,100%,65%)] text-black"
+                    ? "bg-primary text-primary-foreground ring-2 ring-secondary ring-offset-2 ring-offset-background" 
+                    : "bg-secondary text-secondary-foreground"
                 }`}
-                style={{ 
-                  boxShadow: previewAsPlayer 
-                    ? '0 0 20px hsl(142 76% 50% / 0.6), 0 0 40px hsl(142 76% 50% / 0.3)' 
-                    : '0 0 20px hsl(200 100% 60% / 0.6), 0 0 40px hsl(200 100% 50% / 0.3)' 
-                }}
                 title={previewAsPlayer ? "Click to return to GM view" : "Click to preview as Player"}
               >
                 {previewAsPlayer ? "Player (Preview)" : "Games Master"}
               </button>
             ) : (
               <div 
-                className="px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[hsl(142,76%,45%)] text-black"
-                style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.5), 0 0 30px hsl(142 76% 50% / 0.25)' }}
+                className="px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground"
               >
                 Player
               </div>
@@ -468,17 +461,16 @@ export default function CampaignDashboard() {
         {/* Collapsible Sidebar - GM only */}
         {effectiveIsGM && (
           <aside 
-            className={`border-r-2 border-[hsl(142,76%,65%)] bg-sidebar/95 backdrop-blur-sm flex-shrink-0 hidden md:flex flex-col overflow-y-auto transition-all duration-300 ease-in-out ${
+            className={`border-r-2 border-border bg-sidebar/95 backdrop-blur-sm flex-shrink-0 hidden md:flex flex-col overflow-y-auto transition-all duration-300 ease-in-out ${
               sidebarOpen ? "w-56 p-4" : "w-0 p-0 border-r-0"
             }`}
-            style={{ boxShadow: sidebarOpen ? '1px 0 15px hsl(142 76% 50% / 0.2)' : 'none' }}
           >
             <div className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
               <div className="flex items-center justify-between mb-3 px-3">
-                <p className="text-xs uppercase tracking-wider text-white font-medium">Campaign Control</p>
+                <p className="text-xs uppercase tracking-wider text-sidebar-foreground font-medium">Campaign Control</p>
                 <button
                   onClick={() => handleSidebarToggle(false)}
-                  className="text-[hsl(142,76%,55%)] hover:text-[hsl(142,76%,70%)] transition-colors"
+                  className="text-sidebar-foreground hover:text-foreground transition-colors"
                   title="Close sidebar"
                 >
                   <PanelLeftClose className="w-4 h-4" />
@@ -544,18 +536,13 @@ export default function CampaignDashboard() {
         )}
 
         <main 
-          className="flex-1 overflow-hidden relative min-h-0 border-r-2 border-b-2 border-[hsl(142,76%,65%)]"
-          style={{ boxShadow: 'inset -1px -1px 15px hsl(142 76% 50% / 0.2)' }}
+          className="flex-1 overflow-hidden relative min-h-0 border-r-2 border-b-2 border-border"
         >
           {/* Campaign Control button - appears when sidebar is closed */}
           {effectiveIsGM && !sidebarOpen && (
             <button
               onClick={() => handleSidebarToggle(true)}
-              className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 rounded bg-[hsl(142,76%,50%)]/10 border border-[hsl(142,76%,65%)] text-[hsl(142,76%,65%)] font-mono text-xs font-bold uppercase tracking-wider transition-all hover:bg-[hsl(142,76%,50%)]/20 hover:scale-105"
-              style={{ 
-                boxShadow: '0 0 15px hsl(142 76% 50% / 0.3), 0 0 30px hsl(142 76% 50% / 0.15)',
-                textShadow: '0 0 10px hsl(142 76% 50% / 0.6)'
-              }}
+              className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 rounded bg-primary/10 border border-border text-foreground font-mono text-xs font-bold uppercase tracking-wider transition-all hover:bg-primary/20 hover:scale-105"
               title="Open Campaign Control"
             >
               <PanelLeftOpen className="w-4 h-4" />
@@ -694,13 +681,9 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs uppercase tracking-wider transition-all duration-200 rounded-sm group ${
         active
-          ? "bg-secondary/15 text-secondary border-l-2 border-secondary"
-          : "text-primary hover:text-primary-bright hover:bg-primary/10 border-l-2 border-transparent hover:border-primary/50"
+          ? "bg-secondary/15 text-secondary font-bold border-l-[3px] border-secondary"
+          : "text-sidebar-foreground hover:text-foreground hover:bg-primary/10 border-l-[3px] border-transparent hover:border-primary/50"
       }`}
-      style={active 
-        ? { textShadow: '0 0 12px hsl(var(--secondary) / 0.7)', boxShadow: 'inset 0 0 15px hsl(var(--secondary) / 0.1)' } 
-        : undefined
-      }
     >
       <span className={`transition-transform duration-200 ${active ? '' : 'group-hover:scale-110'}`}>
         {icon}
