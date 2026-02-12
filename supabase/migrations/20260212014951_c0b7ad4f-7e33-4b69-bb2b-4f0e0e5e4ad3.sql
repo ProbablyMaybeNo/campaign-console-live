@@ -1,0 +1,2 @@
+ALTER TABLE public.campaign_players DROP CONSTRAINT campaign_players_role_check;
+ALTER TABLE public.campaign_players ADD CONSTRAINT campaign_players_role_check CHECK (role = ANY (ARRAY['gm'::text, 'co_gm'::text, 'assistant'::text, 'player'::text]));
