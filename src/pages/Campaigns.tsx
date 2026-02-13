@@ -7,17 +7,20 @@ import { CreateCampaignModal } from "@/components/campaigns/CreateCampaignModal"
 import { JoinCampaignModal } from "@/components/campaigns/JoinCampaignModal";
 import { EditCampaignModal } from "@/components/campaigns/EditCampaignModal";
 import { DeleteConfirmModal } from "@/components/campaigns/DeleteConfirmModal";
+import { MobileCampaignList } from "@/components/campaigns/MobileCampaignList";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Crown, User, AlertCircle, Copy, Check, Users, Archive, ArchiveRestore } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { HelpButton } from "@/components/help/HelpButton";
+import { useIsMobile } from "@/hooks/use-mobile";
 import supporterIcon from "@/assets/supporter-icon.png";
 
 export default function Campaigns() {
   const { user, signOut } = useAuth();
   const { data: campaigns, isLoading, error } = useCampaigns();
   const archiveCampaign = useArchiveCampaign();
+  const isMobile = useIsMobile();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -88,32 +91,97 @@ export default function Campaigns() {
     }
   };
 
+  // ─── Mobile Layout ───
+  if (isMobile) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header */}
+        <header className="border-b-2 border-primary bg-card/95 px-3 py-3 flex-shrink-0 safe-area-top">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="text-primary">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <h1 className="text-sm font-bold tracking-widest uppercase text-primary font-mono">
+              Campaigns
+            </h1>
+            <TerminalButton variant="ghost" size="sm" onClick={() => signOut()} className="px-2">
+              <span className="text-xs">Out</span>
+            </TerminalButton>
+          </div>
+        </header>
+
+        {/* Archive tabs */}
+        <div className="flex gap-2 px-3 pt-3">
+          <TerminalButton
+            variant={!showArchived ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() => setShowArchived(false)}
+          >
+            Active ({activeCampaigns.length})
+          </TerminalButton>
+          <TerminalButton
+            variant={showArchived ? "default" : "outline"}
+            size="sm"
+            className="flex-1"
+            onClick={() => setShowArchived(true)}
+          >
+            <Archive className="w-3 h-3 mr-1" />
+            Archived ({archivedCampaigns.length})
+          </TerminalButton>
+        </div>
+
+        {/* Campaign list */}
+        <div className="flex-1 overflow-auto px-3 py-3 pb-24">
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <TerminalLoader text="Loading campaigns" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-12 text-destructive flex flex-col items-center gap-2">
+              <AlertCircle className="w-8 h-8" />
+              <p className="text-sm">[ERROR] Failed to load campaigns</p>
+            </div>
+          ) : (
+            <MobileCampaignList
+              campaigns={displayedCampaigns}
+              userId={user?.id}
+              showArchived={showArchived}
+            />
+          )}
+        </div>
+
+        {/* Sticky bottom action bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t-2 border-primary safe-area-bottom z-40 px-3 py-2.5">
+          <div className="flex gap-2">
+            <TerminalButton className="flex-1" onClick={() => setShowCreateModal(true)}>
+              [ Create ]
+            </TerminalButton>
+            <TerminalButton className="flex-1" variant="secondary" onClick={() => setShowJoinModal(true)}>
+              [ Join ]
+            </TerminalButton>
+          </div>
+        </div>
+
+        {/* Modals */}
+        <CreateCampaignModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
+        <JoinCampaignModal open={showJoinModal} onClose={() => setShowJoinModal(false)} />
+        {editingCampaign && (
+          <EditCampaignModal campaign={editingCampaign} open={!!editingCampaign} onClose={() => setEditingCampaign(null)} />
+        )}
+        {deletingCampaign && (
+          <DeleteConfirmModal campaign={deletingCampaign} open={!!deletingCampaign} onClose={() => setDeletingCampaign(null)} />
+        )}
+      </div>
+    );
+  }
+
+  // ─── Desktop Layout (unchanged) ───
   return (
     <div className="min-h-screen bg-background p-6 relative">
       {/* Frame borders with neon glow */}
       <div className="absolute inset-4 pointer-events-none border border-primary/40 shadow-[0_0_20px_hsl(var(--primary)/0.15)]" />
       <div className="absolute inset-6 pointer-events-none border border-primary/25" />
-
-      {/* Supporter icon - hidden for now, can be re-enabled later */}
-      {/* <div className="absolute top-8 right-8 flex items-center gap-3">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={() => navigate("/settings")}
-              className="p-2 border transition-all duration-200 hover:scale-105 active:scale-95"
-              style={{
-                borderColor: 'hsl(200, 100%, 60%)',
-                boxShadow: '0 0 15px hsl(200 100% 60% / 0.4)',
-              }}
-            >
-              <img src={supporterIcon} alt="Supporters" className="w-10 h-10" style={{ filter: 'drop-shadow(0 0 6px hsl(200, 100%, 70%))' }} />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="text-xs">Supporters</p>
-          </TooltipContent>
-        </Tooltip>
-      </div> */}
 
       {/* Help button - bottom right */}
       <div className="fixed bottom-8 right-8 z-50">
@@ -173,9 +241,9 @@ export default function Campaigns() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-primary/40">
-                    <th className="text-left py-3 px-2 sm:px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Role</th>
-                    <th className="text-left py-3 px-2 sm:px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign Name</th>
-                    <th className="text-left py-3 px-2 sm:px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Players</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Role</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign Name</th>
+                    <th className="text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Players</th>
                     <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Campaign ID</th>
                     <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Start Date</th>
                     <th className="hidden md:table-cell text-left py-3 px-4 text-primary font-mono uppercase tracking-wider text-glow-primary">Status</th>
@@ -198,19 +266,19 @@ export default function Campaigns() {
                             : "hover:bg-primary/5 hover:shadow-[inset_0_0_15px_hsl(var(--primary)/0.05)]"
                         }`}
                       >
-                      <td className="py-3 px-2 sm:px-4">
-                        <div className="flex items-center gap-1 sm:gap-2">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
                           {getRoleIcon(campaign)}
-                          <span className={`hidden sm:inline ${campaign.owner_id === user?.id ? "text-warning" : "text-secondary"}`}>
+                          <span className={campaign.owner_id === user?.id ? "text-warning" : "text-secondary"}>
                             {getRoleLabel(campaign)}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3 px-2 sm:px-4 text-foreground text-base sm:text-sm">
+                      <td className="py-3 px-4 text-foreground">
                         {campaign.name}
                       </td>
-                      <td className="py-3 px-2 sm:px-4">
-                        <div className="flex items-center gap-1 sm:gap-1.5 text-muted-foreground">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
                           <Users className="w-3.5 h-3.5" />
                           <span className="font-mono">{campaign.player_count ?? 0}</span>
                         </div>
