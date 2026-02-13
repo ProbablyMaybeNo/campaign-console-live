@@ -1,4 +1,8 @@
 User-agent: *
 Allow: /
+Disallow: /campaigns
+Disallow: /campaign/
+Disallow: /settings
+Disallow: /admin/
 
-Sitemap: https://campaign-console.lovable.app/sitemap.xml
+Sitemap: https://campaignconsole.xyz/sitemap.xml
