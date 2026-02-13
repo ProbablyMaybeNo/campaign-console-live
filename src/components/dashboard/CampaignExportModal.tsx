@@ -215,7 +215,7 @@ export function CampaignExportModal({ open, onClose, campaignId }: CampaignExpor
     { key: "rules", label: "Campaign Rules", description: "Custom rules and reference tables" },
     { key: "warbands", label: "Warbands", description: "Player warbands and rosters" },
     { key: "narrative", label: "Narrative Content", description: "Story events and player narratives" },
-    { key: "schedule", label: "Schedule", description: "Rounds and scheduled events" },
+    { key: "schedule", label: "Calendar", description: "Events and scheduled rounds" },
     { key: "map", label: "Map Data", description: "Map markers and legend items" },
     { key: "messages", label: "Messages", description: "All campaign messages (may be large)" },
   ];

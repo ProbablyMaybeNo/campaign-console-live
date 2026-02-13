@@ -13,6 +13,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Input } from "@/components/ui/input";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Search,
   LogIn,
@@ -26,7 +27,13 @@ import {
   AlertTriangle,
   Lightbulb,
   HelpCircle,
+  Heart,
+  Settings,
+  KeyRound,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 interface HelpFAQModalProps {
   open: boolean;
@@ -58,6 +65,10 @@ const faqSections: FAQSection[] = [
       {
         question: "Why can't I log in?",
         answer: "Most issues come from incorrect email/password, an account not yet created, or a temporary connection issue. Try again or refresh the page.",
+      },
+      {
+        question: "How do I reset my password?",
+        answer: "On the login screen, click 'Forgot Password?' and enter your email. You'll receive a link to reset your password.",
       },
     ],
   },
@@ -296,6 +307,9 @@ const faqSections: FAQSection[] = [
 
 export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const filteredSections = faqSections.map((section) => ({
     ...section,
@@ -306,29 +320,93 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
     ),
   })).filter((section) => section.items.length > 0);
 
+  const handleLogout = async () => {
+    await signOut();
+    onClose();
+  };
+
+  const handleResetPassword = async () => {
+    // Navigate to auth page with forgot password mode
+    navigate("/auth");
+    onClose();
+  };
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="bg-card border-[hsl(142,76%,65%)] max-w-2xl max-h-[85vh] flex flex-col">
+      <DialogContent className="bg-card border-[hsl(142,76%,65%)] max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 font-mono text-[hsl(142,76%,50%)] uppercase tracking-wider">
-            <HelpCircle className="w-5 h-5" />
-            Help & FAQ
+          <DialogTitle className="flex items-center justify-between font-mono text-[hsl(142,76%,50%)] uppercase tracking-wider">
+            <div className="flex items-center gap-2">
+              <HelpCircle className="w-5 h-5" />
+              {showAccountMenu ? "Account Settings" : "Help & FAQ"}
+            </div>
+            {user && (
+              <button
+                onClick={() => setShowAccountMenu(!showAccountMenu)}
+                className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono uppercase tracking-wider border border-primary/30 hover:bg-primary/10 transition-colors"
+                style={{ color: 'hsl(200, 100%, 70%)' }}
+              >
+                <Settings className="w-3.5 h-3.5" />
+                {showAccountMenu ? "Back to FAQ" : "Account"}
+              </button>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search help topics..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-background border-border"
-          />
-        </div>
+        {showAccountMenu && user ? (
+          /* Account Settings Panel */
+          <div className="space-y-4 py-4">
+            <div className="p-4 rounded-md border border-primary/30 bg-primary/5">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Signed in as</p>
+              <p className="text-sm font-mono text-foreground">{user.email}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2 font-mono text-xs uppercase tracking-wider"
+                onClick={handleResetPassword}
+              >
+                <KeyRound className="w-4 h-4" />
+                Change Password
+              </Button>
+
+              {/* App Settings link - hidden for now since it only has billing */}
+              {/* <Link to="/settings" onClick={onClose} className="block">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2 font-mono text-xs uppercase tracking-wider"
+                >
+                  <Settings className="w-4 h-4" />
+                  App Settings
+                </Button>
+              </Link> */}
+
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2 font-mono text-xs uppercase tracking-wider text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                onClick={handleLogout}
+              >
+                <LogOut className="w-4 h-4" />
+                Sign Out
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search help topics..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-background border-border"
+              />
+            </div>
 
         {/* Content */}
-        <ScrollArea className="flex-1 pr-4" data-scrollable="true">
+        <ScrollArea className="flex-1 pr-4 overflow-y-auto" data-scrollable="true" style={{ maxHeight: "calc(85vh - 200px)" }}>
           {filteredSections.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <HelpCircle className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -364,14 +442,31 @@ export function HelpFAQModal({ open, onClose }: HelpFAQModalProps) {
               ))}
             </Accordion>
           )}
-        </ScrollArea>
+            </ScrollArea>
 
-        {/* Footer */}
-        <div className="pt-4 border-t border-border text-center">
-          <p className="text-xs text-muted-foreground">
-            Can't find what you're looking for? Contact your Games Master or check back for updates.
-          </p>
-        </div>
+            {/* Footer */}
+            <div className="pt-4 border-t border-border space-y-4">
+              <p className="text-xs text-muted-foreground text-center">
+                Can't find what you're looking for? Contact your Games Master or check back for updates.
+              </p>
+              
+              {/* Support CTA - hidden for now */}
+              {/* <Link
+                to="/settings?tab=billing"
+                onClick={onClose}
+                className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-sm font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
+                style={{
+                  color: 'hsl(200, 100%, 70%)',
+                  boxShadow: '0 0 15px hsl(200 100% 60% / 0.3), 0 0 30px hsl(200 100% 50% / 0.15)',
+                  textShadow: '0 0 10px hsl(200 100% 60% / 0.6)'
+                }}
+              >
+                <Heart className="w-4 h-4" />
+                Support Campaign Console
+              </Link> */}
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

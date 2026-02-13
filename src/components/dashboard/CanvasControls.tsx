@@ -1,5 +1,6 @@
-import { ZoomIn, ZoomOut, Maximize2, Crosshair, Grid3X3, HelpCircle } from "lucide-react";
-import { TerminalButton } from "@/components/ui/TerminalButton";
+import { ZoomIn, ZoomOut, Maximize2, Crosshair, HelpCircle } from "lucide-react";
+import { IconButton } from "@/components/ui/IconButton";
+import { SaveIndicator, SaveStatus } from "@/components/ui/SaveIndicator";
 import {
   Tooltip,
   TooltipContent,
@@ -13,8 +14,8 @@ interface CanvasControlsProps {
   onZoomOut: () => void;
   onReset: () => void;
   onRecenter: () => void;
-  snapToGrid: boolean;
-  onToggleSnap: () => void;
+  saveStatus?: SaveStatus;
+  onRetry?: () => void;
 }
 
 export function CanvasControls({ 
@@ -23,50 +24,72 @@ export function CanvasControls({
   onZoomOut, 
   onReset, 
   onRecenter,
-  snapToGrid,
-  onToggleSnap,
+  saveStatus = "idle",
+  onRetry,
 }: CanvasControlsProps) {
   return (
     <TooltipProvider>
       <div 
-        className="absolute top-4 right-4 z-50 flex items-center gap-2 bg-card/90 backdrop-blur-sm border-2 border-[hsl(142,76%,65%)] rounded px-2 py-1" 
-        style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.3)' }}
+        className="absolute top-4 right-4 z-50 flex items-center gap-1 bg-card/90 backdrop-blur-sm border-2 border-border rounded px-1 py-1" 
+        style={{ boxShadow: '0 0 15px hsl(var(--border) / 0.3)' }}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
+        {/* Save Status Indicator */}
+        <SaveIndicator status={saveStatus} onRetry={onRetry} />
+        
+        {saveStatus !== "idle" && (
+          <div className="w-px h-4 bg-border/30" />
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" onClick={onZoomOut}>
-              <ZoomOut className="w-4 h-4 text-white" />
-            </TerminalButton>
+            <IconButton 
+              variant="ghost" 
+              size="md" 
+              onClick={onZoomOut}
+              aria-label="Zoom out (Ctrl + -)"
+            >
+              <ZoomOut className="w-4 h-4 text-card-foreground" />
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
             <p>Zoom out (Ctrl + -)</p>
           </TooltipContent>
         </Tooltip>
 
-        <span className="text-xs font-mono text-white/80 min-w-[50px] text-center">
+        <span className="text-xs font-mono text-card-foreground/80 min-w-[50px] text-center">
           {Math.round(scale * 100)}%
         </span>
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" onClick={onZoomIn}>
-              <ZoomIn className="w-4 h-4 text-white" />
-            </TerminalButton>
+            <IconButton 
+              variant="ghost" 
+              size="md" 
+              onClick={onZoomIn}
+              aria-label="Zoom in (Ctrl + +)"
+            >
+              <ZoomIn className="w-4 h-4 text-card-foreground" />
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
             <p>Zoom in (Ctrl + +)</p>
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
+        <div className="w-px h-4 bg-border/30" />
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" onClick={onRecenter}>
-              <Crosshair className="w-4 h-4 text-white" />
-            </TerminalButton>
+            <IconButton 
+              variant="ghost" 
+              size="md" 
+              onClick={onRecenter}
+              aria-label="Recenter on Campaign Console (Home)"
+            >
+              <Crosshair className="w-4 h-4 text-card-foreground" />
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
             <p>Recenter on Campaign Console (Home)</p>
@@ -75,40 +98,32 @@ export function CanvasControls({
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" onClick={onReset}>
-              <Maximize2 className="w-4 h-4 text-white" />
-            </TerminalButton>
+            <IconButton 
+              variant="ghost" 
+              size="md" 
+              onClick={onReset}
+              aria-label="Reset zoom (Ctrl + 0)"
+            >
+              <Maximize2 className="w-4 h-4 text-card-foreground" />
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom">
             <p>Reset zoom (Ctrl + 0)</p>
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
+        <div className="w-px h-4 bg-border/30" />
 
         <Tooltip>
           <TooltipTrigger asChild>
-            <TerminalButton 
+            <IconButton 
               variant="ghost" 
-              size="sm" 
-              onClick={onToggleSnap}
-              className={snapToGrid ? "bg-[hsl(142,76%,50%)]/20" : ""}
+              size="md" 
+              className="opacity-70"
+              aria-label="Keyboard shortcuts help"
             >
-              <Grid3X3 className={`w-4 h-4 ${snapToGrid ? "text-[hsl(142,76%,50%)]" : "text-white"}`} />
-            </TerminalButton>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">
-            <p>Snap to grid {snapToGrid ? "(ON)" : "(OFF)"}</p>
-          </TooltipContent>
-        </Tooltip>
-
-        <div className="w-px h-4 bg-[hsl(142,76%,50%)]/30" />
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" className="opacity-70">
-              <HelpCircle className="w-4 h-4 text-white" />
-            </TerminalButton>
+              <HelpCircle className="w-4 h-4 text-card-foreground" />
+            </IconButton>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs">
             <div className="space-y-1 text-xs">

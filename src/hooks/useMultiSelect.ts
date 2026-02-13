@@ -8,6 +8,7 @@ export interface UseMultiSelectReturn {
   selectAll: (components: DashboardComponent[]) => void;
   clearSelection: () => void;
   selectRange: (components: DashboardComponent[], targetId: string) => void;
+  selectByIds: (ids: string[]) => void;
 }
 
 export function useMultiSelect(): UseMultiSelectReturn {
@@ -76,6 +77,10 @@ export function useMultiSelect(): UseMultiSelectReturn {
     });
   }, [lastSelectedId]);
 
+  const selectByIds = useCallback((ids: string[]) => {
+    setSelectedIds(new Set(ids));
+  }, []);
+
   return {
     selectedIds,
     isSelected,
@@ -83,5 +88,6 @@ export function useMultiSelect(): UseMultiSelectReturn {
     selectAll,
     clearSelection,
     selectRange,
+    selectByIds,
   };
 }

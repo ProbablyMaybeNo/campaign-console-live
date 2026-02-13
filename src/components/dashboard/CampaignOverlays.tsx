@@ -1,16 +1,19 @@
-import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database, UserCog } from "lucide-react";
+import { Users, Swords, Scroll, Map, BookOpen, MessageSquare, Calendar, Settings, Database, UserCog, Mail } from "lucide-react";
 import { OverlayPanel, OverlayEmpty } from "@/components/ui/OverlayPanel";
 import { PlayersWidget } from "./widgets/PlayersWidget";
 import { PlayersManagerWidget } from "./widgets/PlayersManagerWidget";
 import { MessagesWidget } from "./widgets/MessagesWidget";
 import { NarrativeWidget } from "./widgets/NarrativeWidget";
-import { ScheduleWidget } from "./widgets/ScheduleWidget";
+import { CalendarManagerWidget } from "./widgets/CalendarManagerWidget";
+import { useCampaignDisplaySettings } from "@/hooks/useCampaignDisplaySettings";
 import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
 import { MapManager } from "@/components/map/MapManager";
 import { ComponentsManager } from "./ComponentsManager";
 import { WarbandsWidget } from "./WarbandsWidget";
 import { PlayerSettingsOverlay } from "@/components/players/PlayerSettingsOverlay";
+import { PlayerMessagesOverlay } from "@/components/players/PlayerMessagesOverlay";
 import { RulesManager } from "@/components/rules/RulesManager";
+import { BattlesManager } from "@/components/battles/BattlesManager";
 import type { OverlayType } from "@/hooks/useOverlayState";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Link } from "react-router-dom";
@@ -51,6 +54,12 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     size: "lg",
     playerOnly: true,
   },
+  "player-messages": {
+    title: "Private Messages",
+    subtitle: "Direct messages with other players",
+    icon: <Mail className="w-4 h-4" />,
+    size: "md",
+  },
   rules: {
     title: "Rules",
     subtitle: "Rules functionality moved to component creation",
@@ -75,9 +84,9 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     icon: <MessageSquare className="w-4 h-4" />,
     size: "md",
   },
-  schedule: {
-    title: "Schedule",
-    subtitle: "Campaign rounds and match schedule",
+  calendar: {
+    title: "Calendar",
+    subtitle: "Events and round schedule",
     icon: <Calendar className="w-4 h-4" />,
     size: "lg",
   },
@@ -86,6 +95,13 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     subtitle: "Campaign configuration and preferences",
     icon: <Settings className="w-4 h-4" />,
     size: "md",
+    gmOnly: true,
+  },
+  battles: {
+    title: "Battles",
+    subtitle: "Manage rounds, pairings, and battle reports",
+    icon: <Swords className="w-4 h-4" />,
+    size: "xl",
     gmOnly: true,
   },
 };
@@ -171,18 +187,14 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
         </OverlayPanel>
       );
 
-    case "schedule":
+    case "calendar":
       return (
-        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
-          <div className="min-h-[300px]">
-            <ScheduleWidget campaignId={campaignId} isGM={isGM} />
-          </div>
-        </OverlayPanel>
+        <CalendarOverlay config={config} onClose={onClose} campaignId={campaignId} isGM={isGM} />
       );
 
     case "rules":
       return (
-        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle="Manage rules tables and cards" icon={config.icon} size="lg">
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle="Manage smart tables and cards" icon={config.icon} size="lg">
           <RulesManager campaignId={campaignId} isGM={isGM} />
         </OverlayPanel>
       );
@@ -234,7 +246,51 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
         </OverlayPanel>
       );
 
+    case "player-messages":
+      return (
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+          <PlayerMessagesOverlay campaignId={campaignId} />
+        </OverlayPanel>
+      );
+
+    case "battles":
+      return (
+        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+          <BattlesManager campaignId={campaignId} />
+        </OverlayPanel>
+      );
+
     default:
       return null;
   }
+}
+
+// Calendar overlay with display settings integration
+function CalendarOverlay({ config, onClose, campaignId, isGM }: { config: OverlayConfig; onClose: () => void; campaignId: string; isGM: boolean }) {
+  const { displaySettings, updateDisplaySettings } = useCampaignDisplaySettings(campaignId);
+  const visibleRoundIds = (displaySettings?.visible_round_ids as string[]) || [];
+  const roundColors = (displaySettings?.round_colors as Record<string, string>) || {};
+
+  const handleVisibleRoundsChange = (roundIds: string[]) => {
+    updateDisplaySettings({ visible_round_ids: roundIds });
+  };
+
+  const handleRoundColorsChange = (colors: Record<string, string>) => {
+    updateDisplaySettings({ round_colors: colors });
+  };
+
+  return (
+    <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+      <div className="min-h-[300px]">
+        <CalendarManagerWidget
+          campaignId={campaignId}
+          isGM={isGM}
+          visibleRoundIds={visibleRoundIds}
+          onVisibleRoundsChange={handleVisibleRoundsChange}
+          roundColors={roundColors}
+          onRoundColorsChange={handleRoundColorsChange}
+        />
+      </div>
+    </OverlayPanel>
+  );
 }

@@ -51,51 +51,13 @@ export function useAutoSavePlayerSettings(campaignId: string) {
     },
   });
 
-  const debouncedSave = useCallback((settings: AutoSaveSettings) => {
-    // Store the pending update
-    pendingUpdateRef.current = settings;
-
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Create a hash of current settings to compare
-    const settingsHash = JSON.stringify(settings);
-    
-    // Don't save if nothing changed
-    if (settingsHash === lastSavedRef.current) {
-      return;
-    }
-
-    // Set new timeout - save after 1.5 seconds of inactivity
-    timeoutRef.current = setTimeout(() => {
-      if (pendingUpdateRef.current) {
-        lastSavedRef.current = JSON.stringify(pendingUpdateRef.current);
-        mutation.mutate(pendingUpdateRef.current);
-        pendingUpdateRef.current = null;
-      }
-    }, 1500);
-  }, [mutation]);
-
-  // Cleanup on unmount - save any pending changes immediately
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      // Save any pending changes when component unmounts
-      if (pendingUpdateRef.current) {
-        const settingsHash = JSON.stringify(pendingUpdateRef.current);
-        if (settingsHash !== lastSavedRef.current) {
-          mutation.mutate(pendingUpdateRef.current);
-        }
-      }
-    };
+  const save = useCallback((settings: AutoSaveSettings) => {
+    mutation.mutate(settings);
   }, [mutation]);
 
   return {
-    autoSave: debouncedSave,
+    save,
+    autoSave: save, // backward compat
     isSaving: mutation.isPending,
   };
 }

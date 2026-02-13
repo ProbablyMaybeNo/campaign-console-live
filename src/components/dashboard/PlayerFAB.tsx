@@ -25,16 +25,16 @@ interface FABItem {
   id: OverlayType;
   label: string;
   icon: React.ElementType;
-  color: string;
 }
 
+// Unified icon mapping - matches sidebar nav icons
 const fabItems: FABItem[] = [
-  { id: "player-settings", label: "My Settings", icon: UserCog, color: "hsl(142, 76%, 50%)" },
-  { id: "messages", label: "Messages", icon: MessageSquare, color: "hsl(200, 100%, 65%)" },
-  { id: "rules", label: "Rules", icon: Scroll, color: "hsl(280, 80%, 60%)" },
-  { id: "schedule", label: "Schedule", icon: Calendar, color: "hsl(45, 100%, 50%)" },
-  { id: "map", label: "Map", icon: Map, color: "hsl(15, 90%, 55%)" },
-  { id: "narrative", label: "Narrative", icon: BookOpen, color: "hsl(330, 80%, 60%)" },
+  { id: "player-settings", label: "My Settings", icon: UserCog },
+  { id: "player-messages", label: "Messages", icon: MessageSquare },
+  { id: "rules", label: "Rules", icon: Scroll },
+  { id: "calendar", label: "Calendar", icon: Calendar },
+  { id: "map", label: "Map", icon: Map },
+  { id: "narrative", label: "Narrative", icon: BookOpen },
 ];
 
 export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
@@ -89,7 +89,7 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
     setIsExpanded(false);
 
     // Clear unread count when opening messages
-    if (id === "messages") {
+    if (id === "player-messages") {
       setUnreadCount(0);
       localStorage.setItem(`campaign-${campaignId}-last-visit`, new Date().toISOString());
     }
@@ -97,64 +97,64 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
 
   return (
     <div className="fixed bottom-8 right-8 z-40 flex flex-col items-end gap-3">
-      {/* Expanded menu items */}
+      {/* Expanded menu items - horizontal row layout */}
       <AnimatePresence>
         {isExpanded && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ duration: 0.2 }}
-            className="flex flex-col gap-2 mb-2"
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="flex flex-row-reverse flex-wrap justify-end gap-2.5 mb-2 max-w-[calc(100vw-4rem)]"
           >
             {fabItems.map((item, index) => (
               <motion.button
                 key={item.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ delay: index * 0.05 }}
+                initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                transition={{ delay: index * 0.04, duration: 0.15 }}
                 onClick={() => handleItemClick(item.id)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card/95 border border-primary/30 backdrop-blur-sm transition-all hover:scale-105 hover:border-primary/60 group relative"
-                style={{ boxShadow: `0 0 15px ${item.color}30, 0 4px 12px rgba(0,0,0,0.3)` }}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-border backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-secondary hover:bg-secondary/10 group relative"
               >
-                <span className="text-xs font-mono uppercase tracking-wider text-foreground whitespace-nowrap">
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 border-2 border-secondary"
+                >
+                  <item.icon className="w-5 h-5 text-secondary transition-all duration-200 group-hover:text-foreground" />
+                </div>
+                <span className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap text-card-foreground transition-colors duration-200 group-hover:text-foreground">
                   {item.label}
                 </span>
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                  style={{ backgroundColor: item.color }}
-                >
-                  <item.icon className="w-5 h-5 text-black" />
-                </div>
                 {/* Badge for messages */}
-                {item.id === "messages" && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold flex items-center justify-center">
+                {item.id === "player-messages" && unreadCount > 0 && (
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center"
+                  >
                     {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
+                  </motion.span>
                 )}
               </motion.button>
             ))}
             
             {/* Help button */}
             <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ delay: fabItems.length * 0.05 }}
+              initial={{ opacity: 0, scale: 0.8, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 10 }}
+              transition={{ delay: fabItems.length * 0.04, duration: 0.15 }}
               onClick={() => { setShowHelp(true); setIsExpanded(false); }}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card/95 border border-[hsl(200,100%,65%)]/30 backdrop-blur-sm transition-all hover:scale-105 hover:border-[hsl(200,100%,65%)]/60 group"
-              style={{ boxShadow: `0 0 15px hsl(200 100% 50% / 0.3), 0 4px 12px rgba(0,0,0,0.3)` }}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-lg bg-card/95 border border-border backdrop-blur-sm transition-all duration-200 hover:scale-105 hover:border-secondary hover:bg-secondary/10 group"
             >
-              <span className="text-xs font-mono uppercase tracking-wider text-foreground whitespace-nowrap">
-                Help & FAQ
-              </span>
               <div 
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110"
-                style={{ backgroundColor: "hsl(200, 100%, 50%)" }}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 border-2 border-secondary"
               >
-                <HelpCircle className="w-5 h-5 text-black" />
+                <HelpCircle className="w-5 h-5 text-secondary transition-all duration-200 group-hover:text-foreground" />
               </div>
+              <span className="text-[10px] font-mono uppercase tracking-wider whitespace-nowrap text-card-foreground transition-colors duration-200 group-hover:text-foreground">
+                Help
+              </span>
             </motion.button>
           </motion.div>
         )}
@@ -165,22 +165,18 @@ export function PlayerFAB({ campaignId, onOpenOverlay }: PlayerFABProps) {
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsExpanded(!isExpanded)}
-        className="h-14 w-14 rounded-full flex items-center justify-center transition-all relative"
-        style={{ 
-          backgroundColor: isExpanded ? "hsl(0, 60%, 50%)" : "hsl(142, 76%, 50%)",
-          boxShadow: isExpanded 
-            ? '0 0 20px hsl(0 60% 50% / 0.5), 0 0 40px hsl(0 60% 50% / 0.25)' 
-            : '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' 
-        }}
+        className={`h-14 w-14 rounded-full flex items-center justify-center transition-all relative ${
+          isExpanded ? "bg-destructive" : "bg-primary"
+        }`}
       >
         <motion.div
           animate={{ rotate: isExpanded ? 45 : 0 }}
           transition={{ duration: 0.2 }}
         >
           {isExpanded ? (
-            <X className="w-6 h-6 text-white" />
+            <X className="w-6 h-6 text-destructive-foreground" />
           ) : (
-            <ChevronUp className="w-6 h-6 text-black" />
+            <ChevronUp className="w-6 h-6 text-primary-foreground" />
           )}
         </motion.div>
 

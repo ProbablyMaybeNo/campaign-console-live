@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Heart } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
@@ -8,11 +9,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useCreateCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { useEntitlements } from "@/hooks/useEntitlements";
 import { getConsoleSpawnPosition } from "@/lib/canvasPlacement";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, CalendarIcon } from "lucide-react";
 import { HelpButton } from "@/components/help/HelpButton";
+import { CampaignLimitModal } from "./CampaignLimitModal";
+import { format, parse, isValid } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface CreateCampaignModalProps {
   open: boolean;
@@ -61,13 +68,28 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
   
   const navigate = useNavigate();
   const createCampaign = useCreateCampaign();
   const createComponent = useCreateComponent();
+  const { entitlements, canCreateCampaign, refetch: refetchEntitlements } = useEntitlements();
+
+  // Check limit when modal opens
+  useEffect(() => {
+    if (open && !canCreateCampaign) {
+      setShowLimitModal(true);
+    }
+  }, [open, canCreateCampaign]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Double-check limit before submitting
+    if (!canCreateCampaign) {
+      setShowLimitModal(true);
+      return;
+    }
     
     const campaign = await createCampaign.mutateAsync({
       name,
@@ -150,7 +172,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="bg-card border-primary/30 max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-primary/30 max-w-lg max-h-[90vh] overflow-y-auto" data-testid="create-campaign-modal">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-primary uppercase tracking-widest text-sm">
@@ -158,6 +180,9 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
             </DialogTitle>
             <HelpButton variant="icon" />
           </div>
+          <DialogDescription className="sr-only">
+            Create a new campaign with name, description, and optional settings.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -234,18 +259,62 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <TerminalInput
-              label="Start Date"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-            <TerminalInput
-              label="End Date"
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                Start Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex h-10 w-full items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all",
+                      !startDate && "text-muted-foreground"
+                    )}
+                  >
+                    {startDate ? format(parse(startDate, "yyyy-MM-dd", new Date()), "PPP") : <span>Pick a date</span>}
+                    <CalendarIcon className="h-4 w-4 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate && isValid(parse(startDate, "yyyy-MM-dd", new Date())) ? parse(startDate, "yyyy-MM-dd", new Date()) : undefined}
+                    onSelect={(date) => setStartDate(date ? format(date, "yyyy-MM-dd") : "")}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                End Date
+              </label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex h-10 w-full items-center justify-between rounded-md border border-primary/30 bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60 transition-all",
+                      !endDate && "text-muted-foreground"
+                    )}
+                  >
+                    {endDate ? format(parse(endDate, "yyyy-MM-dd", new Date()), "PPP") : <span>Pick a date</span>}
+                    <CalendarIcon className="h-4 w-4 opacity-50" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate && isValid(parse(endDate, "yyyy-MM-dd", new Date())) ? parse(endDate, "yyyy-MM-dd", new Date()) : undefined}
+                    onSelect={(date) => setEndDate(date ? format(date, "yyyy-MM-dd") : "")}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
           {/* Status Toggle */}
@@ -373,6 +442,21 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
             A unique Campaign ID will be auto-generated for players to join.
           </p>
 
+          {/* Support Button - hidden for now */}
+          {/* <Link
+            to="/settings?tab=billing"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-sm font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
+            style={{
+              color: 'hsl(200, 100%, 70%)',
+              boxShadow: '0 0 15px hsl(200 100% 60% / 0.3), 0 0 30px hsl(200 100% 50% / 0.15)',
+              textShadow: '0 0 10px hsl(200 100% 60% / 0.6)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Heart className="w-4 h-4" />
+            Support Campaign Console
+          </Link> */}
+
           <div className="flex gap-3 pt-2">
             <TerminalButton
               type="button"
@@ -397,6 +481,19 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
           </div>
         </form>
       </DialogContent>
+
+      {/* Campaign Limit Modal */}
+      <CampaignLimitModal
+        open={showLimitModal}
+        onClose={() => {
+          setShowLimitModal(false);
+          if (!canCreateCampaign) {
+            handleClose();
+          }
+        }}
+        activeCampaignCount={entitlements.active_campaign_count}
+        maxCampaigns={entitlements.max_active_campaigns}
+      />
     </Dialog>
   );
 }

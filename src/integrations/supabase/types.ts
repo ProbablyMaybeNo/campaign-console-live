@@ -14,6 +14,255 @@ export type Database = {
   }
   public: {
     Tables: {
+      battle_audit_trail: {
+        Row: {
+          action: string
+          campaign_id: string
+          changed_by: string
+          changes: Json | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          campaign_id: string
+          changed_by: string
+          changes?: Json | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          campaign_id?: string
+          changed_by?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_audit_trail_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_audit_trail_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_matches: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          final_results: Json | null
+          id: string
+          is_bye: boolean
+          match_index: number
+          notes: string | null
+          participants: Json
+          provisional_results: Json | null
+          round_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          final_results?: Json | null
+          id?: string
+          is_bye?: boolean
+          match_index?: number
+          notes?: string | null
+          participants?: Json
+          provisional_results?: Json | null
+          round_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          final_results?: Json | null
+          id?: string
+          is_bye?: boolean
+          match_index?: number
+          notes?: string | null
+          participants?: Json
+          provisional_results?: Json | null
+          round_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_matches_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_matches_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_matches_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "battle_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_reports: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          attachments: Json | null
+          created_at: string
+          id: string
+          injuries: Json | null
+          loot_found: Json | null
+          match_id: string
+          narrative: string | null
+          notable_events: Json | null
+          outcome: string
+          player_side: string
+          points_earned: number | null
+          resources: Json | null
+          submitted_at: string
+          submitted_by: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: Json | null
+          created_at?: string
+          id?: string
+          injuries?: Json | null
+          loot_found?: Json | null
+          match_id: string
+          narrative?: string | null
+          notable_events?: Json | null
+          outcome: string
+          player_side?: string
+          points_earned?: number | null
+          resources?: Json | null
+          submitted_at?: string
+          submitted_by: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          attachments?: Json | null
+          created_at?: string
+          id?: string
+          injuries?: Json | null
+          loot_found?: Json | null
+          match_id?: string
+          narrative?: string | null
+          notable_events?: Json | null
+          outcome?: string
+          player_side?: string
+          points_earned?: number | null
+          resources?: Json | null
+          submitted_at?: string
+          submitted_by?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_reports_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "battle_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      battle_rounds: {
+        Row: {
+          campaign_id: string
+          constraints_config: Json | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          name: string
+          pairing_system: string
+          report_fields_config: Json | null
+          round_index: number
+          scoring_config: Json | null
+          starts_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          constraints_config?: Json | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          name?: string
+          pairing_system?: string
+          report_fields_config?: Json | null
+          round_index?: number
+          scoring_config?: Json | null
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          constraints_config?: Json | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          name?: string
+          pairing_system?: string
+          report_fields_config?: Json | null
+          round_index?: number
+          scoring_config?: Json | null
+          starts_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "battle_rounds_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "battle_rounds_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_documents: {
         Row: {
           campaign_id: string
@@ -53,6 +302,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaign_documents_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       campaign_maps: {
@@ -86,6 +342,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: true
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_maps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -136,6 +399,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_players_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -197,10 +467,18 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "campaign_units_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       campaigns: {
         Row: {
+          banner_url: string | null
           border_color: string | null
           created_at: string
           current_round: number | null
@@ -210,22 +488,25 @@ export type Database = {
           game_system: string | null
           game_system_id: string | null
           id: string
+          is_archived: boolean
           join_code: string | null
           max_players: number | null
           name: string
           owner_id: string
-          password: string | null
+          password_hash: string | null
           points_limit: number | null
           round_length: string | null
           rules_repo_ref: string | null
           rules_repo_url: string | null
           start_date: string | null
           status: string | null
+          theme_id: string
           title_color: string | null
           total_rounds: number | null
           updated_at: string
         }
         Insert: {
+          banner_url?: string | null
           border_color?: string | null
           created_at?: string
           current_round?: number | null
@@ -235,22 +516,25 @@ export type Database = {
           game_system?: string | null
           game_system_id?: string | null
           id?: string
+          is_archived?: boolean
           join_code?: string | null
           max_players?: number | null
           name: string
           owner_id: string
-          password?: string | null
+          password_hash?: string | null
           points_limit?: number | null
           round_length?: string | null
           rules_repo_ref?: string | null
           rules_repo_url?: string | null
           start_date?: string | null
           status?: string | null
+          theme_id?: string
           title_color?: string | null
           total_rounds?: number | null
           updated_at?: string
         }
         Update: {
+          banner_url?: string | null
           border_color?: string | null
           created_at?: string
           current_round?: number | null
@@ -260,17 +544,19 @@ export type Database = {
           game_system?: string | null
           game_system_id?: string | null
           id?: string
+          is_archived?: boolean
           join_code?: string | null
           max_players?: number | null
           name?: string
           owner_id?: string
-          password?: string | null
+          password_hash?: string | null
           points_limit?: number | null
           round_length?: string | null
           rules_repo_ref?: string | null
           rules_repo_url?: string | null
           start_date?: string | null
           status?: string | null
+          theme_id?: string
           title_color?: string | null
           total_rounds?: number | null
           updated_at?: string
@@ -339,6 +625,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dashboard_components_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       dice_roll_history: {
@@ -380,7 +673,131 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dice_roll_history_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      donations: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          id: string
+          stripe_checkout_session_id: string
+          stripe_payment_intent_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_checkout_session_id: string
+          stripe_payment_intent_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          stripe_checkout_session_id?: string
+          stripe_payment_intent_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      donor_feedback: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          feedback_type: string
+          id: string
+          is_read: boolean
+          message: string
+          responded_at: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          responded_at?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          feedback_type?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          responded_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      error_reports: {
+        Row: {
+          component_stack: string | null
+          created_at: string
+          error_message: string
+          error_type: string
+          fingerprint: string
+          id: string
+          last_occurred_at: string
+          metadata: Json | null
+          occurrence_count: number
+          route: string | null
+          stack_trace: string | null
+          status: string
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component_stack?: string | null
+          created_at?: string
+          error_message: string
+          error_type?: string
+          fingerprint: string
+          id?: string
+          last_occurred_at?: string
+          metadata?: Json | null
+          occurrence_count?: number
+          route?: string | null
+          stack_trace?: string | null
+          status?: string
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component_stack?: string | null
+          created_at?: string
+          error_message?: string
+          error_type?: string
+          fingerprint?: string
+          id?: string
+          last_occurred_at?: string
+          metadata?: Json | null
+          occurrence_count?: number
+          route?: string | null
+          stack_trace?: string | null
+          status?: string
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       extraction_jobs: {
         Row: {
@@ -425,6 +842,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "extraction_jobs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -769,7 +1193,9 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_read: boolean | null
           priority: string | null
+          recipient_id: string | null
         }
         Insert: {
           author_id: string
@@ -777,7 +1203,9 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           priority?: string | null
+          recipient_id?: string | null
         }
         Update: {
           author_id?: string
@@ -785,7 +1213,9 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_read?: boolean | null
           priority?: string | null
+          recipient_id?: string | null
         }
         Relationships: [
           {
@@ -793,6 +1223,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -842,6 +1279,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "narrative_events_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       player_narrative_entries: {
@@ -880,28 +1324,50 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "player_narrative_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
         Row: {
           avatar_url: string | null
           created_at: string
+          current_period_end: string | null
           display_name: string | null
+          has_donated: boolean
           id: string
+          plan: string
+          stripe_customer_id: string | null
+          subscription_status: string
           updated_at: string
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          current_period_end?: string | null
           display_name?: string | null
+          has_donated?: boolean
           id: string
+          plan?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string
           updated_at?: string
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          current_period_end?: string | null
           display_name?: string | null
+          has_donated?: boolean
           id?: string
+          plan?: string
+          stripe_customer_id?: string | null
+          subscription_status?: string
           updated_at?: string
         }
         Relationships: []
@@ -957,7 +1423,32 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "schedule_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      subscriber_interest: {
+        Row: {
+          clicked_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          clicked_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          clicked_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -1028,6 +1519,13 @@ export type Database = {
             referencedRelation: "campaigns"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "warbands_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
         ]
       }
       wargame_rules: {
@@ -1082,6 +1580,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "wargame_rules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "wargame_rules_extraction_job_id_fkey"
             columns: ["extraction_job_id"]
             isOneToOne: false
@@ -1092,15 +1597,177 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      campaigns_safe: {
+        Row: {
+          banner_url: string | null
+          border_color: string | null
+          created_at: string | null
+          current_round: number | null
+          description: string | null
+          display_settings: Json | null
+          end_date: string | null
+          game_system: string | null
+          game_system_id: string | null
+          has_password: boolean | null
+          id: string | null
+          is_archived: boolean | null
+          join_code: string | null
+          max_players: number | null
+          name: string | null
+          owner_id: string | null
+          points_limit: number | null
+          round_length: string | null
+          rules_repo_ref: string | null
+          rules_repo_url: string | null
+          start_date: string | null
+          status: string | null
+          theme_id: string | null
+          title_color: string | null
+          total_rounds: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          banner_url?: string | null
+          border_color?: string | null
+          created_at?: string | null
+          current_round?: number | null
+          description?: string | null
+          display_settings?: Json | null
+          end_date?: string | null
+          game_system?: string | null
+          game_system_id?: string | null
+          has_password?: never
+          id?: string | null
+          is_archived?: boolean | null
+          join_code?: never
+          max_players?: number | null
+          name?: string | null
+          owner_id?: string | null
+          points_limit?: number | null
+          round_length?: string | null
+          rules_repo_ref?: string | null
+          rules_repo_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          theme_id?: string | null
+          title_color?: string | null
+          total_rounds?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          banner_url?: string | null
+          border_color?: string | null
+          created_at?: string | null
+          current_round?: number | null
+          description?: string | null
+          display_settings?: Json | null
+          end_date?: string | null
+          game_system?: string | null
+          game_system_id?: string | null
+          has_password?: never
+          id?: string | null
+          is_archived?: boolean | null
+          join_code?: never
+          max_players?: number | null
+          name?: string | null
+          owner_id?: string | null
+          points_limit?: number | null
+          round_length?: string | null
+          rules_repo_ref?: string | null
+          rules_repo_url?: string | null
+          start_date?: string | null
+          status?: string | null
+          theme_id?: string | null
+          title_color?: string | null
+          total_rounds?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_game_system_id_fkey"
+            columns: ["game_system_id"]
+            isOneToOne: false
+            referencedRelation: "game_systems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      can_create_campaign: { Args: { _user_id: string }; Returns: boolean }
+      count_active_campaigns: { Args: { _user_id: string }; Returns: number }
       generate_join_code: { Args: never; Returns: string }
+      get_public_profiles: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          display_name: string
+          id: string
+        }[]
+      }
+      get_user_entitlements: { Args: { _user_id: string }; Returns: Json }
+      has_full_gm_access: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_campaign_gm: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_campaign_member: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_campaign_owner: {
+        Args: { _campaign_id: string; _user_id: string }
+        Returns: boolean
+      }
+      lookup_campaign_by_code: {
+        Args: { join_code_input: string }
+        Returns: {
+          description: string
+          game_system: string
+          has_password: boolean
+          id: string
+          max_players: number
+          name: string
+          player_count: number
+        }[]
+      }
+      set_campaign_password: {
+        Args: { campaign_id: string; new_password: string }
+        Returns: undefined
+      }
+      verify_campaign_password: {
+        Args: { campaign_id: string; input_password: string }
         Returns: boolean
       }
     }

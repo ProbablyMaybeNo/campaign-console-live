@@ -4,7 +4,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Badge } from "@/components/ui/badge";
 import { 
   Share2, 
-  Plus, 
+  Command, 
   Map, 
   Users, 
   BookOpen, 
@@ -16,7 +16,9 @@ import {
   ChevronRight,
   ChevronLeft,
   Sparkles,
-  HelpCircle
+  HelpCircle,
+  Activity,
+  Swords
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,16 +45,22 @@ const STEPS: Step[] = [
     tip: "Your join code is shown in the Campaign Console widget. Click it to copy!",
   },
   {
-    icon: Plus,
+    icon: Command,
     title: "Add Your First Components",
-    description: "Click the ➕ Add Component button (bottom-right) to place widgets on the board: maps, tables, notes, dice rollers, counters, and more.",
+    description: "Click the ⌘ Quick Actions button (bottom-right) to open the command palette, then select 'Add new widget' to place widgets on the board. See the ? FAQ for details on each component type. Once created, manage components from the Components menu in the side panel.",
     tip: "Start with 6-12 components. You can always add more later.",
+  },
+  {
+    icon: Activity,
+    title: "Track Campaign Activity",
+    description: "The Activity Feed widget shows real-time updates: player joins, dice rolls, messages, and warband changes. Add one to your dashboard to stay informed of all campaign happenings at a glance.",
+    tip: "Activity Feed is view-only for players but shows them relevant updates too.",
   },
   {
     icon: Map,
     title: "Set Up the Campaign Map",
-    description: "Upload a map image, place markers with custom legends, and use fog of war to control what players can see as the campaign unfolds.",
-    tip: "Access the Map panel from the sidebar to upload and configure.",
+    description: "Set up your map using the Map settings in the side panel. Deploy a Map component onto the dashboard via the ⌘ Quick Actions button.",
+    tip: "Place markers with custom legends and use fog of war to control what players can see.",
     optional: true,
   },
   {
@@ -64,14 +72,28 @@ const STEPS: Step[] = [
   {
     icon: BookOpen,
     title: "Post Your First Narrative",
-    description: "Use the Narrative panel to set the story, scenario, or campaign premise. All players can read these entries.",
+    description: "Manage, edit, and create narrative entries via the Narrative menu in the side panel. Add a Narrative tracker component to the dashboard via the ⌘ button.",
     tip: "Add narrative entries early to set the tone and hook players.",
   },
   {
     icon: Calendar,
     title: "Schedule Sessions & Rounds",
-    description: "Add dates in the Schedule panel so everyone knows what's coming. Rounds appear as colored bars on the Calendar widget.",
+    description: "Add, edit, remove, and manage campaign schedule, rounds, events, and dates via the Schedule menu in the side panel. Add a Calendar component containing scheduled dates and rounds via the ⌘ button.",
     tip: "Players see the Calendar widget but can't edit the schedule.",
+  },
+  {
+    icon: Swords,
+    title: "Manage Battles & Pairings",
+    description: "Use the Battles panel in the side menu to create rounds, generate pairings (Random, Swiss, or Manual), and track match results. Players can submit battle reports which you approve or resolve disputes.",
+    tip: "Add a Battle Tracker widget to the dashboard so players can see their upcoming matches and submit results.",
+    optional: true,
+  },
+  {
+    icon: Users,
+    title: "Join as a Player",
+    description: "Want to take part in the campaign as a player? Use the Players panel in the side menu to add yourself as a player.",
+    tip: "GMs can also participate as players while maintaining GM controls.",
+    optional: true,
   },
   {
     icon: Eye,
@@ -173,9 +195,9 @@ export function GettingStartedModal({ open, onClose, joinCode, onCopyJoinCode }:
             </div>
 
             {/* Current Step Content */}
-            <div className="bg-muted/30 border border-border rounded-lg p-5 space-y-4">
+            <div className="bg-muted/30 border border-border rounded-lg p-5 space-y-4 transition-all duration-300">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_hsl(var(--primary)/0.2)]">
                   <StepIcon className="w-6 h-6 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">

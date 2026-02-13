@@ -1,17 +1,23 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from "react";
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
-import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from "@dnd-kit/core";
+import {
+  DndContext,
+  DragEndEvent,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core";
+import { createGrabPointPreservingModifier } from "./dragOverlayModifiers";
+import { AnimatePresence } from "framer-motion";
 import { DraggableComponent } from "./DraggableComponent";
+import { WidgetDragPreview } from "./WidgetDragPreview";
 import { CanvasControls } from "./CanvasControls";
 import { CanvasGrid } from "./CanvasGrid";
 import { DashboardComponent } from "@/hooks/useDashboardComponents";
 import { useDebouncedComponentUpdate } from "@/hooks/useDebouncedComponentUpdate";
-import { 
-  getCanvasDimensions,
-  getInitialTransform, 
-  getTransformForComponent,
-  clampTransform,
-} from "@/lib/canvasPlacement";
+import { getCanvasDimensions, getInitialTransform, getTransformForComponent, clampTransform } from "@/lib/canvasPlacement";
 
 interface InfiniteCanvasProps {
   components: DashboardComponent[];
@@ -20,10 +26,11 @@ interface InfiniteCanvasProps {
   onComponentSelect: (component: DashboardComponent | null, shiftKey?: boolean) => void;
   selectedComponentId: string | null;
   multiSelectedIds?: Set<string>;
+  onMarqueeSelect?: (ids: string[]) => void;
 }
 
-const ZOOM_STEP = 0.15;
-const GRID_SIZE = 20;
+const ZOOM_STEP = 0.1;
+const GRID_SIZE = 40; // Matches the visual grid in CanvasGrid
 const INITIAL_SCALE = 1.0;
 
 export function InfiniteCanvas({
@@ -33,19 +40,42 @@ export function InfiniteCanvas({
   onComponentSelect,
   selectedComponentId,
   multiSelectedIds = new Set(),
+  onMarqueeSelect,
 }: InfiniteCanvasProps) {
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [scale, setScale] = useState(INITIAL_SCALE);
-  const [snapToGrid, setSnapToGrid] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 800 });
+
+  // Track canvas-wide interaction state for paint reduction
+  const [isAnyDragging, setIsAnyDragging] = useState(false);
+  const [isAnyResizing, setIsAnyResizing] = useState(false);
+  const [shiftHeld, setShiftHeld] = useState(false);
+
+  // DragOverlay state
+  // NOTE: we keep the overlay active for a short "handoff" after drop so the real
+  // widget doesn't flash at its old position for 1 frame before the optimistic
+  // cache update propagates through React Query.
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [pendingDrop, setPendingDrop] = useState<
+    { id: string; x: number; y: number } | null
+  >(null);
+
+  // Marquee selection state
+  const [marquee, setMarquee] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
+  const marqueeStartRef = useRef<{ canvasX: number; canvasY: number } | null>(null);
+
+  // Drop coordinates are derived from @dnd-kit’s translated rect (which already includes
+  // modifiers like grab-point preservation), then converted from viewport → canvas
+  // space using current pan/zoom.
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
 
-  const { update: debouncedUpdate, flushNow } = useDebouncedComponentUpdate(campaignId);
+  const { update: debouncedUpdate, flushNow, saveStatus, retry: retrySave } =
+    useDebouncedComponentUpdate(campaignId);
 
   // Calculate responsive canvas dimensions based on viewport
   const canvasDimensions = useMemo(
@@ -83,7 +113,7 @@ export function InfiniteCanvas({
   // Center on mount once the transform wrapper is ready
   useEffect(() => {
     if (isReady) return;
-    
+
     const ref = transformRef.current;
     const container = containerRef.current;
     if (!ref || !container) return;
@@ -101,7 +131,15 @@ export function InfiniteCanvas({
           anchorComponent.height,
           INITIAL_SCALE
         );
-        const clamped = clampTransform(positionX, positionY, INITIAL_SCALE, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
+        const clamped = clampTransform(
+          positionX,
+          positionY,
+          INITIAL_SCALE,
+          container.clientWidth,
+          container.clientHeight,
+          canvasDimensions.width,
+          canvasDimensions.height
+        );
         ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
       } else {
         // No anchor - show top-center of canvas
@@ -110,7 +148,15 @@ export function InfiniteCanvas({
           container.clientHeight,
           INITIAL_SCALE
         );
-        const clamped = clampTransform(positionX, positionY, INITIAL_SCALE, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
+        const clamped = clampTransform(
+          positionX,
+          positionY,
+          INITIAL_SCALE,
+          container.clientWidth,
+          container.clientHeight,
+          canvasDimensions.width,
+          canvasDimensions.height
+        );
         ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
       }
       setIsReady(true);
@@ -129,9 +175,15 @@ export function InfiniteCanvas({
   );
 
   const snapPosition = useCallback((value: number) => {
-    if (!snapToGrid) return Math.round(value);
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
-  }, [snapToGrid]);
+  }, []);
+
+  // Handle drag start - set interaction mode for paint reduction
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setPendingDrop(null);
+    setIsAnyDragging(true);
+    setActiveDragId(event.active.id as string);
+  }, []);
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -139,20 +191,92 @@ export function InfiniteCanvas({
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
 
-      if (component && isGM) {
-        const newX = snapPosition(component.position_x + delta.x / scale);
-        const newY = snapPosition(component.position_y + delta.y / scale);
-
-        debouncedUpdate({
-          id: componentId,
-          position_x: newX,
-          position_y: newY,
-        });
-        flushNow(); // Flush immediately on drag end
+      // If we can't resolve the component (or user isn't GM), just clean up.
+      if (!component || !isGM) {
+        setIsAnyDragging(false);
+        setActiveDragId(null);
+        setPendingDrop(null);
+        return;
       }
+
+      // Delta is in viewport pixels; divide by scale to get canvas-coordinate movement.
+      const deltaX = delta.x / scale;
+      const deltaY = delta.y / scale;
+
+      const newX = snapPosition(component.position_x + deltaX);
+      const newY = snapPosition(component.position_y + deltaY);
+
+      console.log('[DnD Drop]', {
+        delta,
+        scale,
+        oldPos: { x: component.position_x, y: component.position_y },
+        newPos: { x: newX, y: newY },
+      });
+
+      // No meaningful move → don't keep the overlay around.
+      if (newX === component.position_x && newY === component.position_y) {
+        setIsAnyDragging(false);
+        setActiveDragId(null);
+        setPendingDrop(null);
+        return;
+      }
+
+      // Keep overlay + placeholder active until the optimistic cache update
+      // has propagated and the widget has re-rendered at its final snapped position.
+      setPendingDrop({ id: componentId, x: newX, y: newY });
+
+      // Move the dragged widget
+      debouncedUpdate({
+        id: componentId,
+        position_x: newX,
+        position_y: newY,
+      });
+
+      // Also move all other multi-selected widgets by the same delta
+      if (multiSelectedIds.size > 1 && multiSelectedIds.has(componentId)) {
+        components.forEach((c) => {
+          if (c.id !== componentId && multiSelectedIds.has(c.id)) {
+            debouncedUpdate({
+              id: c.id,
+              position_x: snapPosition(c.position_x + deltaX),
+              position_y: snapPosition(c.position_y + deltaY),
+            });
+          }
+        });
+      }
+
+      flushNow(); // Flush immediately on drag end
     },
-    [components, isGM, scale, debouncedUpdate, flushNow, snapPosition]
+    [components, isGM, scale, debouncedUpdate, flushNow, snapPosition, multiSelectedIds]
   );
+
+  const handleDragCancel = useCallback(() => {
+    setIsAnyDragging(false);
+    setActiveDragId(null);
+    setPendingDrop(null);
+  }, []);
+
+  // Resolve the drag-end "handoff" once the underlying widget reflects the snapped position.
+  useEffect(() => {
+    if (!pendingDrop) return;
+
+    const c = components.find((x) => x.id === pendingDrop.id);
+    if (c && c.position_x === pendingDrop.x && c.position_y === pendingDrop.y) {
+      setActiveDragId(null);
+      setIsAnyDragging(false);
+      setPendingDrop(null);
+      return;
+    }
+
+    // Safety valve: avoid getting stuck if something unexpected happens.
+    const t = setTimeout(() => {
+      setActiveDragId(null);
+      setIsAnyDragging(false);
+      setPendingDrop(null);
+    }, 250);
+
+    return () => clearTimeout(t);
+  }, [pendingDrop, components]);
 
   // Recenter on the anchor component (Campaign Console) or top of canvas
   const handleRecenter = useCallback(() => {
@@ -201,7 +325,7 @@ export function InfiniteCanvas({
     const currentScale = state.scale ?? scale;
     const positionX = state.positionX ?? 0;
     const positionY = state.positionY ?? 0;
-    const newScale = Math.min(2, currentScale + ZOOM_STEP);
+    const newScale = Math.min(2, Math.round((currentScale + ZOOM_STEP) * 10) / 10);
     
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
@@ -225,7 +349,7 @@ export function InfiniteCanvas({
     const currentScale = state.scale ?? scale;
     const positionX = state.positionX ?? 0;
     const positionY = state.positionY ?? 0;
-    const newScale = Math.max(0.25, currentScale - ZOOM_STEP);
+    const newScale = Math.max(0.3, Math.round((currentScale - ZOOM_STEP) * 10) / 10);
     
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
@@ -250,32 +374,11 @@ export function InfiniteCanvas({
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
   
-  // Clamp position when panning stops to keep view within bounds
+  // No auto-snap on panning stop - let user pan freely
+  // The visible boundary border shows the canvas limits
   const handlePanningStop = useCallback(() => {
     setIsPanning(false);
-    
-    const ref = transformRef.current;
-    const container = containerRef.current;
-    if (!ref || !container) return;
-    
-    const state = ref.instance?.transformState;
-    if (!state) return;
-    
-    const { positionX, positionY } = clampTransform(
-      state.positionX,
-      state.positionY,
-      state.scale,
-      container.clientWidth,
-      container.clientHeight,
-      canvasDimensions.width,
-      canvasDimensions.height
-    );
-    
-    // Only update if position changed
-    if (positionX !== state.positionX || positionY !== state.positionY) {
-      ref.setTransform(positionX, positionY, state.scale, 150, "easeOut");
-    }
-  }, [canvasDimensions.width, canvasDimensions.height]);
+  }, []);
 
   // Auto-center when anchor component first appears or on campaign switch
   useEffect(() => {
@@ -325,6 +428,20 @@ export function InfiniteCanvas({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleZoomIn, handleZoomOut, handleReset, handleRecenter]);
 
+  // Track Shift key for marquee selection (disables panning)
+  useEffect(() => {
+    if (!isGM) return;
+    const down = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === 'Shift') setShiftHeld(false); };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    window.addEventListener('blur', () => setShiftHeld(false));
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, [isGM]);
+
   // Prevent scroll on canvas - only allow scroll within focused components
   const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
     const target = e.target as HTMLElement;
@@ -340,31 +457,136 @@ export function InfiniteCanvas({
     onComponentSelect(null);
   }, [onComponentSelect]);
 
-  // Handle resize with scale compensation
+  // Handle resize COMMIT - only called once on mouseup
+  // Updates cache + triggers debounced DB write, then flushes immediately
   const handleComponentResize = useCallback(
     (id: string, width: number, height: number) => {
-      const snappedWidth = snapToGrid ? Math.round(width / GRID_SIZE) * GRID_SIZE : Math.round(width);
-      const snappedHeight = snapToGrid ? Math.round(height / GRID_SIZE) * GRID_SIZE : Math.round(height);
+      const snappedWidth = Math.round(width / GRID_SIZE) * GRID_SIZE;
+      const snappedHeight = Math.round(height / GRID_SIZE) * GRID_SIZE;
       
+      // Single cache update + DB write at resize end
       debouncedUpdate({
         id,
         width: snappedWidth,
         height: snappedHeight,
       });
+      
+      // Flush immediately since this is resize end
+      flushNow();
     },
-    [debouncedUpdate, snapToGrid]
+    [debouncedUpdate, flushNow]
   );
 
+  // Handle resize start/end for canvas-wide interaction tracking
+  const handleResizeStart = useCallback(() => {
+    setIsAnyResizing(true);
+  }, []);
+
   const handleResizeEnd = useCallback(() => {
-    flushNow();
-  }, [flushNow]);
+    setIsAnyResizing(false);
+    // Flush already happens in handleComponentResize
+  }, []);
+
+  const activeDragComponent = useMemo(() => {
+    if (!activeDragId) return null;
+    return components.find((c) => c.id === activeDragId) ?? null;
+  }, [activeDragId, components]);
+
+  // Marquee selection handlers (Shift + left-drag on empty canvas)
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!isGM || !e.shiftKey || e.button !== 0) return;
+    
+    // Don't start marquee if clicking on a widget
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-draggable-component]')) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const ref = transformRef.current;
+    const state = ref?.instance?.transformState;
+    if (!state) return;
+
+    // Convert viewport coords to canvas coords
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const viewportX = e.clientX - rect.left;
+    const viewportY = e.clientY - rect.top;
+    const canvasX = (viewportX - state.positionX) / state.scale;
+    const canvasY = (viewportY - state.positionY) / state.scale;
+
+    marqueeStartRef.current = { canvasX, canvasY };
+    setMarquee({ startX: canvasX, startY: canvasY, currentX: canvasX, currentY: canvasY });
+  }, [isGM]);
+
+  const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!marquee || !marqueeStartRef.current) return;
+
+    const ref = transformRef.current;
+    const state = ref?.instance?.transformState;
+    if (!state) return;
+
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const viewportX = e.clientX - rect.left;
+    const viewportY = e.clientY - rect.top;
+    const canvasX = (viewportX - state.positionX) / state.scale;
+    const canvasY = (viewportY - state.positionY) / state.scale;
+
+    setMarquee(prev => prev ? { ...prev, currentX: canvasX, currentY: canvasY } : null);
+  }, [marquee]);
+
+  const handleCanvasMouseUp = useCallback(() => {
+    if (!marquee || !onMarqueeSelect) {
+      setMarquee(null);
+      marqueeStartRef.current = null;
+      return;
+    }
+
+    const left = Math.min(marquee.startX, marquee.currentX);
+    const right = Math.max(marquee.startX, marquee.currentX);
+    const top = Math.min(marquee.startY, marquee.currentY);
+    const bottom = Math.max(marquee.startY, marquee.currentY);
+
+    // Only select if marquee has meaningful size (>10px canvas units)
+    if (right - left > 10 && bottom - top > 10) {
+      const hitIds = components
+        .filter(c => {
+          const cx = c.position_x;
+          const cy = c.position_y;
+          const cw = c.width;
+          const ch = c.height;
+          // Widget overlaps the marquee rectangle
+          return cx + cw > left && cx < right && cy + ch > top && cy < bottom;
+        })
+        .map(c => c.id);
+
+      onMarqueeSelect(hitIds);
+    }
+
+    setMarquee(null);
+    marqueeStartRef.current = null;
+  }, [marquee, components, onMarqueeSelect]);
+
+  // Compute marquee rect for rendering (in canvas coordinates)
+  const marqueeRect = useMemo(() => {
+    if (!marquee) return null;
+    return {
+      left: Math.min(marquee.startX, marquee.currentX),
+      top: Math.min(marquee.startY, marquee.currentY),
+      width: Math.abs(marquee.currentX - marquee.startX),
+      height: Math.abs(marquee.currentY - marquee.startY),
+    };
+  }, [marquee]);
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className="relative w-full h-full overflow-hidden bg-background"
+      className={`relative w-full h-full overflow-hidden bg-background ${shiftHeld && isGM ? 'cursor-crosshair' : ''}`}
       onWheel={handleCanvasWheel}
       onClick={handleCanvasClick}
+      onMouseDown={handleCanvasMouseDown}
+      onMouseMove={handleCanvasMouseMove}
+      onMouseUp={handleCanvasMouseUp}
+      onMouseLeave={handleCanvasMouseUp}
     >
       {/* Canvas Controls */}
       <CanvasControls
@@ -373,53 +595,74 @@ export function InfiniteCanvas({
         onZoomOut={handleZoomOut}
         onReset={handleReset}
         onRecenter={handleRecenter}
-        snapToGrid={snapToGrid}
-        onToggleSnap={() => setSnapToGrid(!snapToGrid)}
+        saveStatus={saveStatus}
+        onRetry={retrySave}
       />
 
-      {/* Zoom/Pan Container */}
-      <TransformWrapper
-        ref={transformRef}
-        initialScale={INITIAL_SCALE}
-        initialPositionX={0}
-        initialPositionY={0}
-        minScale={0.25}
-        maxScale={2}
-        limitToBounds={false}
-        onPanningStart={handlePanningStart}
-        onPanningStop={handlePanningStop}
-        onTransformed={handleTransform}
-        smooth={true}
-        panning={{
-          velocityDisabled: false,
-          excluded: ["draggable-component"],
-        }}
-        wheel={{
-          disabled: true,
-        }}
-        doubleClick={{
-          disabled: true,
-        }}
-        velocityAnimation={{
-          sensitivity: 1,
-          animationTime: 200,
-        }}
+      {/* DnD Context wraps everything - DragOverlay is OUTSIDE TransformWrapper */}
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
-        <TransformComponent
-          wrapperStyle={{
-            width: "100%",
-            height: "100%",
+        {/* Zoom/Pan Container */}
+        <TransformWrapper
+          ref={transformRef}
+          initialScale={INITIAL_SCALE}
+          initialPositionX={0}
+          initialPositionY={0}
+          minScale={0.25}
+          maxScale={2}
+          limitToBounds={false}
+          onPanningStart={handlePanningStart}
+          onPanningStop={handlePanningStop}
+          onTransformed={handleTransform}
+          smooth={true}
+          panning={{
+            velocityDisabled: false,
+            excluded: ["draggable-component"],
+            disabled: shiftHeld,
           }}
-          contentStyle={{
-            width: `${canvasDimensions.width}px`,
-            height: `${canvasDimensions.height}px`,
+          wheel={{
+            disabled: true,
+          }}
+          doubleClick={{
+            disabled: true,
+          }}
+          velocityAnimation={{
+            sensitivity: 1,
+            animationTime: 200,
           }}
         >
-          {/* Grid Background */}
-          <CanvasGrid />
+          <TransformComponent
+            wrapperStyle={{
+              width: "100%",
+              height: "100%",
+            }}
+            contentStyle={{
+              width: `${canvasDimensions.width}px`,
+              height: `${canvasDimensions.height}px`,
+            }}
+          >
+            {/* Grid Background */}
+            <CanvasGrid />
 
-          {/* DnD Context for draggable components */}
-          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+            {/* Marquee selection rectangle */}
+            {marqueeRect && (
+              <div
+                className="absolute border-2 border-primary bg-primary/10 pointer-events-none z-50"
+                style={{
+                  left: marqueeRect.left,
+                  top: marqueeRect.top,
+                  width: marqueeRect.width,
+                  height: marqueeRect.height,
+                  boxShadow: '0 0 8px hsl(var(--primary) / 0.4)',
+                }}
+              />
+            )}
+
+            {/* Draggable components inside the scaled canvas */}
             {components.map((component) => (
               <DraggableComponent
                 key={component.id}
@@ -432,33 +675,52 @@ export function InfiniteCanvas({
                 campaignId={campaignId}
                 scale={scale}
                 onResize={handleComponentResize}
+                onResizeStart={handleResizeStart}
                 onResizeEnd={handleResizeEnd}
+                isAnyDragging={isAnyDragging}
+                isAnyResizing={isAnyResizing}
+                isOverlayActive={activeDragId === component.id}
+                useDragOverlay={true}
               />
             ))}
-          </DndContext>
 
-          {/* Empty state */}
-          {components.length === 0 && (
-            <div 
-              className="absolute text-center pointer-events-none"
-              style={{
-                left: `${canvasDimensions.width / 2}px`,
-                top: `${canvasDimensions.height / 2}px`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <div className="text-muted-foreground text-sm space-y-2">
-                <p className="text-lg font-mono text-primary/70">[ EMPTY DASHBOARD ]</p>
-                <p className="text-xs max-w-xs">
-                  {isGM
-                    ? "Click the + button to add components to your campaign dashboard"
-                    : "No dashboard components have been published for players yet. Check back later or contact your Games Master."}
-                </p>
+            {/* Empty state */}
+            {components.length === 0 && (
+              <div
+                className="absolute text-center pointer-events-none"
+                style={{
+                  left: `${canvasDimensions.width / 2}px`,
+                  top: `${canvasDimensions.height / 2}px`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <div className="text-muted-foreground text-sm space-y-2">
+                  <p className="text-lg font-mono text-primary/70">[ EMPTY DASHBOARD ]</p>
+                  <p className="text-xs max-w-xs">
+                    {isGM
+                      ? "Click the + button to add components to your campaign dashboard"
+                      : "No dashboard components have been published for players yet. Check back later or contact your Games Master."}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-        </TransformComponent>
-      </TransformWrapper>
+            )}
+          </TransformComponent>
+        </TransformWrapper>
+
+        {/* DragOverlay is OUTSIDE TransformWrapper - renders in viewport coordinates */}
+        <DragOverlay dropAnimation={null} modifiers={[createGrabPointPreservingModifier(scale)]}>
+          <AnimatePresence>
+            {activeDragComponent ? (
+              <WidgetDragPreview
+                key={activeDragComponent.id}
+                component={activeDragComponent}
+                mode="overlay"
+                scale={scale}
+              />
+            ) : null}
+          </AnimatePresence>
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }

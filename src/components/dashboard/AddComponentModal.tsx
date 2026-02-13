@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
+import { useEntitlements, isFeatureLocked } from "@/hooks/useEntitlements";
 import { getSpawnPosition } from "@/lib/canvasPlacement";
 import { PasteWizardOverlay } from "./PasteWizardOverlay";
 import { 
@@ -15,8 +16,14 @@ import {
   Users,
   Calendar,
   Activity,
-  History,
+  Megaphone,
+  FileText,
+  Sticker,
+  Lock,
+  Swords,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AddComponentModalProps {
   open: boolean;
@@ -24,28 +31,46 @@ interface AddComponentModalProps {
   campaignId: string;
 }
 
-const COMPONENT_TYPES = [
-  { type: "rules_table", label: "Rules Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
-  { type: "rules_card", label: "Rules Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
+type SupporterFeatureType = 'smart_paste' | 'themes' | 'banner' | 'text_widget' | 'stickers';
+
+interface ComponentTypeConfig {
+  type: string;
+  label: string;
+  icon: React.ElementType;
+  description: string;
+  usesPasteWizard?: boolean;
+  saveToRules?: boolean;
+  isCustom?: boolean;
+  supporterFeature?: SupporterFeatureType;
+}
+
+const COMPONENT_TYPES: ComponentTypeConfig[] = [
+  { type: "rules_table", label: "Smart Table", icon: Table, description: "Table linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
+  { type: "rules_card", label: "Smart Card", icon: LayoutList, description: "Card linked to Rules overlay", usesPasteWizard: true, saveToRules: true },
   { type: "custom_table", label: "Custom Table", icon: Table, description: "Blank table for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "custom_card", label: "Custom Card", icon: LayoutList, description: "Blank card for manual entry", usesPasteWizard: true, isCustom: true, saveToRules: true },
   { type: "narrative_table", label: "Narrative", icon: LayoutList, description: "Display narrative events" },
+  { type: "battle_tracker", label: "Battles", icon: Swords, description: "Track rounds, pairings & reports" },
   { type: "counter", label: "Counter", icon: Hash, description: "Numeric tracker with +/- controls" },
   { type: "image", label: "Image", icon: Image, description: "Display an image or map" },
-  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll configurable dice" },
-  { type: "roll_recorder", label: "Roll Recorder", icon: History, description: "Track dice roll history" },
+  { type: "dice_roller", label: "Dice Roller", icon: Dices, description: "Roll dice with history log" },
   { type: "map", label: "Map", icon: Map, description: "Live campaign map with markers" },
   { type: "player_list", label: "Player List", icon: Users, description: "Configurable player roster table" },
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
-  { type: "activity_feed", label: "Activity Feed", icon: Activity, description: "Real-time campaign activity log" },
+  { type: "activity_feed", label: "Activity", icon: Activity, description: "Real-time campaign activity log" },
+  { type: "announcements", label: "Announce", icon: Megaphone, description: "GM notice board" },
+  { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget" },
+  { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [showPasteWizard, setShowPasteWizard] = useState(false);
+  const navigate = useNavigate();
   
   const createComponent = useCreateComponent();
+  const { entitlements } = useEntitlements();
 
   const selectedTypeData = useMemo(() => 
     COMPONENT_TYPES.find(v => v.type === selectedType), 
@@ -54,6 +79,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
 
   const handleTypeSelect = (type: string) => {
     const typeData = COMPONENT_TYPES.find(v => v.type === type);
+    
+    // Check if feature is locked
+    if (typeData?.supporterFeature && isFeatureLocked(entitlements, typeData.supporterFeature)) {
+      // Don't proceed - show upgrade prompt
+      return;
+    }
     
     // If type uses paste wizard, open it immediately
     if (typeData?.usesPasteWizard) {
@@ -87,12 +118,25 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
       config.count = 1;
     }
 
+    if (selectedType === "text") {
+      config.content = "";
+    }
+
+    if (selectedType === "sticker") {
+      config.icon = "Star";
+      config.size = "md";
+      config.color = "hsl(142, 76%, 55%)";
+    }
+
     // Determine component size based on type
     let width = 350;
     let height = 300;
-    if (selectedType === "counter" || selectedType === "dice_roller") {
+    if (selectedType === "counter") {
       width = 200;
       height = 200;
+    } else if (selectedType === "dice_roller") {
+      width = 220;
+      height = 320;
     } else if (selectedType === "map") {
       width = 450;
       height = 400;
@@ -106,9 +150,18 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "activity_feed") {
       width = 350;
       height = 400;
-    } else if (selectedType === "roll_recorder") {
-      width = 320;
-      height = 350;
+    } else if (selectedType === "announcements") {
+      width = 380;
+      height = 400;
+    } else if (selectedType === "text") {
+      width = 300;
+      height = 250;
+    } else if (selectedType === "sticker") {
+      width = 120;
+      height = 120;
+    } else if (selectedType === "battle_tracker") {
+      width = 420;
+      height = 450;
     }
 
     // Spawn at canvas center with slight offset to not overlap existing components
@@ -180,21 +233,47 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
             <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
               Select Component Type
             </label>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-              {COMPONENT_TYPES.map(({ type, label, icon: Icon, description }) => (
-                <button
-                  key={type}
-                  onClick={() => handleTypeSelect(type)}
-                  className={`p-3 border rounded text-center transition-all ${
-                    selectedType === type
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/50 hover:bg-accent"
-                  }`}
-                >
-                  <Icon className={`w-6 h-6 mx-auto mb-2 ${selectedType === type ? "text-primary" : "text-muted-foreground"}`} />
-                  <p className="text-xs font-mono uppercase">{label}</p>
-                </button>
-              ))}
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
+              {COMPONENT_TYPES.map(({ type, label, icon: Icon, supporterFeature }) => {
+                const isLocked = supporterFeature && isFeatureLocked(entitlements, supporterFeature);
+                
+                const buttonContent = (
+                  <button
+                    key={type}
+                    data-component-type={type}
+                    onClick={() => !isLocked && handleTypeSelect(type)}
+                    className={`p-2.5 border rounded text-center transition-all duration-200 relative group ${
+                      selectedType === type
+                        ? "border-primary bg-primary/15 text-primary shadow-[0_0_15px_hsl(var(--primary)/0.3)]"
+                        : isLocked
+                          ? "border-border/30 bg-muted/20 cursor-not-allowed"
+                          : "border-border hover:border-primary/60 hover:bg-primary/10 hover:scale-105 hover:shadow-[0_0_12px_hsl(var(--primary)/0.2)]"
+                    }`}
+                    disabled={isLocked}
+                  >
+                    <div className={`transition-all duration-200 ${isLocked ? "opacity-40" : "group-hover:scale-110"}`}>
+                      <Icon className={`w-5 h-5 mx-auto mb-1 transition-colors duration-200 ${
+                        selectedType === type ? "text-primary" : 
+                        isLocked ? "text-muted-foreground" : "text-muted-foreground group-hover:text-primary"
+                      }`} />
+                      <p className={`text-[10px] font-mono uppercase leading-tight transition-colors duration-200 ${
+                        !isLocked && "group-hover:text-foreground"
+                      }`}>{label}</p>
+                    </div>
+                    {isLocked && (
+                      <div className="flex flex-col items-center mt-0.5">
+                        <span className="text-[7px] text-muted-foreground uppercase tracking-wide">Coming Soon</span>
+                      </div>
+                    )}
+                  </button>
+                );
+
+                if (isLocked) {
+                  return buttonContent;
+                }
+
+                return buttonContent;
+              })}
             </div>
           </div>
 
@@ -242,7 +321,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
 
               {selectedType === "calendar" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
-                  Displays a monthly calendar with rounds and events. Manage schedule via the Schedule overlay.
+                  Displays a monthly calendar with rounds and events. Manage events and round visibility via the Calendar overlay.
                 </p>
               )}
 
@@ -252,9 +331,27 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                 </p>
               )}
 
-              {selectedType === "roll_recorder" && (
+              {selectedType === "announcements" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
-                  Displays a real-time log of all dice rolls from Dice Roller widgets, showing player name, roll results, and timestamp.
+                  GM notice board for campaign updates. Optionally send announcements as private messages to selected players.
+                </p>
+              )}
+
+              {selectedType === "text" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  A text widget for notes and markdown content. Perfect for house rules, session notes, or any custom text.
+                </p>
+              )}
+
+              {selectedType === "sticker" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  A decorative icon marker. Choose from dozens of icons to mark objectives, danger zones, or points of interest.
+                </p>
+              )}
+
+              {selectedType === "battle_tracker" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Displays active pairings, match history, and allows players to submit battle reports. GMs manage rounds via the Battles overlay.
                 </p>
               )}
 

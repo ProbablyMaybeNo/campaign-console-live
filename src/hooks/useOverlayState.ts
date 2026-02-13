@@ -6,12 +6,14 @@ export type OverlayType =
   | "warbands" 
   | "players" 
   | "player-settings"
+  | "player-messages"
   | "rules" 
   | "map" 
   | "narrative" 
   | "messages" 
-  | "schedule" 
+  | "calendar" 
   | "settings"
+  | "battles"
   | null;
 
 interface UseOverlayStateReturn {

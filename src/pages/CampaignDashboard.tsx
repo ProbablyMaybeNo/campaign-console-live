@@ -1,9 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useCampaign, useIsGM } from "@/hooks/useCampaigns";
+import { useCampaign, useIsGM, useUpdateCampaign } from "@/hooks/useCampaigns";
+import { usePlayerRole } from "@/hooks/usePlayerRole";
 import { useDashboardComponents, DashboardComponent, useDeleteComponent, useUpdateComponent, useCreateComponent } from "@/hooks/useDashboardComponents";
 import { useAuth } from "@/hooks/useAuth";
 import { useOverlayState, OverlayType } from "@/hooks/useOverlayState";
+import { useEntitlements } from "@/hooks/useEntitlements";
+import { useDeviceType } from "@/hooks/use-mobile";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import { InfiniteCanvas } from "@/components/dashboard/InfiniteCanvas";
@@ -16,6 +19,9 @@ import { CommandPalette } from "@/components/dashboard/CommandPalette";
 import { MultiSelectToolbar } from "@/components/dashboard/MultiSelectToolbar";
 import { CampaignExportModal } from "@/components/dashboard/CampaignExportModal";
 import { GettingStartedModal } from "@/components/help/GettingStartedModal";
+import { SupporterWelcomeModal } from "@/components/settings/SupporterWelcomeModal";
+import { SupporterHub } from "@/components/supporter/SupporterHub";
+import { MobileDashboard } from "@/components/dashboard/MobileDashboard";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
@@ -28,13 +34,14 @@ import {
   Scroll, 
   MessageSquare, 
   Calendar, 
-  Plus,
   LayoutGrid,
   Database,
   BookOpen,
   UserCog,
   PanelLeftOpen,
-  PanelLeftClose
+  PanelLeftClose,
+  Command,
+  Swords
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,13 +54,14 @@ const sidebarItems: {
 }[] = [
   { id: "home", label: "Home", icon: LayoutGrid },
   { id: "components", label: "Components", icon: Database, gmOnly: true },
+  { id: "battles", label: "Battles", icon: Swords, gmOnly: true },
   { id: "player-settings", label: "My Settings", icon: UserCog, playerOnly: true },
   { id: "players", label: "Players", icon: Users },
   { id: "rules", label: "Rules", icon: Scroll },
   { id: "map", label: "Map", icon: Map },
   { id: "narrative", label: "Narrative", icon: BookOpen },
   { id: "messages", label: "Messages", icon: MessageSquare },
-  { id: "schedule", label: "Schedule", icon: Calendar },
+  { id: "calendar", label: "Calendar", icon: Calendar },
 ];
 
 export default function CampaignDashboard() {
@@ -63,11 +71,14 @@ export default function CampaignDashboard() {
   const { data: components = [], isLoading: componentsLoading } = useDashboardComponents(campaignId);
   const { user, signOut } = useAuth();
   const isGM = useIsGM(campaignId);
+  const { hasFullControl, permissions } = usePlayerRole(campaignId);
   const deleteComponent = useDeleteComponent();
   const updateComponent = useUpdateComponent();
   const createComponent = useCreateComponent();
+  const updateCampaign = useUpdateCampaign();
   const { handleDeleteWithUndo } = useUndoDelete(campaignId!);
   const multiSelect = useMultiSelect();
+  const { isPhone } = useDeviceType();
 
   const { activeOverlay, openOverlay, closeOverlay } = useOverlayState();
 
@@ -77,6 +88,10 @@ export default function CampaignDashboard() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showGettingStarted, setShowGettingStarted] = useState(false);
+  const [showSupporterWelcome, setShowSupporterWelcome] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  
+  const { isSupporter } = useEntitlements();
   
   const [previewAsPlayer, setPreviewAsPlayer] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -98,6 +113,15 @@ export default function CampaignDashboard() {
     }
   }, [searchParams, setSearchParams, isGM, campaignLoading]);
 
+  // Supporter welcome modal - show after subscription redirect
+  useEffect(() => {
+    if (searchParams.get("supporter") === "welcome" && isSupporter) {
+      setShowSupporterWelcome(true);
+      searchParams.delete("supporter");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, isSupporter]);
+
   // Handle component selection with multi-select support
   const handleComponentSelect = useCallback((component: DashboardComponent | null, shiftKey = false) => {
     if (!component) {
@@ -112,6 +136,11 @@ export default function CampaignDashboard() {
       multiSelect.toggleSelect(component.id, true);
       setSelectedComponent(component);
     } else {
+      // If this widget is already part of a multi-selection, don't clear the group
+      if (multiSelect.selectedIds.size > 1 && multiSelect.selectedIds.has(component.id)) {
+        setSelectedComponent(component);
+        return;
+      }
       multiSelect.toggleSelect(component.id, false);
       setSelectedComponent(component);
     }
@@ -131,6 +160,12 @@ export default function CampaignDashboard() {
 
   // GM Keyboard Shortcuts
   const handleDeleteSelected = useCallback(() => {
+    // Check if user has delete permission
+    if (!permissions.canDeleteComponents) {
+      toast.error("You don't have permission to delete widgets.");
+      return;
+    }
+
     // Handle multi-select delete
     if (multiSelect.selectedIds.size > 1) {
       const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
@@ -161,7 +196,7 @@ export default function CampaignDashboard() {
       });
       setSelectedComponent(null);
     }
-  }, [selectedComponent, multiSelect, components, handleDeleteWithUndo, deleteComponent, campaignId]);
+  }, [selectedComponent, multiSelect, components, handleDeleteWithUndo, deleteComponent, campaignId, permissions.canDeleteComponents]);
 
   const handleCopyJoinCode = useCallback(() => {
     if (campaign?.join_code) {
@@ -188,6 +223,10 @@ export default function CampaignDashboard() {
 
   // Multi-select bulk operations
   const handleBulkDelete = useCallback(() => {
+    if (!permissions.canDeleteComponents) {
+      toast.error("You don't have permission to delete widgets.");
+      return;
+    }
     const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
     const lockedCount = selectedComponents.filter((c) => (c.config as { locked?: boolean })?.locked).length;
     if (lockedCount > 0) {
@@ -202,7 +241,7 @@ export default function CampaignDashboard() {
     multiSelect.clearSelection();
     setSelectedComponent(null);
     toast.success(`Deleted ${selectedComponents.length} widgets`);
-  }, [components, multiSelect, handleDeleteWithUndo, deleteComponent, campaignId]);
+  }, [components, multiSelect, handleDeleteWithUndo, deleteComponent, campaignId, permissions.canDeleteComponents]);
 
   const handleBulkLock = useCallback(() => {
     const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
@@ -249,6 +288,10 @@ export default function CampaignDashboard() {
   }, [components, multiSelect, updateComponent]);
 
   const handleBulkDuplicate = useCallback(() => {
+    if (!permissions.canCreateComponents) {
+      toast.error("You don't have permission to create widgets.");
+      return;
+    }
     const selectedComponents = components.filter((c) => multiSelect.selectedIds.has(c.id));
     selectedComponents.forEach((c, index) => {
       createComponent.mutate({
@@ -265,7 +308,7 @@ export default function CampaignDashboard() {
     });
     multiSelect.clearSelection();
     toast.success(`Duplicated ${selectedComponents.length} widgets`);
-  }, [components, multiSelect, createComponent, campaignId]);
+  }, [components, multiSelect, createComponent, campaignId, permissions.canCreateComponents]);
 
   // Persist sidebar state to localStorage
   const handleSidebarToggle = (open: boolean) => {
@@ -310,15 +353,73 @@ export default function CampaignDashboard() {
     }
   };
 
+  // Apply theme
+  const themeId = campaign?.theme_id || "dark";
+
+  // Phone: Use mobile dashboard
+  if (isPhone) {
+    return (
+      <div data-theme={themeId}>
+        <MobileDashboard
+          campaign={campaign}
+          components={visibleComponents}
+          isGM={effectiveIsGM}
+          campaignId={campaignId!}
+          onOpenOverlay={openOverlay}
+          onSignOut={signOut}
+          onAddWidget={() => setShowAddModal(true)}
+          onExport={() => setShowExportModal(true)}
+          onTheme={() => setShowThemePicker(true)}
+        />
+
+        {/* Overlays still work the same */}
+        <CampaignOverlays
+          activeOverlay={activeOverlay}
+          onClose={closeOverlay}
+          campaignId={campaignId!}
+          isGM={effectiveIsGM}
+        />
+
+        <AddComponentModal
+          open={showAddModal}
+          onOpenChange={setShowAddModal}
+          campaignId={campaignId!}
+        />
+
+        <CampaignExportModal
+          open={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          campaignId={campaignId!}
+        />
+
+        {/* Supporter Hub for mobile - hidden for now, can be re-enabled later */}
+        {/* <SupporterHub
+          isSupporter={isSupporter}
+          currentThemeId={campaign?.theme_id || "dark"}
+          onThemeSelect={(themeId) => {
+            updateCampaign.mutate({
+              id: campaignId!,
+              theme_id: themeId,
+            });
+            toast.success(`Theme changed to ${themeId}`);
+          }}
+          onAddSmartPaste={() => openOverlay("rules")}
+          onAddSticker={() => setShowAddModal(true)}
+          onAddText={() => setShowAddModal(true)}
+        /> */}
+      </div>
+    );
+  }
+
+  // Tablet/Desktop: Use infinite canvas
   return (
-    <div className="h-screen bg-background flex flex-col overflow-hidden">
+    <div className="h-screen bg-background flex flex-col overflow-hidden" data-theme={themeId}>
       {/* Fixed Header */}
-      <header className="border-b-2 border-[hsl(142,76%,65%)] bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 15px hsl(142 76% 50% / 0.3)' }}>
+      <header className="border-b-2 border-border bg-card/95 backdrop-blur-sm px-4 py-3 flex-shrink-0 sticky top-0 z-50" style={{ boxShadow: '0 1px 15px hsl(var(--border) / 0.3)' }}>
         <div className="flex items-center justify-between">
           <Link 
             to="/campaigns" 
-            className="text-[hsl(200,100%,70%)] hover:text-[hsl(200,100%,80%)] transition-all"
-            style={{ textShadow: '0 0 12px hsl(200 100% 60% / 0.7), 0 0 25px hsl(200 100% 50% / 0.4)' }}
+            className="text-secondary hover:text-foreground transition-all"
           >
             <span className="flex items-center gap-1 font-mono text-sm font-medium uppercase tracking-wider">
               <ArrowLeft className="w-4 h-4" />
@@ -335,22 +436,16 @@ export default function CampaignDashboard() {
                 }}
                 className={`px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-90 ${
                   previewAsPlayer 
-                    ? "bg-[hsl(142,76%,50%)] text-black ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" 
-                    : "bg-[hsl(200,100%,65%)] text-black"
+                    ? "bg-primary text-primary-foreground ring-2 ring-secondary ring-offset-2 ring-offset-background" 
+                    : "bg-secondary text-secondary-foreground"
                 }`}
-                style={{ 
-                  boxShadow: previewAsPlayer 
-                    ? '0 0 20px hsl(142 76% 50% / 0.6), 0 0 40px hsl(142 76% 50% / 0.3)' 
-                    : '0 0 20px hsl(200 100% 60% / 0.6), 0 0 40px hsl(200 100% 50% / 0.3)' 
-                }}
                 title={previewAsPlayer ? "Click to return to GM view" : "Click to preview as Player"}
               >
                 {previewAsPlayer ? "Player (Preview)" : "Games Master"}
               </button>
             ) : (
               <div 
-                className="px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-[hsl(142,76%,45%)] text-black"
-                style={{ boxShadow: '0 0 15px hsl(142 76% 50% / 0.5), 0 0 30px hsl(142 76% 50% / 0.25)' }}
+                className="px-4 py-1.5 rounded font-mono text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground"
               >
                 Player
               </div>
@@ -366,17 +461,16 @@ export default function CampaignDashboard() {
         {/* Collapsible Sidebar - GM only */}
         {effectiveIsGM && (
           <aside 
-            className={`border-r-2 border-[hsl(142,76%,65%)] bg-sidebar/95 backdrop-blur-sm flex-shrink-0 hidden md:flex flex-col overflow-y-auto transition-all duration-300 ease-in-out ${
+            className={`border-r-2 border-border bg-sidebar/95 backdrop-blur-sm flex-shrink-0 hidden md:flex flex-col overflow-y-auto transition-all duration-300 ease-in-out ${
               sidebarOpen ? "w-56 p-4" : "w-0 p-0 border-r-0"
             }`}
-            style={{ boxShadow: sidebarOpen ? '1px 0 15px hsl(142 76% 50% / 0.2)' : 'none' }}
           >
             <div className={`transition-opacity duration-200 ${sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
               <div className="flex items-center justify-between mb-3 px-3">
-                <p className="text-xs uppercase tracking-wider text-white font-medium">Campaign Control</p>
+                <p className="text-xs uppercase tracking-wider text-sidebar-foreground font-medium">Campaign Control</p>
                 <button
                   onClick={() => handleSidebarToggle(false)}
-                  className="text-[hsl(142,76%,55%)] hover:text-[hsl(142,76%,70%)] transition-colors"
+                  className="text-sidebar-foreground hover:text-foreground transition-colors"
                   title="Close sidebar"
                 >
                   <PanelLeftClose className="w-4 h-4" />
@@ -410,23 +504,45 @@ export default function CampaignDashboard() {
                   onClick={() => openOverlay("settings")}
                 />
               </nav>
+              
+              {/* Supporter Hub - hidden for now, can be re-enabled later */}
+              {/* <div className="mt-auto pt-4 border-t border-border">
+                <SupporterHub
+                  isSupporter={isSupporter}
+                  currentThemeId={campaign?.theme_id || "dark"}
+                  onThemeSelect={(themeId) => {
+                    updateCampaign.mutate({
+                      id: campaignId!,
+                      theme_id: themeId,
+                    });
+                    toast.success(`Theme changed to ${themeId}`);
+                  }}
+                  onAddSmartPaste={() => {
+                    openOverlay("rules");
+                    toast.info("Opening Rules to use Smart Paste");
+                  }}
+                  onAddSticker={() => {
+                    setShowAddModal(true);
+                    toast.info("Opening widget picker for Sticker");
+                  }}
+                  onAddText={() => {
+                    setShowAddModal(true);
+                    toast.info("Opening widget picker for Text");
+                  }}
+                />
+              </div> */}
             </div>
           </aside>
         )}
 
         <main 
-          className="flex-1 overflow-hidden relative min-h-0 border-r-2 border-b-2 border-[hsl(142,76%,65%)]"
-          style={{ boxShadow: 'inset -1px -1px 15px hsl(142 76% 50% / 0.2)' }}
+          className="flex-1 overflow-hidden relative min-h-0 border-r-2 border-b-2 border-border"
         >
           {/* Campaign Control button - appears when sidebar is closed */}
           {effectiveIsGM && !sidebarOpen && (
             <button
               onClick={() => handleSidebarToggle(true)}
-              className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 rounded bg-[hsl(142,76%,50%)]/10 border border-[hsl(142,76%,65%)] text-[hsl(142,76%,65%)] font-mono text-xs font-bold uppercase tracking-wider transition-all hover:bg-[hsl(142,76%,50%)]/20 hover:scale-105"
-              style={{ 
-                boxShadow: '0 0 15px hsl(142 76% 50% / 0.3), 0 0 30px hsl(142 76% 50% / 0.15)',
-                textShadow: '0 0 10px hsl(142 76% 50% / 0.6)'
-              }}
+              className="absolute top-4 left-4 z-40 flex items-center gap-2 px-4 py-2 rounded bg-primary/10 border border-border text-foreground font-mono text-xs font-bold uppercase tracking-wider transition-all hover:bg-primary/20 hover:scale-105"
               title="Open Campaign Control"
             >
               <PanelLeftOpen className="w-4 h-4" />
@@ -441,19 +557,20 @@ export default function CampaignDashboard() {
             selectedComponentId={selectedComponent?.id || null}
             multiSelectedIds={multiSelect.selectedIds}
             onComponentSelect={handleComponentSelect}
+            onMarqueeSelect={multiSelect.selectByIds}
           />
 
-          {/* GM: Add component button + Help */}
+          {/* GM: Quick Actions FAB + Help */}
           {effectiveIsGM && (
             <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3 items-center">
               <HelpButton variant="fab" />
               <button
-                className="h-14 w-14 rounded-full bg-[hsl(142,76%,50%)] hover:bg-[hsl(142,76%,60%)] text-black font-bold text-xl flex items-center justify-center transition-all hover:scale-105 active:scale-95"
-                style={{ boxShadow: '0 0 20px hsl(142 76% 50% / 0.5), 0 0 40px hsl(142 76% 50% / 0.25)' }}
-                onClick={() => setShowAddModal(true)}
-                title="Add Component"
+                className="h-14 w-14 rounded-full bg-primary hover:bg-primary-bright text-primary-foreground font-bold text-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 hover-glow-primary"
+                style={{ boxShadow: '0 0 20px hsl(var(--primary) / 0.5), 0 0 40px hsl(var(--primary) / 0.25)' }}
+                onClick={() => setShowCommandPalette(true)}
+                title="Quick Actions (Ctrl+K)"
               >
-                <Plus className="w-6 h-6" />
+                <Command className="w-6 h-6 transition-transform duration-200 group-hover:rotate-90" />
               </button>
             </div>
           )}
@@ -479,6 +596,8 @@ export default function CampaignDashboard() {
           onHideAll={handleBulkHide}
           onDuplicateAll={handleBulkDuplicate}
           onClearSelection={multiSelect.clearSelection}
+          canCreate={permissions.canCreateComponents}
+          canDelete={permissions.canDeleteComponents}
         />
       )}
 
@@ -539,6 +658,12 @@ export default function CampaignDashboard() {
         joinCode={campaign?.join_code || undefined}
         onCopyJoinCode={handleCopyJoinCode}
       />
+
+      {/* Supporter Welcome Modal - hidden for now */}
+      {/* <SupporterWelcomeModal
+        open={showSupporterWelcome}
+        onClose={() => setShowSupporterWelcome(false)}
+      /> */}
     </div>
   );
 }
@@ -554,15 +679,16 @@ function NavItem({ icon, label, active, onClick }: NavItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-3 py-2 text-xs uppercase tracking-wider transition-all ${
+      className={`w-full flex items-center gap-3 px-3 py-2.5 text-xs uppercase tracking-wider transition-all duration-200 rounded-sm group ${
         active
-          ? "bg-[hsl(200,100%,65%)]/15 text-[hsl(200,100%,70%)] border-l-2 border-[hsl(200,100%,65%)]"
-          : "text-[hsl(142,76%,55%)] hover:text-[hsl(142,76%,70%)] hover:bg-[hsl(142,76%,50%)]/10"
+          ? "bg-secondary/15 text-secondary font-bold border-l-[3px] border-secondary"
+          : "text-sidebar-foreground hover:text-foreground hover:bg-primary/10 border-l-[3px] border-transparent hover:border-primary/50"
       }`}
-      style={active ? { textShadow: '0 0 10px hsl(200 100% 60% / 0.6)' } : { textShadow: '0 0 8px hsl(142 76% 50% / 0.4)' }}
     >
-      {icon}
-      {label}
+      <span className={`transition-transform duration-200 ${active ? '' : 'group-hover:scale-110'}`}>
+        {icon}
+      </span>
+      <span className="transition-colors duration-200">{label}</span>
     </button>
   );
 }

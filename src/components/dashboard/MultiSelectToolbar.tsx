@@ -17,6 +17,8 @@ interface MultiSelectToolbarProps {
   onHideAll: () => void;
   onDuplicateAll: () => void;
   onClearSelection: () => void;
+  canCreate?: boolean;
+  canDelete?: boolean;
 }
 
 export const MultiSelectToolbar = memo(function MultiSelectToolbar({
@@ -28,6 +30,8 @@ export const MultiSelectToolbar = memo(function MultiSelectToolbar({
   onHideAll,
   onDuplicateAll,
   onClearSelection,
+  canCreate = true,
+  canDelete = true,
 }: MultiSelectToolbarProps) {
   if (selectedCount < 2) return null;
 
@@ -43,16 +47,18 @@ export const MultiSelectToolbar = memo(function MultiSelectToolbar({
 
         <div className="w-px h-6 bg-[hsl(200,100%,50%)]/30" />
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" onClick={onDuplicateAll}>
-              <Copy className="w-4 h-4 text-[hsl(142,76%,50%)]" />
-            </TerminalButton>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p>Duplicate all</p>
-          </TooltipContent>
-        </Tooltip>
+        {canCreate && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <TerminalButton variant="ghost" size="sm" onClick={onDuplicateAll}>
+                <Copy className="w-4 h-4 text-[hsl(142,76%,50%)]" />
+              </TerminalButton>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Duplicate all</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -100,18 +106,22 @@ export const MultiSelectToolbar = memo(function MultiSelectToolbar({
           </TooltipContent>
         </Tooltip>
 
-        <div className="w-px h-6 bg-[hsl(200,100%,50%)]/30" />
+        {canDelete && (
+          <>
+            <div className="w-px h-6 bg-[hsl(200,100%,50%)]/30" />
 
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <TerminalButton variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
-              <Trash2 className="w-4 h-4" />
-            </TerminalButton>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            <p>Delete all</p>
-          </TooltipContent>
-        </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TerminalButton variant="ghost" size="sm" onClick={onDelete} className="text-destructive hover:text-destructive">
+                  <Trash2 className="w-4 h-4" />
+                </TerminalButton>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Delete all</p>
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
 
         <div className="w-px h-6 bg-[hsl(200,100%,50%)]/30" />
 

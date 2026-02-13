@@ -421,6 +421,538 @@
 
 ---
 
+## 11. Supporter Features & Entitlements
+
+### 11.1 Campaign Limits (Free User)
+**Start State**: Logged in as Free user (no active subscription)
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/campaigns` | Campaign list visible | Page loads |
+| 2 | If no campaigns, create one | Campaign created successfully | First campaign works |
+| 3 | Click "[ Create ]" again | Modal shows Campaign Limit reached | "Campaign Limit Reached" title with upgrade CTA |
+| 4 | Check modal content | Shows limit of 1 campaign for Free users | Text mentions upgrading for more |
+| 5 | Click "Become a Supporter" | Navigates to `/settings` | Settings page with billing tab |
+
+### 11.2 Campaign Archiving
+**Start State**: Logged in as Free user with 1 active campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/campaigns` | Shows "Active" tab selected | Tab highlight visible |
+| 2 | Select a campaign | Row highlighted | Selection visible |
+| 3 | Click "[ Archive ]" button | Confirmation modal appears | "Archive this campaign?" text |
+| 4 | Confirm archive | Campaign moves to Archived tab | Row disappears from Active |
+| 5 | Click "Archived" tab | Archived campaign visible | Campaign row appears |
+| 6 | Can now create new campaign | "[ Create ]" button works | Modal opens (not limit modal) |
+| 7 | Select archived campaign | Row highlighted | Selection visible |
+| 8 | Click "[ Restore ]" button | Campaign moves back to Active | Appears in Active tab |
+
+### 11.3 Dashboard Themes (Supporter-Gated)
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click Settings in sidebar | Campaign Settings modal opens | Modal visible |
+| 2 | Click "Appearance" tab | Appearance settings visible | Theme selector shown |
+| 3 | **As Free user**: Check theme options | Non-Dark themes show 🔒 lock icon | Lock icons visible |
+| 4 | Click locked theme (e.g., Aquatic) | Upgrade prompt or CTA shown | Cannot select locked themes |
+| 5 | **As Supporter**: Click Aquatic theme | Theme selected, save button active | Theme option selected |
+| 6 | Click "Save Changes" | Dashboard updates with new theme | Colors change (teal/cyan palette) |
+| 7 | Refresh page | Theme persists | Aquatic colors still applied |
+| 8 | Try Light theme | White/light background applied | UI switches to light mode |
+| 9 | Try Parchment theme | Warm beige/brown palette | Vintage aesthetic visible |
+| 10 | Try Hazard theme | Neon green terminal style | Bright neon accents |
+| 11 | Switch back to Dark | Default dark theme restored | Green accents on dark |
+
+### 11.4 Campaign Banner (Supporter-Gated)
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Campaign Settings → Appearance | Banner URL field visible | Input field for URL |
+| 2 | **As Free user**: Check banner field | Shows 🔒 lock with upgrade CTA | Field locked |
+| 3 | **As Supporter**: Enter banner URL | Field accepts input | URL typed in |
+| 4 | Use URL: `https://picsum.photos/800/200` | Valid image URL entered | Text in field |
+| 5 | Save settings | Success message | Toast confirms save |
+| 6 | Check Campaign Console widget | Banner image displays at top | Image visible above campaign info |
+| 7 | Refresh page | Banner persists | Image still displayed |
+| 8 | Enter invalid URL (e.g., "not-a-url") | Validation error or broken image | Error handling works |
+| 9 | Clear banner URL and save | Banner removed | No image in console widget |
+
+---
+
+## 12. Text Widget (Supporter-Exclusive)
+
+### 12.1 Add Text Widget
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget type grid visible |
+| 2 | Find "Text" widget option | Text option visible with FileText icon | Option in grid |
+| 3 | **As Free user**: Check Text option | Shows 🔒 lock icon | Locked indicator visible |
+| 4 | **As Supporter**: Click Text | Text widget added to canvas | New widget appears |
+| 5 | Widget shows default content | Empty or placeholder text | Widget body visible |
+
+### 12.2 Edit Text Content
+**Start State**: Text widget on canvas as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find edit (pencil) button on widget | Edit icon visible | Pencil icon in widget |
+| 2 | Click edit button | Text area becomes editable | Cursor appears in text area |
+| 3 | Type: `# Battle Report\n\nThe forces clashed at dawn.` | Markdown text entered | Text visible in editor |
+| 4 | Click Save or click outside | Text saves | Content displayed |
+| 5 | Check markdown rendering | Heading renders as H1 | Large bold text for heading |
+| 6 | Refresh page | Content persists | Markdown text still there |
+
+### 12.3 Text Widget Visibility
+**Start State**: Text widget exists, test with Player account
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | **As Player**: Open same campaign | Dashboard loads | Player view active |
+| 2 | Check Text widget visibility | Widget visible (if visibility=all) | Widget shown to player |
+| 3 | Check for edit controls | No edit button visible | Players cannot edit |
+
+---
+
+## 13. Sticker Widget (Supporter-Exclusive)
+
+### 13.1 Add Sticker Widget
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget type grid visible |
+| 2 | Find "Sticker" widget option | Sticker option visible | Option in grid |
+| 3 | **As Free user**: Check Sticker option | Shows 🔒 lock icon | Locked indicator visible |
+| 4 | **As Supporter**: Click Sticker | Sticker widget added to canvas | New widget with default icon |
+| 5 | Widget shows default sticker | Target icon in medium size | Icon visible in widget |
+
+### 13.2 Customize Sticker
+**Start State**: Sticker widget on canvas as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find edit (pencil) button on widget | Edit icon visible | Pencil icon present |
+| 2 | Click edit button | Sticker Picker modal opens | Icon grid with categories |
+| 3 | Check categories visible | Objectives, Units, Terrain, Status, etc. | Category tabs or sections |
+| 4 | Click "Danger" category | Danger icons shown | Skull, Flame, Zap, etc. |
+| 5 | Click Skull icon | Icon selected | Selection indicator |
+| 6 | Change size to "Large" | Size selector updates | Large option selected |
+| 7 | Change color (if available) | Color picker works | New color applied |
+| 8 | Click "Select" or close | Sticker updates | Skull icon now showing |
+| 9 | Refresh page | Sticker persists | Same icon, size, color |
+
+### 13.3 Sticker Categories Test
+**Start State**: Sticker Picker open
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Check Objectives category | Target, Flag, Star, Trophy icons | Icons visible |
+| 2 | Check Units category | Sword, Shield, Users icons | Icons visible |
+| 3 | Check Terrain category | Mountain, Trees, Home, Castle icons | Icons visible |
+| 4 | Check Cities category | Building, Church, Factory icons | Icons visible |
+| 5 | Check Loot category | Gem, Crown, Coins, Gift icons | Icons visible |
+| 6 | Check Arrows category | ArrowUp, ArrowDown, etc. | Directional arrows visible |
+| 7 | Use search/filter (if available) | Icons filter based on search | Reduced icon list |
+
+---
+
+## 14. Smart Paste Gating
+
+### 14.1 AI Convert Lock (Free User)
+**Start State**: Logged in as Free user (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Modal visible |
+| 2 | Click "Rules Table" | Paste Wizard overlay opens | Text input area visible |
+| 3 | Paste some rules text | Text appears in input | Content pasted |
+| 4 | Find "AI Convert" button | Button may show 🔒 lock | Locked indicator |
+| 5 | Click "AI Convert" | Upgrade prompt or 403 error | Cannot use AI conversion |
+| 6 | Find "Generate" button | Button available (no lock) | Deterministic parsing available |
+| 7 | Click "Generate" | Attempts to parse as CSV/TSV | Basic parsing works |
+
+### 14.2 AI Convert (Supporter User)
+**Start State**: Logged in as Supporter (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Paste Wizard via Rules Table | Paste Wizard opens | Text input visible |
+| 2 | Paste complex rules text | Text in input | Content pasted |
+| 3 | Click "AI Convert" | AI processing starts | Loading indicator |
+| 4 | Wait for result | Table structure generated | Rows and columns created |
+| 5 | Verify AI-parsed content | Intelligent structuring | Not just CSV splitting |
+
+---
+
+## 15. Authentication UI Updates
+
+### 15.1 Login/Signup Button Styling
+**Start State**: Logged out, on `/auth` page
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to `/auth` | Login page loads | Login form visible |
+| 2 | Check "Login" button styling | Button has box/border styling | Matches Google OAuth button style |
+| 3 | Click "Create Account" link | Switch to signup form | Display Name field appears |
+| 4 | Check "Create Account" button | Same boxed style as Login button | Consistent button styling |
+| 5 | Compare with Google OAuth button | All three buttons match visually | Same border, padding, weight |
+
+### 15.2 Auto-Login After Account Creation
+**Start State**: Logged out, on `/auth` page
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click "Create Account" link | Signup form visible | Display Name field present |
+| 2 | Enter email: `newuser-test@testcampaign.com` | Email field populated | Text visible |
+| 3 | Enter password: `TestPassword123!` | Password field populated | Dots visible |
+| 4 | Enter display name: `New Test User` | Name field populated | Text visible |
+| 5 | Click "Create Account" | Account created, auto-redirects | URL changes to `/campaigns` |
+| 6 | Verify no login prompt | User is logged in automatically | Campaigns page loads, no auth page |
+| 7 | Refresh page | Still logged in | Session persisted |
+
+---
+
+## 16. Locked Component Display
+
+### 16.1 Locked Components in Add Modal
+**Start State**: Logged in as Free user (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget grid visible |
+| 2 | Find "Text" component | Text option visible | FileText icon present |
+| 3 | Check Text styling | Greyed out with "Locked" text | Dimmed appearance, "Locked" label |
+| 4 | Find "Sticker" component | Sticker option visible | Sparkles icon present |
+| 5 | Check Sticker styling | Greyed out with "Locked" text | Dimmed appearance, "Locked" label |
+| 6 | Find "Rules Table" component | Rules Table option visible | Table icon present |
+| 7 | Check Rules Table styling | Greyed out with "Locked" text | Dimmed, requires subscription |
+| 8 | Find "Rules Card" component | Rules Card option visible | IdCard icon present |
+| 9 | Check Rules Card styling | Greyed out with "Locked" text | Dimmed, requires subscription |
+| 10 | Click a locked component | Nothing happens (or shows upgrade CTA) | Cannot add locked widgets |
+
+### 16.2 Unlocked Components Display
+**Start State**: Logged in as Supporter (GM) on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget grid visible |
+| 2 | Check "Text" component | Full color, no "Locked" text | Normal clickable appearance |
+| 3 | Check "Sticker" component | Full color, no "Locked" text | Normal clickable appearance |
+| 4 | Check "Rules Table" component | Full color, no "Locked" text | Normal clickable appearance |
+| 5 | Click Text | Text widget created | Widget appears on canvas |
+| 6 | Click Sticker | Sticker widget created | Widget appears on canvas |
+
+### 16.3 Component Naming/Fit
+**Start State**: Add Component modal open
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find Announcements component | Shows as "Announce" | Shorter name fits in box |
+| 2 | Find Roll Recorder component | Shows as "Roll History" | Shorter name fits in box |
+| 3 | Check all component names | All fit within grid cells | No text overflow |
+
+---
+
+## 17. Getting Started Onboarding Updates
+
+### 17.1 Activity Feed Step
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Press Ctrl+K (Cmd+K on Mac) | Command palette opens | Search input visible |
+| 2 | Type "Getting Started" | Getting Started option appears | Option in results list |
+| 3 | Click "Getting Started" | Onboarding modal opens | Step-by-step guide visible |
+| 4 | Click through steps until Activity Feed | Activity Feed step appears | Title: "Track Campaign Activity" |
+| 5 | Read Activity Feed description | Explains real-time updates | Mentions dice rolls, messages, etc. |
+| 6 | Verify Activity icon shown | Activity icon visible | Clock or Activity icon present |
+| 7 | Continue through remaining steps | All steps complete | Guide finishes |
+
+### 17.2 Complete Onboarding Flow
+**Start State**: Getting Started modal open
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Read Step 1: Share Campaign | Explains join codes | Join code info visible |
+| 2 | Click Next | Step 2 appears | Progress indicator updates |
+| 3 | Read Step 2: Place Widgets | Explains + button | Green + icon mentioned |
+| 4 | Click Next | Step 3 appears | Progress updates |
+| 5 | Read Step 3: Activity Feed | Explains real-time tracking | New step content visible |
+| 6 | Click Next | Step 4 appears | Progress updates |
+| 7 | Read remaining steps | Map, Narrative, Schedule info | All content displays |
+| 8 | Click "Let's Get Started" | Modal closes | Back to dashboard |
+
+---
+
+## 18. Subscriber Experience
+
+### 18.1 Supporter Badge Display
+**Start State**: Logged in as Supporter on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard loads | Canvas visible |
+| 2 | Check sidebar at bottom | "Supporter" badge visible | Crown icon + "Supporter" text |
+| 3 | Badge styling | Amber/gold highlight color | Distinctive supporter color |
+| 4 | Hover over badge (if applicable) | Tooltip or visual feedback | Badge is clearly visible |
+
+### 18.2 Supporter Badge Hidden for Free Users
+**Start State**: Logged in as Free user on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard loads | Canvas visible |
+| 2 | Check sidebar at bottom | No "Supporter" badge visible | Badge not present |
+| 3 | Check for upgrade prompts | "Support Campaign Console" link visible | Glowing blue button in sidebar |
+
+### 18.3 Supporter Welcome Modal
+**Start State**: Logged in as Supporter (testing welcome flow)
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to campaign with `?supporter=welcome` param | Dashboard loads with modal | Welcome modal appears |
+| 2 | Check modal title | "Welcome, Supporter!" text | Title with sparkles icon |
+| 3 | Check unlocked features list | Lists all supporter features | Dashboard Themes, Text Widget, etc. |
+| 4 | Verify feature explanations | Each feature has description | How to access each feature |
+| 5 | Check for Campaign Themes info | Themes mentioned | Settings → Appearance path noted |
+| 6 | Check for Text Widget info | Text widget mentioned | Add Component modal path noted |
+| 7 | Check for Sticker Widget info | Stickers mentioned | Add Component modal path noted |
+| 8 | Check for Campaign Limit info | 5 campaigns mentioned | Increased limit noted |
+| 9 | Check for Smart Paste info | AI conversion mentioned | Rules Table/Card path noted |
+| 10 | Click "Start Exploring" | Modal closes | Back to dashboard |
+| 11 | URL no longer has `?supporter=welcome` | Parameter removed | Clean URL |
+| 12 | Refresh page | Modal does NOT reappear | Only shows once per redirect |
+
+### 18.4 Supporter Redirect After Subscription
+**Start State**: Billing settings page, about to subscribe
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Navigate to Settings → Billing | Billing page loads | Subscription options visible |
+| 2 | Click "Support – $2.99/mo" button | Stripe checkout opens | Stripe payment page |
+| 3 | Complete test payment | Success, redirects back | Returns to app |
+| 4 | Check redirect URL | Returns to dashboard with `?supporter=welcome` | URL parameter present |
+| 5 | Welcome modal auto-opens | Supporter Welcome modal visible | Feature list displayed |
+
+---
+
+## 19. Sidebar Support Link
+
+### 19.1 Support CTA for Free Users
+**Start State**: Logged in as Free user on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard with sidebar | Sidebar visible |
+| 2 | Scroll to bottom of sidebar | Support CTA visible | Glowing blue button |
+| 3 | Check CTA styling | Neon blue glow effect | Distinctive glowing button |
+| 4 | Click "Support Campaign Console" | Navigates to Settings/Billing | Settings page with billing tab |
+
+### 19.2 Support CTA Hidden for Supporters
+**Start State**: Logged in as Supporter on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open campaign dashboard | Dashboard with sidebar | Sidebar visible |
+| 2 | Scroll to bottom of sidebar | "Supporter" badge visible instead | No "Support" button |
+| 3 | Support CTA not present | Only badge shows | CTA replaced with badge |
+
+---
+
+## 20. Battle Tracker System
+
+### 20.1 Battles Sidebar Entry (GM Only)
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Check sidebar navigation | "Battles" entry visible with Swords icon | Icon and label present |
+| 2 | Verify GM-only visibility | Entry visible in GM view | Battles in sidebar |
+| 3 | Toggle to Player Preview | "Battles" entry NOT visible | Entry hidden for players |
+| 4 | Toggle back to GM view | "Battles" entry reappears | GM controls restored |
+| 5 | Click "Battles" | BattlesManager overlay opens | Full-page overlay panel |
+
+### 20.2 Battle Tracker Widget
+**Start State**: Logged in as GM on campaign dashboard
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Click floating + button | Add Component modal opens | Widget grid visible |
+| 2 | Find "Battles" widget option | Battles option with Swords icon | Option in grid |
+| 3 | Click "Battles" | Widget added to canvas | New Battle Tracker widget appears |
+| 4 | Widget shows "No active round" | Empty state message | Placeholder text visible |
+| 5 | Drag widget to new position | Widget moves | Position updates |
+| 6 | Refresh page | Widget persists at position | Database save confirmed |
+
+### 20.3 Round Management (GM)
+**Start State**: BattlesManager overlay open as GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find "Rounds" tab | Tab visible | Tab header present |
+| 2 | Click "+ Create Round" button | Round creation form appears | Input fields visible |
+| 3 | Enter name: "Round 1" | Name field populated | Text in field |
+| 4 | Set pairing system to "Random" | Dropdown selection | Random selected |
+| 5 | Click "Create" | Round appears in list | New round row visible |
+| 6 | Check round status | Shows "Open" | Status badge visible |
+| 7 | Refresh page | Round persists | Data saved to database |
+| 8 | Create second round "Round 2" | Second round appears | Two rounds in list |
+| 9 | Click "Close" on Round 1 | Round status changes to "Closed" | Status updates |
+
+### 20.4 Pairing Generation (GM)
+**Start State**: BattlesManager open with at least 2 players in campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Select "Round 1" | Round details visible | Round selected |
+| 2 | Click "Generate Pairings" | Pairing options appear | Pairing system dropdown |
+| 3 | Select "Random" pairing | Random selected | Dropdown value |
+| 4 | Click "Generate" | Matches created | Pairings appear in list |
+| 5 | Verify player names in pairings | Both players assigned | Names visible in match |
+| 6 | Check for BYE if odd players | BYE match created | "(BYE)" indicator visible |
+| 7 | Refresh page | Pairings persist | Database save confirmed |
+
+### 20.5 Swiss Pairing System
+**Start State**: Campaign with 4+ players, multiple rounds completed
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Create new round with Swiss pairing | Round created | Swiss system selected |
+| 2 | Generate pairings | Swiss algorithm runs | Pairings based on points |
+| 3 | Check pairing logic | Top-ranked players paired | Points-based matching |
+| 4 | Verify no rematches (if possible) | Different opponents than before | Anti-repeat constraint |
+
+### 20.6 Manual Pairing
+**Start State**: BattlesManager open with round created
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Select "Manual" pairing system | Manual selected | Dropdown value |
+| 2 | Click "Add Match" | Match creation form | Player selection dropdowns |
+| 3 | Select Player A and Player B | Both players chosen | Dropdowns populated |
+| 4 | Click "Save Match" | Match added to round | Match row appears |
+| 5 | Repeat for all desired matches | All matches created | Complete pairing list |
+
+### 20.7 Battle Report Submission (Player)
+**Start State**: Logged in as Player, round with pairings exists
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Battle Tracker widget | Widget shows current pairing | Player's match visible |
+| 2 | Find "Submit Report" button | Button visible | Action button present |
+| 3 | Click "Submit Report" | Report overlay opens | Form fields visible |
+| 4 | Select outcome: "Victory" | Outcome selected | Radio/select value |
+| 5 | Enter narrative: "A hard-fought battle" | Text entered | Content in textarea |
+| 6 | Add injury (if enabled): "Leader wounded" | Injury recorded | Entry in list |
+| 7 | Click "Submit" | Report saved | Success toast |
+| 8 | Widget shows "Report Submitted" | Status updates | Indicator visible |
+| 9 | Refresh page | Report persists | Data saved |
+
+### 20.8 Conflicting Reports (Disputes Queue)
+**Start State**: Both players submitted reports with different outcomes
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | **As GM**: Open BattlesManager | Overlay opens | Manager visible |
+| 2 | Find "Disputes" tab or section | Disputes queue visible | Tab/section present |
+| 3 | Conflicting match appears | Match highlighted | Dispute indicator |
+| 4 | Click match to review | Both reports displayed | Side-by-side or list view |
+| 5 | Choose "Victory for Player A" | Resolution selected | Option chosen |
+| 6 | Add reason: "Per video evidence" | Reason entered | Text in field |
+| 7 | Click "Resolve" | Dispute resolved | Match status updates |
+| 8 | Check audit trail | Resolution recorded | Audit entry created |
+
+### 20.9 GM Override with Audit Trail
+**Start State**: BattlesManager open with completed match
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find a completed match | Match visible | Status shows "Played" |
+| 2 | Click "Edit Result" | Override form opens | Fields editable |
+| 3 | Change outcome | New outcome selected | Value changed |
+| 4 | Enter reason: "Scoring error correction" | Reason required | Text in field |
+| 5 | Click "Save Override" | Changes saved | Success confirmation |
+| 6 | Check audit trail | Override recorded with reason | Audit entry visible |
+| 7 | Verify changed_by, timestamp, reason | All fields populated | Complete audit record |
+
+### 20.10 View Battle Report
+**Start State**: Match with approved report exists
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find match in Battle Tracker widget | Match row visible | Row present |
+| 2 | Click "View Report" | Report overlay opens | Report details visible |
+| 3 | Check outcome displayed | Outcome shown | Win/Loss/Draw visible |
+| 4 | Check narrative displayed | Story text visible | Narrative content |
+| 5 | Check injuries (if any) | Injury list visible | Injuries recorded |
+| 6 | Check loot/resources (if enabled) | Resources displayed | Additional fields |
+| 7 | Close overlay | Returns to widget | Overlay closes |
+
+### 20.11 Activity Feed Integration
+**Start State**: Battle report approved by GM
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Add Activity Feed widget | Widget on canvas | Activity widget visible |
+| 2 | Approve a battle report | Report approved | GM approves report |
+| 3 | Check Activity Feed | "Battle Completed" entry appears | Orange icon, player names |
+| 4 | Verify entry content | Shows players and outcome | "PlayerA vs PlayerB - Victory" |
+| 5 | Refresh page | Entry persists | Data from database |
+
+### 20.12 Scoring Configuration
+**Start State**: BattlesManager open, editing round
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find "Scoring" configuration | Scoring tab/section | Options visible |
+| 2 | Check default values | Win: 3, Draw: 1, Loss: 0 | Default scoring |
+| 3 | Change Win to 5 | Value updates | New value saved |
+| 4 | Toggle "Auto-approve reports" | Option toggles | Setting changes |
+| 5 | Toggle "Require narrative" | Option toggles | Setting changes |
+| 6 | Save round settings | Settings persist | Configuration saved |
+| 7 | Refresh page | Settings retained | Database persistence |
+
+### 20.13 Report Field Configuration
+**Start State**: BattlesManager open, editing round
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Find "Report Fields" configuration | Field toggles visible | Options present |
+| 2 | Toggle "Narrative" off | Field disabled | Checkbox unchecked |
+| 3 | Toggle "Injuries" on | Field enabled | Checkbox checked |
+| 4 | Toggle "Loot" on | Field enabled | Checkbox checked |
+| 5 | Save configuration | Settings persist | Config saved |
+| 6 | **As Player**: Submit report | Form reflects config | Only enabled fields shown |
+
+### 20.14 Match History
+**Start State**: Campaign with multiple completed rounds
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Open Battle Tracker widget | Widget visible | Widget loaded |
+| 2 | Find "History" tab or section | History view available | Tab/section present |
+| 3 | Verify rounds grouped | Matches grouped by round | Round headers visible |
+| 4 | Check match details | Participants and outcomes shown | Match info visible |
+| 5 | Click on historical match | View Report option | Can view old reports |
+
+### 20.15 Real-time Sync
+**Start State**: Two browsers - GM and Player on same campaign
+
+| Step | Action | Expected Result | Verify By |
+|------|--------|-----------------|-----------|
+| 1 | Both open Battle Tracker | Widget visible in both | Widgets loaded |
+| 2 | **GM**: Generate new pairing | Pairing created | Match appears in GM view |
+| 3 | Check Player view | Pairing appears in Player view | Real-time sync within 2 seconds |
+| 4 | **Player**: Submit report | Report submitted | Status updates in Player view |
+| 5 | Check GM view | Report appears in GM view | Real-time update confirmed |
+
+---
+
 ## Test Completion Checklist
 
 | Section | Status | Notes |
@@ -435,6 +967,16 @@
 | 8. Role Preview Mode | [ ] Pass / [ ] Fail | |
 | 9. Error Handling | [ ] Pass / [ ] Fail | |
 | 10. Responsive Design | [ ] Pass / [ ] Fail | |
+| 11. Supporter Features | [ ] Pass / [ ] Fail | |
+| 12. Text Widget | [ ] Pass / [ ] Fail | |
+| 13. Sticker Widget | [ ] Pass / [ ] Fail | |
+| 14. Smart Paste Gating | [ ] Pass / [ ] Fail | |
+| 15. Authentication UI Updates | [ ] Pass / [ ] Fail | |
+| 16. Locked Component Display | [ ] Pass / [ ] Fail | |
+| 17. Getting Started Onboarding | [ ] Pass / [ ] Fail | |
+| 18. Subscriber Experience | [ ] Pass / [ ] Fail | |
+| 19. Sidebar Support Link | [ ] Pass / [ ] Fail | |
+| 20. Battle Tracker System | [ ] Pass / [ ] Fail | |
 
 ---
 

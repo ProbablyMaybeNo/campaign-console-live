@@ -40,6 +40,10 @@ export interface Campaign {
   display_settings?: DisplaySettings | Json | null;
   title_color?: string | null;
   border_color?: string | null;
+  // Supporter features
+  is_archived?: boolean;
+  banner_url?: string | null;
+  theme_id?: string;
 }
 
 export interface CreateCampaignInput {
@@ -78,6 +82,9 @@ export interface UpdateCampaignInput {
   title_color?: string;
   border_color?: string;
   display_settings?: DisplaySettings;
+  // Supporter features
+  theme_id?: string;
+  banner_url?: string;
 }
 
 export function useCampaigns() {
@@ -88,9 +95,9 @@ export function useCampaigns() {
     queryFn: async (): Promise<Campaign[]> => {
       if (!user) return [];
       
-      // Get campaigns owned by user or where user is a player
+      // Use safe view that hides sensitive fields (password_hash, join_code for non-owners)
       const { data: ownedCampaigns, error: ownedError } = await supabase
-        .from("campaigns")
+        .from("campaigns_safe")
         .select("*")
         .eq("owner_id", user.id)
         .order("updated_at", { ascending: false });
@@ -110,7 +117,7 @@ export function useCampaigns() {
       
       if (playerCampaignIds.length > 0) {
         const { data: joinedCampaigns, error: joinedError } = await supabase
-          .from("campaigns")
+          .from("campaigns_safe")
           .select("*")
           .in("id", playerCampaignIds)
           .neq("owner_id", user.id);
@@ -153,8 +160,9 @@ export function useCampaign(campaignId: string | undefined) {
     queryFn: async (): Promise<Campaign | null> => {
       if (!campaignId) return null;
 
+      // Use safe view for general reads
       const { data, error } = await supabase
-        .from("campaigns")
+        .from("campaigns_safe")
         .select("*")
         .eq("id", campaignId)
         .maybeSingle();
@@ -184,6 +192,7 @@ export function useCreateCampaign() {
         showGameSystem: true,
       };
 
+      // Create campaign; password is set via edge function (hash-campaign-password), not stored on row
       const { data, error } = await supabase
         .from("campaigns")
         .insert({
@@ -195,7 +204,6 @@ export function useCreateCampaign() {
           max_players: input.max_players || 8,
           total_rounds: input.total_rounds || 10,
           round_length: input.round_length || "weekly",
-          password: input.password || null,
           game_system: input.game_system || null,
           start_date: input.start_date || null,
           end_date: input.end_date || null,
@@ -208,6 +216,19 @@ export function useCreateCampaign() {
         .single();
 
       if (error) throw error;
+      
+      // If password provided, hash it via secure edge function
+      if (input.password) {
+        const response = await supabase.functions.invoke("hash-campaign-password", {
+          body: { campaignId: data.id, password: input.password },
+        });
+        
+        if (response.error) {
+          console.error("Failed to set password:", response.error);
+          // Campaign is created, password just didn't set - non-fatal
+        }
+      }
+      
       return data as Campaign;
     },
     onSuccess: () => {
@@ -225,13 +246,14 @@ export function useUpdateCampaign() {
 
   return useMutation({
     mutationFn: async (input: UpdateCampaignInput): Promise<Campaign> => {
-      const { id, display_settings, ...updates } = input;
+      const { id, display_settings, password, ...updates } = input;
       
       const updatePayload: Record<string, unknown> = { ...updates };
       if (display_settings) {
         updatePayload.display_settings = display_settings as unknown as Json;
       }
-      
+      // Password is not a column on campaigns (only password_hash); changes go via edge function
+
       const { data, error } = await supabase
         .from("campaigns")
         .update(updatePayload)
@@ -240,6 +262,18 @@ export function useUpdateCampaign() {
         .single();
 
       if (error) throw error;
+      
+      // If password provided/changed, hash it via secure edge function
+      if (password !== undefined) {
+        const response = await supabase.functions.invoke("hash-campaign-password", {
+          body: { campaignId: id, password: password || null },
+        });
+        
+        if (response.error) {
+          console.error("Failed to update password:", response.error);
+        }
+      }
+      
       return data as Campaign;
     },
     onSuccess: (data) => {
@@ -283,50 +317,25 @@ export function useJoinCampaign() {
     mutationFn: async ({ joinCode, password }: { joinCode: string; password?: string }): Promise<string> => {
       if (!user) throw new Error("Not authenticated");
 
-      // Find campaign by join code
-      const { data: campaign, error: campaignError } = await supabase
-        .from("campaigns")
-        .select("id, owner_id, password")
-        .eq("join_code", joinCode.toUpperCase())
-        .maybeSingle();
-
-      if (campaignError) throw campaignError;
-      if (!campaign) throw new Error("Campaign not found. Please check the ID and try again.");
-
-      // Check if user is already the owner
-      if (campaign.owner_id === user.id) {
-        throw new Error("You are the Games Master of this campaign.");
-      }
-
-      // Check password if required
-      if (campaign.password && campaign.password !== password) {
-        throw new Error("Incorrect password.");
-      }
-
-      // Check if user is already a member
-      const { data: existingMembership } = await supabase
-        .from("campaign_players")
-        .select("id")
-        .eq("campaign_id", campaign.id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (existingMembership) {
-        throw new Error("You have already joined this campaign.");
-      }
-
-      // Join the campaign as a player
-      const { error: joinError } = await supabase
-        .from("campaign_players")
-        .insert({
-          campaign_id: campaign.id,
-          user_id: user.id,
-          role: "player",
-        });
-
-      if (joinError) throw joinError;
+      // Use secure edge function for password validation and joining
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
       
-      return campaign.id;
+      if (!token) throw new Error("Not authenticated");
+
+      const response = await supabase.functions.invoke("validate-campaign-password", {
+        body: { joinCode: joinCode.toUpperCase(), password },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to join campaign");
+      }
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error || "Failed to join campaign");
+      }
+      
+      return response.data.campaignId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["campaigns"] });
@@ -338,10 +347,59 @@ export function useJoinCampaign() {
   });
 }
 
+export function useArchiveCampaign() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ campaignId, isArchived }: { campaignId: string; isArchived: boolean }): Promise<void> => {
+      const { error } = await supabase
+        .from("campaigns")
+        .update({ is_archived: isArchived })
+        .eq("id", campaignId);
+
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["campaign", variables.campaignId] });
+      queryClient.invalidateQueries({ queryKey: ["entitlements"] });
+      toast.success(variables.isArchived ? "Campaign archived" : "Campaign restored");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update campaign: ${error.message}`);
+    },
+  });
+}
+
 export function useIsGM(campaignId: string | undefined) {
   const { user } = useAuth();
   const { data: campaign } = useCampaign(campaignId);
+  
+  // Check if user has GM role in campaign_players
+  const { data: playerRecord } = useQuery({
+    queryKey: ["campaign-player-role", campaignId, user?.id],
+    queryFn: async () => {
+      if (!campaignId || !user) return null;
+      const { data, error } = await supabase
+        .from("campaign_players")
+        .select("role")
+        .eq("campaign_id", campaignId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Error checking GM role:", error);
+        return null;
+      }
+      return data;
+    },
+    enabled: !!campaignId && !!user,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
   if (!user || !campaign) return false;
-  return campaign.owner_id === user.id;
+  
+  // User is GM if they own the campaign OR have any GM-level role in campaign_players
+  const gmRoles = ["gm", "co_gm", "assistant"];
+  return campaign.owner_id === user.id || (playerRecord?.role && gmRoles.includes(playerRecord.role));
 }

@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
@@ -264,7 +264,7 @@ export function PasteWizardOverlay({
         height,
       });
 
-      toast.success(`${componentType === 'table' ? 'Rules Table' : 'Rules Card'} added to dashboard!`);
+      toast.success(`${componentType === 'table' ? 'Smart Table' : 'Smart Card'} added to dashboard!`);
     } else {
       // Save to dashboard_components only
       const config = componentType === 'table' 
@@ -409,6 +409,9 @@ export function PasteWizardOverlay({
                 : `Create ${componentType === 'table' ? 'Table' : 'Card'} from Pasted Rules`
             }
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Paste or enter table or card content, then review and add to dashboard.
+          </DialogDescription>
         </DialogHeader>
 
         {step === 'paste' && (
@@ -685,9 +688,11 @@ Example:
               >
                 {(createComponent.isPending || createRule.isPending) 
                   ? 'Creating...' 
-                  : saveToRules 
-                    ? '[ Create Rule ]' 
-                    : '[ Create Component ]'
+                  : isCustom
+                    ? `[ Create ${componentType === 'table' ? 'Table' : 'Card'} ]`
+                    : saveToRules 
+                      ? `[ Create Rules ${componentType === 'table' ? 'Table' : 'Card'} ]`
+                      : '[ Create Component ]'
                 }
               </TerminalButton>
             </div>

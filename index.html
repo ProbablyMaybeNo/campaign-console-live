@@ -2,19 +2,118 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Campaign Console</title>
-    <meta name="description" content="Wargame Campaign Tracker dashboard for GM-led campaign play." />
+    <title>Campaign Console | Free Tabletop Campaign Tracker for Wargames</title>
+    <meta name="description" content="Free campaign tracker for tabletop wargames. Manage battles, warbands, maps, schedules, and narrative events. Built for GMs running Warhammer, Mordheim, and miniature wargame campaigns." />
     <meta name="author" content="Campaign Console" />
+    <meta name="keywords" content="campaign tracker, wargame campaign manager, tabletop campaign tracker, warhammer campaign tool, miniature wargame tracker, campaign dashboard, GM tools, battle tracker, warband manager, campaign tracking app" />
+    <link rel="canonical" href="https://campaignconsole.xyz/" />
 
-    <meta property="og:title" content="Campaign Console" />
-    <meta property="og:description" content="Wargame Campaign Tracker dashboard for GM-led campaign play." />
+    <!-- Google Search Console verification (replace content with your token) -->
+    <!-- <meta name="google-site-verification" content="YOUR_GSC_TOKEN" /> -->
+
+    <!-- Preconnect hints -->
+    <link rel="preconnect" href="https://vcnodroausotjqabjqcf.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://vcnodroausotjqabjqcf.supabase.co" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Campaign Console | Free Tabletop Campaign Tracker" />
+    <meta property="og:description" content="Track battles, warbands, maps & narrative events for your tabletop wargame campaigns. Free campaign tracker for GMs." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:url" content="https://campaignconsole.xyz/" />
+    <meta property="og:image" content="https://campaignconsole.xyz/og-image.png" />
+    <meta property="og:site_name" content="Campaign Console" />
 
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:title" content="Campaign Console | Free Tabletop Campaign Tracker" />
+    <meta name="twitter:description" content="Track battles, warbands, maps & narrative events for tabletop wargame campaigns. Free campaign tracker." />
+    <meta name="twitter:image" content="https://campaignconsole.xyz/og-image.png" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Campaign Console",
+        "url": "https://campaignconsole.xyz",
+        "logo": "https://campaignconsole.xyz/favicon.png",
+        "description": "Free tabletop campaign tracker for wargames and RPGs."
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Campaign Console",
+        "url": "https://campaignconsole.xyz"
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "Campaign Console",
+        "applicationCategory": "GameApplication",
+        "applicationSubCategory": "Campaign Tracker",
+        "operatingSystem": "Web",
+        "description": "Free campaign tracker for tabletop wargames. Manage battles, warbands, maps, schedules, and narrative events for Warhammer, Mordheim, and other miniature wargame campaigns.",
+        "url": "https://campaignconsole.xyz",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "What is Campaign Console?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Campaign Console is a free, rules-agnostic campaign tracker designed for tabletop wargames and RPGs. It helps Game Masters manage battles, warbands, maps, schedules, and narrative events all in one place."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is Campaign Console free to use?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! Campaign Console is completely free. Create campaigns, invite players, and track everything at no cost. Optional supporter tiers unlock cosmetic themes and extra features."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What game systems does Campaign Console support?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Campaign Console is rules-agnostic and works with any tabletop wargame or RPG system including Warhammer 40k, Age of Sigmar, Mordheim, Necromunda, Kill Team, Frostgrave, and many more."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can players join my campaign?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! Share a join code with your group and players can join your campaign, submit battle reports, manage their warbands, and view maps and schedules you publish."
+            }
+          }
+        ]
+      }
+    ]
+    </script>
+
+    <!-- GA4 (uncomment and replace ID to enable) -->
+    <!--
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+    -->
   </head>
 
   <body>

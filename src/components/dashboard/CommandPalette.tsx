@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   Dialog, 
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Command,
@@ -69,6 +70,8 @@ export function CommandPalette({
   const commands: CommandAction[] = [
     // Quick Actions
     { id: "add-widget", label: "Add new widget", icon: Plus, category: "quick", action: () => { onAddComponent(); onClose(); } },
+    { id: "add-narrative", label: "Add narrative entry", icon: BookOpen, category: "quick", action: () => { onOpenOverlay("narrative"); onClose(); } },
+    { id: "send-message", label: "Send message", icon: MessageSquare, category: "quick", action: () => { onOpenOverlay("messages"); onClose(); } },
     { id: "copy-join", label: "Copy join code", icon: Copy, category: "quick", action: () => { onCopyJoinCode(); onClose(); } },
     { id: "send-announcement", label: "Send announcement", icon: Send, category: "quick", action: () => { onSendAnnouncement(); onClose(); } },
     ...(onExportCampaign ? [{ id: "export-campaign", label: "Export campaign backup", icon: Download, category: "quick" as const, action: () => { onExportCampaign(); onClose(); } }] : []),
@@ -81,7 +84,7 @@ export function CommandPalette({
     { id: "map", label: "Open Map", icon: Map, category: "navigation", action: () => { onOpenOverlay("map"); onClose(); } },
     { id: "narrative", label: "Open Narrative", icon: BookOpen, category: "navigation", action: () => { onOpenOverlay("narrative"); onClose(); } },
     { id: "messages", label: "Open Messages", icon: MessageSquare, category: "navigation", action: () => { onOpenOverlay("messages"); onClose(); } },
-    { id: "schedule", label: "Open Schedule", icon: Calendar, category: "navigation", action: () => { onOpenOverlay("schedule"); onClose(); } },
+    { id: "calendar", label: "Open Calendar", icon: Calendar, category: "navigation", action: () => { onOpenOverlay("calendar"); onClose(); } },
     { id: "settings", label: "Open Settings", icon: Settings, category: "navigation", action: () => { onOpenOverlay("settings"); onClose(); } },
     
     // Help
@@ -106,6 +109,7 @@ export function CommandPalette({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="overflow-hidden p-0 shadow-lg max-w-md border-primary/30">
+        <DialogTitle className="sr-only">Quick Actions</DialogTitle>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground">
           <CommandInput 
             placeholder="Type a command or search..." 

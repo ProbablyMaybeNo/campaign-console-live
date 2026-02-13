@@ -1,34 +1,15 @@
-// Bounded canvas configuration - responsive to window size
-// Base dimensions are used as minimum values
-const BASE_CANVAS_WIDTH = 4000;
-const BASE_CANVAS_HEIGHT = 3000;
-const MIN_CANVAS_WIDTH = 2000;
-const MIN_CANVAS_HEIGHT = 1500;
+// Fixed canvas configuration - consistent size for all viewports
+// This ensures widgets spawn at the same positions regardless of screen size
+export const CANVAS_WIDTH = 4000;
+export const CANVAS_HEIGHT = 3000;
+export const CANVAS_CENTER_X = CANVAS_WIDTH / 2;
+export const CANVAS_CENTER_Y = CANVAS_HEIGHT / 2;
 
-// Calculate responsive canvas dimensions based on viewport
-export function getCanvasDimensions(viewportWidth: number, viewportHeight: number) {
-  // Scale canvas to be approximately 3-4x the viewport size
-  // This gives room to pan while not being excessively large
-  const scaleFactor = 3.5;
-  
-  const width = Math.max(
-    MIN_CANVAS_WIDTH,
-    Math.round(Math.max(viewportWidth * scaleFactor, BASE_CANVAS_WIDTH))
-  );
-  
-  const height = Math.max(
-    MIN_CANVAS_HEIGHT,
-    Math.round(Math.max(viewportHeight * scaleFactor, BASE_CANVAS_HEIGHT))
-  );
-  
-  return { width, height };
+// Canvas dimensions are now fixed (not responsive)
+// This ensures the Campaign Console and other widgets are always centered
+export function getCanvasDimensions(_viewportWidth: number, _viewportHeight: number) {
+  return { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
 }
-
-// Default export for components that need static values (backward compatibility)
-export const CANVAS_WIDTH = BASE_CANVAS_WIDTH;
-export const CANVAS_HEIGHT = BASE_CANVAS_HEIGHT;
-export const CANVAS_CENTER_X = BASE_CANVAS_WIDTH / 2;
-export const CANVAS_CENTER_Y = BASE_CANVAS_HEIGHT / 2;
 
 // Padding from canvas edges for spawning
 const EDGE_PADDING = 100;
@@ -107,6 +88,7 @@ export function getSpawnPosition(
 
 /**
  * Clamp the transform to keep the view within canvas bounds
+ * Allows some edge buffer for smoother UX while preventing excessive over-panning
  */
 export function clampTransform(
   positionX: number,
@@ -120,30 +102,32 @@ export function clampTransform(
   const scaledWidth = canvasWidth * scale;
   const scaledHeight = canvasHeight * scale;
   
-  // Calculate bounds - don't allow panning to show space outside canvas
-  // When zoomed out (canvas smaller than viewport), center it
-  // When zoomed in (canvas larger than viewport), allow panning within bounds
+  // Add edge buffer to allow panning slightly beyond canvas edges
+  // This prevents the jarring snap-back behavior
+  const edgeBuffer = Math.min(viewportWidth, viewportHeight) * 0.1; // 10% of smallest viewport dimension
   
   let minX: number, maxX: number, minY: number, maxY: number;
   
   if (scaledWidth <= viewportWidth) {
-    // Canvas fits in viewport horizontally - center it
+    // Canvas fits in viewport horizontally - allow some movement around center
     const centered = (viewportWidth - scaledWidth) / 2;
-    minX = maxX = centered;
+    minX = centered - edgeBuffer;
+    maxX = centered + edgeBuffer;
   } else {
-    // Canvas larger than viewport - allow panning
-    minX = viewportWidth - scaledWidth;
-    maxX = 0;
+    // Canvas larger than viewport - allow panning within bounds plus buffer
+    minX = viewportWidth - scaledWidth - edgeBuffer;
+    maxX = edgeBuffer;
   }
   
   if (scaledHeight <= viewportHeight) {
-    // Canvas fits in viewport vertically - center it
+    // Canvas fits in viewport vertically - allow some movement around center
     const centered = (viewportHeight - scaledHeight) / 2;
-    minY = maxY = centered;
+    minY = centered - edgeBuffer;
+    maxY = centered + edgeBuffer;
   } else {
-    // Canvas larger than viewport - allow panning
-    minY = viewportHeight - scaledHeight;
-    maxY = 0;
+    // Canvas larger than viewport - allow panning within bounds plus buffer
+    minY = viewportHeight - scaledHeight - edgeBuffer;
+    maxY = edgeBuffer;
   }
   
   return {
