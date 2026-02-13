@@ -4,7 +4,7 @@ import { TerminalButton } from "@/components/ui/TerminalButton";
 import { Badge } from "@/components/ui/badge";
 import { 
   Share2, 
-  Plus, 
+  Command, 
   Map, 
   Users, 
   BookOpen, 
@@ -45,9 +45,9 @@ const STEPS: Step[] = [
     tip: "Your join code is shown in the Campaign Console widget. Click it to copy!",
   },
   {
-    icon: Plus,
+    icon: Command,
     title: "Add Your First Components",
-    description: "Click the green ➕ Add Component button (bottom-right) to place widgets on the board. See the ? FAQ for details on each component type. Once created, manage components from the Components menu in the side panel.",
+    description: "Click the ⌘ Quick Actions button (bottom-right) to open the command palette, then select 'Add new widget' to place widgets on the board. See the ? FAQ for details on each component type. Once created, manage components from the Components menu in the side panel.",
     tip: "Start with 6-12 components. You can always add more later.",
   },
   {
@@ -59,7 +59,7 @@ const STEPS: Step[] = [
   {
     icon: Map,
     title: "Set Up the Campaign Map",
-    description: "Set up your map using the Map settings in the side panel. Deploy a Map component onto the dashboard via the ➕ component button.",
+    description: "Set up your map using the Map settings in the side panel. Deploy a Map component onto the dashboard via the ⌘ Quick Actions button.",
     tip: "Place markers with custom legends and use fog of war to control what players can see.",
     optional: true,
   },
@@ -72,13 +72,13 @@ const STEPS: Step[] = [
   {
     icon: BookOpen,
     title: "Post Your First Narrative",
-    description: "Manage, edit, and create narrative entries via the Narrative menu in the side panel. Add a Narrative tracker component to the dashboard via the ➕ button.",
+    description: "Manage, edit, and create narrative entries via the Narrative menu in the side panel. Add a Narrative tracker component to the dashboard via the ⌘ button.",
     tip: "Add narrative entries early to set the tone and hook players.",
   },
   {
     icon: Calendar,
     title: "Schedule Sessions & Rounds",
-    description: "Add, edit, remove, and manage campaign schedule, rounds, events, and dates via the Schedule menu in the side panel. Add a Calendar component containing scheduled dates and rounds via the ➕ button.",
+    description: "Add, edit, remove, and manage campaign schedule, rounds, events, and dates via the Schedule menu in the side panel. Add a Calendar component containing scheduled dates and rounds via the ⌘ button.",
     tip: "Players see the Calendar widget but can't edit the schedule.",
   },
   {
