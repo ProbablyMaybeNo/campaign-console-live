@@ -59,8 +59,8 @@ const COMPONENT_TYPES: ComponentTypeConfig[] = [
   { type: "calendar", label: "Calendar", icon: Calendar, description: "Monthly view of rounds and events" },
   { type: "activity_feed", label: "Activity", icon: Activity, description: "Real-time campaign activity log" },
   { type: "announcements", label: "Announce", icon: Megaphone, description: "GM notice board" },
-  { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget", supporterFeature: "text_widget" },
-  { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker", supporterFeature: "stickers" },
+  { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget" },
+  { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Smartphone, Check, X, Lightbulb } from "lucide-react";
@@ -34,6 +34,12 @@ export function MobileOnboardingModal({ isPhone }: MobileOnboardingModalProps) {
         className="max-w-sm mx-4 border-2 border-primary bg-background p-0 overflow-hidden"
         style={{ boxShadow: "0 0 40px hsl(var(--primary) / 0.3)" }}
       >
+        <DialogTitle 
+          className="text-xl font-bold text-primary font-mono uppercase tracking-wider text-center sr-only"
+          style={{ textShadow: "0 0 15px hsl(var(--primary) / 0.5)" }}
+        >
+          Mobile Mode
+        </DialogTitle>
         <ScrollArea className="max-h-[80vh]">
           <div className="p-6 space-y-5">
             {/* Header */}

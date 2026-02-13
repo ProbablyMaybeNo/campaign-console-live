@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   Dialog, 
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   Command,
@@ -108,6 +109,7 @@ export function CommandPalette({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent className="overflow-hidden p-0 shadow-lg max-w-md border-primary/30">
+        <DialogTitle className="sr-only">Quick Actions</DialogTitle>
         <Command className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground">
           <CommandInput 
             placeholder="Type a command or search..." 

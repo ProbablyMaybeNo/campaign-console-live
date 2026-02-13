@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
 import { useCreateComponent } from "@/hooks/useDashboardComponents";
@@ -409,6 +409,9 @@ export function PasteWizardOverlay({
                 : `Create ${componentType === 'table' ? 'Table' : 'Card'} from Pasted Rules`
             }
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Paste or enter table or card content, then review and add to dashboard.
+          </DialogDescription>
         </DialogHeader>
 
         {step === 'paste' && (

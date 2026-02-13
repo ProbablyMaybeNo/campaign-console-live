@@ -41,12 +41,11 @@ export default function Auth() {
       } else {
         const { error } = await signUp(email, password, displayName || undefined);
         if (error) throw error;
-        toast.success("Account created - access granted");
-        // After successful signup, sign in automatically and redirect
+        // Only show success and redirect after auto sign-in succeeds
         const { error: signInError } = await signIn(email, password);
-        if (!signInError) {
-          navigate("/campaigns");
-        }
+        if (signInError) throw signInError;
+        toast.success("Account created - access granted");
+        navigate("/campaigns");
       }
     } catch (err: any) {
       setError(err.message || "Authentication failed");

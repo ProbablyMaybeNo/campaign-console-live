@@ -192,7 +192,7 @@ export function useCreateCampaign() {
         showGameSystem: true,
       };
 
-      // Create campaign without password (password is null in DB)
+      // Create campaign; password is set via edge function (hash-campaign-password), not stored on row
       const { data, error } = await supabase
         .from("campaigns")
         .insert({
@@ -204,7 +204,6 @@ export function useCreateCampaign() {
           max_players: input.max_players || 8,
           total_rounds: input.total_rounds || 10,
           round_length: input.round_length || "weekly",
-          password: null, // Never store plaintext - use edge function
           game_system: input.game_system || null,
           start_date: input.start_date || null,
           end_date: input.end_date || null,
@@ -253,9 +252,8 @@ export function useUpdateCampaign() {
       if (display_settings) {
         updatePayload.display_settings = display_settings as unknown as Json;
       }
-      // Never include password in regular update - use edge function
-      updatePayload.password = null;
-      
+      // Password is not a column on campaigns (only password_hash); changes go via edge function
+
       const { data, error } = await supabase
         .from("campaigns")
         .update(updatePayload)

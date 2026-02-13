@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Heart } from "lucide-react";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import { TerminalInput } from "@/components/ui/TerminalInput";
@@ -172,7 +172,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="bg-card border-primary/30 max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-card border-primary/30 max-w-lg max-h-[90vh] overflow-y-auto" data-testid="create-campaign-modal">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-primary uppercase tracking-widest text-sm">
@@ -180,6 +180,9 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
             </DialogTitle>
             <HelpButton variant="icon" />
           </div>
+          <DialogDescription className="sr-only">
+            Create a new campaign with name, description, and optional settings.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
