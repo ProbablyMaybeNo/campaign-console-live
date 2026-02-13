@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useNoIndex } from "@/hooks/useNoIndex";
 import { FullScreenLoader } from "@/components/ui/TerminalLoader";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -18,6 +19,7 @@ const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  useNoIndex();
   
   if (loading) return <FullScreenLoader text="Authenticating" />;
   if (!user) return <Navigate to="/auth" replace />;
@@ -27,6 +29,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AuthRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  useNoIndex();
   
   if (loading) return <FullScreenLoader text="Initializing" />;
   if (user) return <Navigate to="/campaigns" replace />;
