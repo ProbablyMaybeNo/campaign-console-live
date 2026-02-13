@@ -68,16 +68,20 @@ export const MobileDashboard = memo(function MobileDashboard({
           >
             <span className="flex items-center gap-1 font-mono text-xs font-medium uppercase tracking-wider">
               <ArrowLeft className="w-4 h-4 flex-shrink-0" />
-              <span className="hidden min-[360px]:inline">Camps</span>
             </span>
           </Link>
+
+          {/* Campaign name - truncated */}
+          <span className="flex-1 min-w-0 text-xs font-mono text-foreground truncate text-center px-1">
+            {campaign.name}
+          </span>
           
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <div 
-              className={`px-2 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider ${
+              className={`px-2 py-1 rounded font-mono text-[10px] font-bold uppercase tracking-wider border ${
                 isGM 
-                  ? "bg-secondary text-secondary-foreground" 
-                  : "bg-primary text-primary-foreground"
+                  ? "bg-warning/15 text-warning border-warning/40" 
+                  : "bg-primary/15 text-primary border-primary/40"
               }`}
             >
               {isGM ? "GM" : "Player"}
@@ -106,7 +110,7 @@ export const MobileDashboard = memo(function MobileDashboard({
             </div>
           </div>
 
-          {/* Widgets Section - Vertical Grid */}
+          {/* Widgets Section - Mixed Layout */}
           {widgetComponents.length > 0 && (
             <div>
               <div className="flex items-center gap-2 mb-2">
@@ -117,16 +121,10 @@ export const MobileDashboard = memo(function MobileDashboard({
                 <div className="h-px flex-1 bg-primary/30" />
               </div>
               
-              {/* Vertical 2-column grid - all widgets visible, scrolls naturally */}
-              <div className="grid grid-cols-2 gap-2">
-                {widgetComponents.map((component) => (
-                  <MobileWidgetCard
-                    key={component.id}
-                    component={component}
-                    onExpand={() => setExpandedWidget(component)}
-                  />
-                ))}
-              </div>
+              <MixedWidgetGrid
+                components={widgetComponents}
+                onExpand={(c) => setExpandedWidget(c)}
+              />
             </div>
           )}
         </div>
@@ -209,5 +207,57 @@ function QuickActionButton({ icon, label, onClick }: QuickActionButtonProps) {
         {label}
       </span>
     </button>
+  );
+}
+
+// Full-width widget types get a single column; compact ones share a 2-col grid
+const FULL_WIDTH_TYPES = new Set([
+  "text", "table", "announcements", "narrative-table", "narrative",
+  "activity-feed", "calendar", "roll-recorder", "image", "map",
+  "rules", "messages",
+]);
+
+function MixedWidgetGrid({
+  components,
+  onExpand,
+}: {
+  components: DashboardComponent[];
+  onExpand: (c: DashboardComponent) => void;
+}) {
+  const fullWidth: DashboardComponent[] = [];
+  const compact: DashboardComponent[] = [];
+
+  for (const c of components) {
+    if (FULL_WIDTH_TYPES.has(c.component_type)) {
+      fullWidth.push(c);
+    } else {
+      compact.push(c);
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* Compact widgets in 2-col grid */}
+      {compact.length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {compact.map((component) => (
+            <MobileWidgetCard
+              key={component.id}
+              component={component}
+              onExpand={() => onExpand(component)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Full-width widgets */}
+      {fullWidth.map((component) => (
+        <MobileWidgetCard
+          key={component.id}
+          component={component}
+          onExpand={() => onExpand(component)}
+        />
+      ))}
+    </div>
   );
 }

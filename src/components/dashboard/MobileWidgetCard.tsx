@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { DashboardComponent } from "@/hooks/useDashboardComponents";
+import { MobileWidgetPreview } from "./MobileWidgetPreview";
 import { 
   Table2, 
   CreditCard, 
@@ -46,77 +47,30 @@ const widgetIcons: Record<string, React.ElementType> = {
   "warbands": Users,
 };
 
-function getWidgetPreview(component: DashboardComponent): string {
-  const config = component.config as Record<string, unknown>;
-  
-  switch (component.component_type) {
-    case "counter":
-      return String(config?.value ?? 0);
-    case "text":
-      const text = String(config?.content || "");
-      return text.slice(0, 40) + (text.length > 40 ? "..." : "");
-    case "table":
-      const rows = (config?.rows as unknown[]) || [];
-      return `${rows.length} rows`;
-    case "dice-roller":
-      return "Roll dice";
-    case "image":
-      return "View image";
-    case "calendar":
-      return "View calendar";
-    case "narrative":
-    case "narrative-table":
-      return "View narrative";
-    case "activity-feed":
-      return "Recent activity";
-    case "messages":
-      return "Messages";
-    case "roll-recorder":
-      return "Roll history";
-    default:
-      return "Tap to view";
-  }
-}
-
 export const MobileWidgetCard = memo(function MobileWidgetCard({
   component,
   onExpand,
 }: MobileWidgetCardProps) {
   const Icon = widgetIcons[component.component_type] || CreditCard;
-  const preview = getWidgetPreview(component);
-  const isCounter = component.component_type === "counter";
 
   return (
     <button
       onClick={onExpand}
-      className="w-full aspect-square border border-primary/40 bg-card/80 rounded-lg p-3 flex flex-col items-center justify-between transition-all active:scale-[0.98] hover:border-primary hover:bg-primary/5"
+      className="w-full text-left border border-primary/40 bg-card/80 rounded-lg p-3 flex flex-col gap-2 transition-all active:scale-[0.98] hover:border-primary hover:bg-primary/5 min-h-[80px]"
       style={{ boxShadow: "0 0 8px hsl(var(--primary) / 0.1)" }}
     >
+      {/* Header: icon + name */}
       <div className="flex items-center gap-1.5 w-full min-w-0">
-        <Icon className="w-4 h-4 text-primary flex-shrink-0" />
-        <span className="text-xs font-mono text-foreground truncate">
+        <Icon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+        <span className="text-[11px] font-mono text-foreground truncate font-medium">
           {component.name}
         </span>
       </div>
 
-      <div className="flex-1 flex items-center justify-center w-full">
-        {isCounter ? (
-          <span 
-            className="text-3xl font-bold text-primary"
-            style={{ textShadow: "0 0 12px hsl(var(--primary) / 0.5)" }}
-          >
-            {preview}
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground text-center line-clamp-2 px-1">
-            {preview}
-          </span>
-        )}
+      {/* Inline preview content */}
+      <div className="w-full min-w-0">
+        <MobileWidgetPreview component={component} />
       </div>
-
-      <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider">
-        Tap to view
-      </span>
     </button>
   );
 });
