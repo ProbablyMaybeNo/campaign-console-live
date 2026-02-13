@@ -1,54 +1,94 @@
 
+# SEO Implementation Plan (Excluding HIGH Effort Items)
 
-## Revamp Campaign Limit Modal + Add Archive Button to Campaign Table
-
-This plan covers two things you asked for: (1) rewriting the Campaign Limit Modal with better copy, a subscriber interest button, and a secondary "interest" popup, and (2) adding an Archive/Restore button directly to each campaign row in the directory table.
-
----
-
-### 1. Rewrite the Campaign Limit Modal
-
-**Updated content flow:**
-
-- **Title**: "Campaign Limit Reached" (keep existing)
-- **Body**: Explain the free-tier limit, how to archive (via the new Archive button on the table or Campaign Settings), that archived campaigns persist indefinitely and can be restored anytime, and the 10-archive limit for created campaigns. Mention that players can join unlimited campaigns for free.
-- **"Become a Subscriber" button**: Opens a secondary "Coming Soon" dialog
-- **"Close" or "Got it" button**: Dismisses the modal
-
-**Secondary "Coming Soon" dialog:**
-- Thanks the user for their interest
-- Mentions the planned ~$2.99/mo subscription tier with increased limits and exclusive features
-- Includes a link to the Discord server (https://discord.gg/PmMn3NVt)
-- "Close" button to dismiss
-
-This will be implemented as internal state within the `CampaignLimitModal` component (a `showComingSoon` boolean toggling between the two views, or a nested dialog).
+All changes below are LOW or MEDIUM effort. The only excluded item is **prerendering/SSR** (HIGH effort).
 
 ---
 
-### 2. Add Archive/Restore Button to Campaign Table Rows
+## Changes Overview
 
-Currently, archiving is only accessible from Campaign Settings inside the dashboard. We will add a small Archive (or Restore, for archived tab) icon button directly on each campaign row in the directory table, visible only for campaigns the user owns (GM role).
+### 1. Update `public/robots.txt`
+**Priority: HIGH | Effort: LOW**
 
-**For the button row at the bottom of the table** -- rather than adding more buttons to the already-crowded bottom row, the archive action will be an inline icon button on each table row (similar to the existing Copy ID button). This keeps the table clean and makes the action contextual to each campaign.
+- Block authenticated app routes (`/campaigns`, `/campaign/`, `/settings`, `/admin/`)
+- Update sitemap URL to `campaignconsole.xyz`
+
+### 2. Update `public/sitemap.xml`
+**Priority: HIGH | Effort: LOW**
+
+- Remove `/auth` (login page shouldn't be indexed)
+- Update domain from `campaign-console.lovable.app` to `campaignconsole.xyz`
+- Add `lastmod` date to the homepage entry
+- Keep only `/` for now
+
+### 3. Update `index.html` Metadata
+**Priority: HIGH | Effort: LOW**
+
+- Update title to target "campaign tracker" keyword
+- Rewrite meta description to include "campaign tracker"
+- Update canonical URL to `campaignconsole.xyz`
+- Update all OG and Twitter card URLs to `campaignconsole.xyz`
+- Add "campaign tracker" to keywords
+- Add Google Search Console verification meta tag (placeholder for user to fill in)
+- Add preconnect hints for the backend API domain
+- Expand JSON-LD with Organization and WebSite schemas alongside existing SoftwareApplication
+- Add GA4 script stub gated by a placeholder measurement ID
+
+### 4. Create `src/hooks/useNoIndex.ts` (new file)
+**Priority: HIGH | Effort: LOW**
+
+A small hook that injects `<meta name="robots" content="noindex, nofollow">` into the document head. Used on protected routes.
+
+### 5. Update `src/App.tsx`
+**Priority: HIGH | Effort: LOW**
+
+- Import and call `useNoIndex()` inside `ProtectedRoute` and `AuthRoute` components so all authenticated/login pages get noindex tags.
+
+### 6. Expand Landing Page -- `src/pages/Index.tsx`
+**Priority: HIGH | Effort: MEDIUM**
+
+Add substantive content for Google to index. This is the biggest single change:
+- **Features grid**: 6 feature cards (Battles, Maps, Warbands, Narrative, Scheduling, Dice/Rules) with icons and short descriptions
+- **How It Works**: 3-step section (Create Campaign, Invite Players, Track Everything)
+- **Mini FAQ**: 3-4 common questions with answers (helps with long-tail keywords and potential FAQ rich results)
+- **Footer**: Links to auth, and credits/version info
+- All styled consistently with the existing terminal/military theme
+
+### 7. Improve 404 Page -- `src/pages/NotFound.tsx`
+**Priority: LOW | Effort: LOW**
+
+- Add on-brand styling consistent with the terminal theme
+- Add more helpful navigation links (Home, Login)
+
+### 8. Create `docs/TECH_SEO.md` (new file)
+**Priority: MEDIUM | Effort: LOW**
+
+Documentation covering:
+- What was changed and why
+- How to verify in Google Search Console
+- Manual steps checklist (domain verification, sitemap submission)
+- Local testing commands (curl for robots.txt, sitemap, view-source for meta tags)
+- Lighthouse target metrics
 
 ---
 
-### Technical Details
+## Technical Details
 
-**Files to modify:**
+### Files to Create
+| File | Purpose |
+|---|---|
+| `src/hooks/useNoIndex.ts` | Hook to inject noindex meta tag on protected routes |
+| `docs/TECH_SEO.md` | SEO documentation and validation plan |
 
-1. **`src/components/campaigns/CampaignLimitModal.tsx`**
-   - Rewrite the modal body with the new copy
-   - Add a `showComingSoon` state for the secondary popup
-   - Replace the "Archive a Campaign" button with a "Become a Subscriber" button that toggles the coming-soon view
-   - Add the coming-soon content with Discord link
-   - Keep a "Close" / "Got it" button to dismiss
+### Files to Modify
+| File | Changes |
+|---|---|
+| `public/robots.txt` | Block app routes, update sitemap URL |
+| `public/sitemap.xml` | Remove /auth, update domain, add lastmod |
+| `index.html` | Metadata, canonical, OG tags, JSON-LD, GSC verification, preconnect, GA4 stub |
+| `src/App.tsx` | Add useNoIndex() to ProtectedRoute and AuthRoute |
+| `src/pages/Index.tsx` | Add features grid, how-it-works, FAQ, footer sections |
+| `src/pages/NotFound.tsx` | Improved styling and navigation links |
 
-2. **`src/pages/Campaigns.tsx`**
-   - Add an inline Archive/Restore icon button on each campaign table row (only for GM-owned campaigns)
-   - Wire it to the existing `archiveCampaign` mutation (already imported but unused in the action buttons)
-   - Show `Archive` icon on active tab rows, `ArchiveRestore` icon on archived tab rows
-   - Add a tooltip explaining the action
-
-No database or backend changes needed -- the archive mutation and `is_archived` column already exist.
-
+### Domain Note
+All URLs will be updated to `campaignconsole.xyz`. If the custom domain is not yet configured, these will need updating once it is -- but having them set correctly now ensures SEO is ready the moment DNS is pointed.
