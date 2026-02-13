@@ -1,74 +1,50 @@
 
-# SEO Implementation Plan (Excluding HIGH Effort Items)
 
-All changes below are LOW or MEDIUM effort. The only excluded item is **prerendering/SSR** (HIGH effort).
+# Mobile Experience Enhancement Plan
 
----
+## Current State
 
-## Changes Overview
+The mobile dashboard currently shows widgets as small square cards in a 2-column grid. Each card only displays the widget name, an icon, and a brief text hint (e.g. "3 rows", "Tap to view"). Tapping a card opens the full widget in a bottom sheet. The Campaign Directory page uses a desktop table layout that's cramped on small screens.
 
-### 1. Update `public/robots.txt`
-**Priority: HIGH | Effort: LOW**
+## What Changes
 
-- Block authenticated app routes (`/campaigns`, `/campaign/`, `/settings`, `/admin/`)
-- Update sitemap URL to `campaignconsole.xyz`
+### 1. Inline Widget Previews (MobileWidgetCard)
+Replace the current "icon + tap to view" cards with actual content previews that vary by widget type:
 
-### 2. Update `public/sitemap.xml`
-**Priority: HIGH | Effort: LOW**
+- **Counter**: Already shows the number -- keep as-is but make it more prominent
+- **Text**: Show the first 3-4 lines of text content directly in the card
+- **Image**: Show a thumbnail of the image
+- **Announcements**: Show the latest announcement snippet
+- **Table**: Show first 2-3 rows in a compact mini-table
+- **Dice Roller**: Show last roll result and a quick-roll button
+- **Sticker**: Show the sticker image inline
+- **Calendar**: Show next upcoming event date
+- **Activity Feed**: Show the latest 1-2 activity items
+- **Roll Recorder**: Show last recorded roll
+- **Card**: Show a truncated preview of card content
 
-- Remove `/auth` (login page shouldn't be indexed)
-- Update domain from `campaign-console.lovable.app` to `campaignconsole.xyz`
-- Add `lastmod` date to the homepage entry
-- Keep only `/` for now
+Cards will no longer be forced to `aspect-square` -- they'll auto-size to fit their preview content with a sensible min-height. Tapping still opens the full widget sheet.
 
-### 3. Update `index.html` Metadata
-**Priority: HIGH | Effort: LOW**
+### 2. Single-Column Layout Option
+Switch from 2-column grid to single-column for content-heavy widgets (text, tables, announcements) so previews have room to breathe. Smaller widgets (counter, dice, sticker) stay in a 2-column sub-grid.
 
-- Update title to target "campaign tracker" keyword
-- Rewrite meta description to include "campaign tracker"
-- Update canonical URL to `campaignconsole.xyz`
-- Update all OG and Twitter card URLs to `campaignconsole.xyz`
-- Add "campaign tracker" to keywords
-- Add Google Search Console verification meta tag (placeholder for user to fill in)
-- Add preconnect hints for the backend API domain
-- Expand JSON-LD with Organization and WebSite schemas alongside existing SoftwareApplication
-- Add GA4 script stub gated by a placeholder measurement ID
+### 3. Campaign Directory Mobile Redesign (Campaigns.tsx)
+Replace the desktop table with a mobile-friendly card list on small screens:
 
-### 4. Create `src/hooks/useNoIndex.ts` (new file)
-**Priority: HIGH | Effort: LOW**
+- Each campaign becomes a tappable card showing: name, role badge (GM/Player), player count
+- Swipe or long-press for actions (archive, delete) instead of tiny icon buttons
+- Campaign actions (Create, Join) become a sticky bottom bar instead of buttons below the table
+- Remove the double-border frame on mobile (too cramped)
+- Single tap opens the campaign directly (no select-then-open pattern)
 
-A small hook that injects `<meta name="robots" content="noindex, nofollow">` into the document head. Used on protected routes.
+### 4. Bottom Navigation Bar Improvements
+- Add subtle active state indicators when an overlay is open
+- Add haptic-style press animations
+- Increase icon sizes slightly for better tap targets
 
-### 5. Update `src/App.tsx`
-**Priority: HIGH | Effort: LOW**
-
-- Import and call `useNoIndex()` inside `ProtectedRoute` and `AuthRoute` components so all authenticated/login pages get noindex tags.
-
-### 6. Expand Landing Page -- `src/pages/Index.tsx`
-**Priority: HIGH | Effort: MEDIUM**
-
-Add substantive content for Google to index. This is the biggest single change:
-- **Features grid**: 6 feature cards (Battles, Maps, Warbands, Narrative, Scheduling, Dice/Rules) with icons and short descriptions
-- **How It Works**: 3-step section (Create Campaign, Invite Players, Track Everything)
-- **Mini FAQ**: 3-4 common questions with answers (helps with long-tail keywords and potential FAQ rich results)
-- **Footer**: Links to auth, and credits/version info
-- All styled consistently with the existing terminal/military theme
-
-### 7. Improve 404 Page -- `src/pages/NotFound.tsx`
-**Priority: LOW | Effort: LOW**
-
-- Add on-brand styling consistent with the terminal theme
-- Add more helpful navigation links (Home, Login)
-
-### 8. Create `docs/TECH_SEO.md` (new file)
-**Priority: MEDIUM | Effort: LOW**
-
-Documentation covering:
-- What was changed and why
-- How to verify in Google Search Console
-- Manual steps checklist (domain verification, sitemap submission)
-- Local testing commands (curl for robots.txt, sitemap, view-source for meta tags)
-- Lighthouse target metrics
+### 5. Header Refinements
+- Show truncated campaign name in the mobile dashboard header
+- Make the role badge more visually distinct
 
 ---
 
@@ -77,18 +53,33 @@ Documentation covering:
 ### Files to Create
 | File | Purpose |
 |---|---|
-| `src/hooks/useNoIndex.ts` | Hook to inject noindex meta tag on protected routes |
-| `docs/TECH_SEO.md` | SEO documentation and validation plan |
+| `src/components/dashboard/MobileWidgetPreview.tsx` | New component that renders inline previews per widget type |
+| `src/components/campaigns/MobileCampaignList.tsx` | Mobile-specific campaign card list layout |
 
 ### Files to Modify
 | File | Changes |
 |---|---|
-| `public/robots.txt` | Block app routes, update sitemap URL |
-| `public/sitemap.xml` | Remove /auth, update domain, add lastmod |
-| `index.html` | Metadata, canonical, OG tags, JSON-LD, GSC verification, preconnect, GA4 stub |
-| `src/App.tsx` | Add useNoIndex() to ProtectedRoute and AuthRoute |
-| `src/pages/Index.tsx` | Add features grid, how-it-works, FAQ, footer sections |
-| `src/pages/NotFound.tsx` | Improved styling and navigation links |
+| `src/components/dashboard/MobileWidgetCard.tsx` | Replace icon+label layout with inline previews using MobileWidgetPreview; remove aspect-square constraint; add smart sizing per widget type |
+| `src/components/dashboard/MobileDashboard.tsx` | Switch from uniform 2-col grid to mixed layout (full-width for content widgets, 2-col for compact widgets); show campaign name in header |
+| `src/pages/Campaigns.tsx` | Detect mobile and render MobileCampaignList instead of table; single-tap navigation; sticky action bar |
+| `src/components/dashboard/MobileGMMenu.tsx` | Minor polish -- slightly larger touch targets |
 
-### Domain Note
-All URLs will be updated to `campaignconsole.xyz`. If the custom domain is not yet configured, these will need updating once it is -- but having them set correctly now ensures SEO is ready the moment DNS is pointed.
+### Layout Strategy
+
+The widget grid will categorize widgets into two groups:
+
+**Full-width widgets** (single column): text, table, announcements, narrative_table, activity_feed, calendar, roll_recorder, image, map
+
+**Compact widgets** (2-column): counter, dice_roller, sticker, card, player_list
+
+This ensures content-heavy widgets get enough horizontal space for readable inline previews.
+
+### Campaign Directory Mobile Cards
+
+Each card will show:
+- Role icon (crown for GM, user for Player) and campaign name
+- Player count badge
+- Direct tap to navigate (eliminating the select-then-open pattern)
+- Archive button for GMs (small icon in corner)
+- Join code copy for GMs (long press or secondary action)
+
