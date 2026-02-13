@@ -1639,7 +1639,7 @@ export type Database = {
           has_password?: never
           id?: string | null
           is_archived?: boolean | null
-          join_code?: string | null
+          join_code?: never
           max_players?: number | null
           name?: string | null
           owner_id?: string | null
@@ -1667,7 +1667,7 @@ export type Database = {
           has_password?: never
           id?: string | null
           is_archived?: boolean | null
-          join_code?: string | null
+          join_code?: never
           max_players?: number | null
           name?: string | null
           owner_id?: string | null
