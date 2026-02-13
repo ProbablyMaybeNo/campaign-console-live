@@ -84,7 +84,7 @@ export function CommandPalette({
     { id: "map", label: "Open Map", icon: Map, category: "navigation", action: () => { onOpenOverlay("map"); onClose(); } },
     { id: "narrative", label: "Open Narrative", icon: BookOpen, category: "navigation", action: () => { onOpenOverlay("narrative"); onClose(); } },
     { id: "messages", label: "Open Messages", icon: MessageSquare, category: "navigation", action: () => { onOpenOverlay("messages"); onClose(); } },
-    { id: "schedule", label: "Open Schedule", icon: Calendar, category: "navigation", action: () => { onOpenOverlay("schedule"); onClose(); } },
+    { id: "calendar", label: "Open Calendar", icon: Calendar, category: "navigation", action: () => { onOpenOverlay("calendar"); onClose(); } },
     { id: "settings", label: "Open Settings", icon: Settings, category: "navigation", action: () => { onOpenOverlay("settings"); onClose(); } },
     
     // Help

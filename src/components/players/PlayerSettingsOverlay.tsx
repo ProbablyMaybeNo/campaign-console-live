@@ -58,7 +58,7 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
   const navigate = useNavigate();
   const { data: settings, isLoading } = usePlayerSettings(campaignId);
   const { data: narrativeEntries, isLoading: narrativeLoading } = usePlayerNarrativeEntries(campaignId);
-  const { autoSave, isSaving } = useAutoSavePlayerSettings(campaignId);
+  const { save, isSaving } = useAutoSavePlayerSettings(campaignId);
   const createNarrativeEntry = useCreatePlayerNarrativeEntry(campaignId);
   const deleteNarrativeEntry = useDeletePlayerNarrativeEntry(campaignId);
   const leaveCampaign = useLeaveCampaign();
@@ -95,11 +95,11 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
 
   const isGMPreview = settings?.id === "gm-preview";
 
-  // Auto-save whenever form fields change (debounced)
-  const triggerAutoSave = useCallback(() => {
-    if (isGMPreview) return; // Don't auto-save in GM preview mode
+  // Manual save handler
+  const handleSaveSettings = useCallback(() => {
+    if (isGMPreview) return;
     
-    autoSave({
+    save({
       player_name: playerName.trim() || null,
       faction: faction.trim() || null,
       sub_faction: subFaction.trim() || null,
@@ -107,15 +107,7 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
       warband_link: warbandLink.trim() || null,
       additional_info: additionalInfo.trim() || null,
     });
-  }, [playerName, faction, subFaction, currentPoints, warbandLink, additionalInfo, autoSave, isGMPreview]);
-
-  // Trigger auto-save on field changes (after initial load)
-  useEffect(() => {
-    // Only trigger if we have settings loaded (not on initial mount)
-    if (settings && settings.id !== "gm-preview") {
-      triggerAutoSave();
-    }
-  }, [playerName, faction, subFaction, currentPoints, warbandLink, additionalInfo]);
+  }, [playerName, faction, subFaction, currentPoints, warbandLink, additionalInfo, save, isGMPreview]);
 
   const handleAddNarrativeEntry = async () => {
     if (!newEntryTitle.trim()) return;
@@ -150,33 +142,17 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
   }
 
   return (
-    <ScrollArea className="h-full">
-      <div className="space-y-6 p-1 pr-4">
-        {/* GM Preview Notice */}
-        {isGMPreview && (
-          <div className="bg-secondary/20 border border-secondary/50 rounded p-3 text-center">
-            <p className="text-xs font-mono text-secondary">
-              [ GM PREVIEW MODE ] This is what players see. Changes won't be saved.
-            </p>
-          </div>
-        )}
-
-        {/* Auto-save indicator */}
-        {!isGMPreview && (
-          <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-            {isSaving ? (
-              <>
-                <Loader2 className="w-3 h-3 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-3 h-3 text-green-500" />
-                <span>Auto-save enabled</span>
-              </>
-            )}
-          </div>
-        )}
+    <div className="h-full flex flex-col">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="space-y-6 p-1 pr-4">
+          {/* GM Preview Notice */}
+          {isGMPreview && (
+            <div className="bg-secondary/20 border border-secondary/50 rounded p-3 text-center">
+              <p className="text-xs font-mono text-secondary">
+                [ GM PREVIEW MODE ] This is what players see. Changes won't be saved.
+              </p>
+            </div>
+          )}
 
         {/* Player Info Section */}
         <section className="space-y-4">
@@ -431,7 +407,32 @@ export function PlayerSettingsOverlay({ campaignId }: PlayerSettingsOverlayProps
             </AlertDialog>
           </section>
         )}
-      </div>
-    </ScrollArea>
+        </div>
+      </ScrollArea>
+
+      {/* Sticky Save Button */}
+      {!isGMPreview && (
+        <div className="shrink-0 border-t border-primary/20 p-3">
+          <TerminalButton
+            variant="secondary"
+            onClick={handleSaveSettings}
+            disabled={isSaving}
+            className="w-full"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Save Settings
+              </>
+            )}
+          </TerminalButton>
+        </div>
+      )}
+    </div>
   );
 }

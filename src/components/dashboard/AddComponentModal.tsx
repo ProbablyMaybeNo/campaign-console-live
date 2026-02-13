@@ -261,36 +261,15 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                       }`}>{label}</p>
                     </div>
                     {isLocked && (
-                      <div className="flex flex-col items-center mt-1">
-                        <Lock className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-[8px] text-muted-foreground uppercase">Locked</span>
+                      <div className="flex flex-col items-center mt-0.5">
+                        <span className="text-[7px] text-muted-foreground uppercase tracking-wide">Coming Soon</span>
                       </div>
                     )}
                   </button>
                 );
 
                 if (isLocked) {
-                  return (
-                    <Tooltip key={type}>
-                      <TooltipTrigger asChild>
-                        {buttonContent}
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[200px]">
-                        <p className="text-xs mb-2">
-                          Unlock {label} with Supporter ($2.99/mo)
-                        </p>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate("/settings?tab=billing");
-                          }}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Upgrade →
-                        </button>
-                      </TooltipContent>
-                    </Tooltip>
-                  );
+                  return buttonContent;
                 }
 
                 return buttonContent;
@@ -342,7 +321,7 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
 
               {selectedType === "calendar" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
-                  Displays a monthly calendar with rounds and events. Manage schedule via the Schedule overlay.
+                  Displays a monthly calendar with rounds and events. Manage events and round visibility via the Calendar overlay.
                 </p>
               )}
 

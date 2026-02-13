@@ -38,6 +38,11 @@ interface DraggableComponentProps {
   isAnyDragging?: boolean;
   /** True when ANY component on the canvas is being resized (for paint reduction) */
   isAnyResizing?: boolean;
+  /**
+   * True when THIS component should stay in lightweight placeholder mode because
+   * the DragOverlay is active (including the short handoff after drop).
+   */
+  isOverlayActive?: boolean;
   /** When true, the active widget uses DragOverlay and stays as a lightweight placeholder */
   useDragOverlay?: boolean;
 }
@@ -59,6 +64,7 @@ function DraggableComponentInner({
   onResizeEnd,
   isAnyDragging = false,
   isAnyResizing = false,
+  isOverlayActive = false,
   useDragOverlay = true,
 }: DraggableComponentProps) {
   const [isResizing, setIsResizing] = useState(false);
@@ -75,7 +81,7 @@ function DraggableComponentInner({
     data: { component }, // Pass component data for the modifier
   });
 
-  const isOverlayDragging = useDragOverlay && isDragging;
+  const isOverlayDragging = useDragOverlay && (isDragging || isOverlayActive);
 
   // Sync local size with component props when they change (e.g., from server)
   useEffect(() => {
@@ -89,7 +95,9 @@ function DraggableComponentInner({
   const isCanvasInteracting = isAnyDragging || isAnyResizing;
 
   // Use GPU-accelerated transforms with will-change hint
-  // When using DragOverlay, keep the real widget DOM STATIC while dragging.
+  // When using DragOverlay, keep the real widget DOM STATIC for the entire drag lifecycle.
+  // Otherwise, on drag-end there can be a 1-frame "handoff" where @dnd-kit still provides
+  // the last transform while the overlay has already been removed, causing a visible jitter.
   const style = useMemo(
     () => ({
       position: "absolute" as const,
@@ -97,9 +105,13 @@ function DraggableComponentInner({
       top: component.position_y,
       width: localSize.width,
       height: localSize.height,
-      transform: transform && !isOverlayDragging ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+      // Only apply @dnd-kit transform when we are NOT using DragOverlay.
+      transform:
+        !useDragOverlay && transform
+          ? `translate3d(${transform.x}px, ${transform.y}px, 0)`
+          : undefined,
       zIndex: isOverlayDragging ? (isSelected ? 50 : 1) : isDragging || isSelected ? 50 : 1,
-      willChange: isInteracting && !isOverlayDragging ? "transform" : "auto",
+      willChange: isInteracting && !useDragOverlay ? "transform" : "auto",
     }),
     [
       component.position_x,
@@ -107,6 +119,7 @@ function DraggableComponentInner({
       localSize.width,
       localSize.height,
       transform,
+      useDragOverlay,
       isOverlayDragging,
       isDragging,
       isSelected,
@@ -123,7 +136,7 @@ function DraggableComponentInner({
       // Simplified shadow during interactions for reduced paint cost
       return { boxShadow: "0 2px 8px hsl(0 0% 0% / 0.3)" };
     }
-    return { boxShadow: "0 0 15px hsl(142 76% 65% / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)" };
+    return { boxShadow: "0 0 15px hsl(var(--border) / 0.3), 0 4px 20px hsl(0 0% 0% / 0.3)" };
   }, [isCanvasInteracting, isOverlayDragging]);
 
   const handleResizeStart = useCallback(
@@ -276,13 +289,13 @@ function DraggableComponentInner({
         style={style}
         className={`draggable-component ${
           isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
-        } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${
-          isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""
+        } ${isSelected ? "ring-2 ring-secondary ring-offset-2 ring-offset-background" : ""} ${
+          isMultiSelected ? "ring-2 ring-warning ring-offset-1 ring-offset-background" : ""
         }`}
         onClick={handleClick}
       >
         <div
-          className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden relative"
+          className="h-full flex flex-col bg-card border-2 border-border rounded overflow-hidden relative"
           style={chromeStyle}
         >
           {/* Corner Controls for Campaign Console (GM only) */}
@@ -332,31 +345,40 @@ function DraggableComponentInner({
     <div
       ref={setNodeRef}
       style={style}
-      className={`draggable-component ${
-        isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
-      } ${isSelected ? "ring-2 ring-[hsl(200,100%,65%)] ring-offset-2 ring-offset-background" : ""} ${
-        isMultiSelected ? "ring-2 ring-[hsl(45,100%,60%)] ring-offset-1 ring-offset-background" : ""
-      }`}
-      onClick={handleClick}
-    >
-      <div
-        className="h-full flex flex-col bg-card border border-[hsl(142,76%,65%)] rounded overflow-hidden"
+        className={`draggable-component ${
+          isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
+        } ${isSelected ? "ring-2 ring-secondary ring-offset-2 ring-offset-background" : ""} ${
+          isMultiSelected ? "ring-2 ring-warning ring-offset-1 ring-offset-background" : ""
+        }`}
+        onClick={handleClick}
+      >
+        <div
+          className="h-full flex flex-col bg-card border-2 border-border rounded overflow-hidden"
         style={chromeStyle}
       >
-        {/* Component Header - entire bar is draggable for GM */}
+        {/* Component Header */}
         <div
-          className={`flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-primary/30 select-none touch-none ${
-            isGM ? "cursor-grab active:cursor-grabbing" : ""
-          }`}
-          {...(isGM ? { ...listeners, ...attributes } : {})}
+          className="flex items-center justify-between px-3 py-2 bg-primary/10 border-b border-border select-none"
         >
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {isGM && <GripVertical className="w-4 h-4 text-primary flex-shrink-0 opacity-50" />}
+            {isGM && !isCampaignConsole && (
+              <div
+                className="flex-shrink-0 cursor-grab active:cursor-grabbing touch-none rounded hover:bg-secondary/15 transition-colors group"
+                {...listeners}
+                {...attributes}
+                aria-label="Drag to move widget"
+              >
+                <GripVertical
+                  className="w-4 h-4 text-secondary group-hover:text-foreground transition-colors"
+                  strokeWidth={3}
+                />
+              </div>
+            )}
             <span className="text-sm flex-shrink-0" aria-hidden>
               {icon}
             </span>
             <span
-              className="text-xs font-mono text-primary uppercase tracking-wider truncate"
+              className="text-base font-mono text-primary uppercase tracking-wider truncate leading-none"
               style={{ textShadow: "0 0 8px hsl(var(--primary) / 0.4)" }}
             >
               {component.name}
@@ -429,6 +451,7 @@ export const DraggableComponent = memo(DraggableComponentInner, (prev, next) => 
     prev.scale === next.scale &&
     prev.isAnyDragging === next.isAnyDragging &&
     prev.isAnyResizing === next.isAnyResizing &&
+    prev.isOverlayActive === next.isOverlayActive &&
     prev.useDragOverlay === next.useDragOverlay
   );
 });

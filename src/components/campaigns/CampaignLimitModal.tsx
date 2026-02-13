@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { TerminalButton } from "@/components/ui/TerminalButton";
-import { Archive, Unlock } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Unlock, ExternalLink } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CampaignLimitModalProps {
   open: boolean;
@@ -16,22 +18,27 @@ export function CampaignLimitModal({
   activeCampaignCount,
   maxCampaigns,
 }: CampaignLimitModalProps) {
-  const navigate = useNavigate();
+  const [showComingSoon, setShowComingSoon] = useState(false);
+  const { user } = useAuth();
 
-  const handleArchive = () => {
-    onClose();
-    // Scroll to campaign list and user can archive from there
-    // Could add a highlight effect in the future
+  const handleSubscriberClick = async () => {
+    if (user) {
+      // Record unique interest — upsert so duplicates are ignored
+      await supabase
+        .from("subscriber_interest")
+        .upsert({ user_id: user.id }, { onConflict: "user_id" });
+    }
+    setShowComingSoon(true);
   };
 
-  const handleUpgrade = () => {
+  const handleClose = () => {
+    setShowComingSoon(false);
     onClose();
-    navigate("/settings");
   };
 
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="bg-card border-primary/30 max-w-md">
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <DialogContent className="bg-card border-primary/30 max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-primary font-mono uppercase tracking-wider flex items-center gap-2">
             <Unlock className="w-5 h-5" />
@@ -39,42 +46,81 @@ export function CampaignLimitModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <p className="text-foreground">
-            Free tier supports <strong>{maxCampaigns} active campaign</strong>.
-          </p>
-          
-          <p className="text-muted-foreground text-sm">
-            You currently have {activeCampaignCount} active campaign{activeCampaignCount !== 1 ? 's' : ''}. 
-            You can archive a campaign to start a new one, or upgrade to Supporter to keep up to 5 active campaigns.
-          </p>
-
-          <div className="bg-muted/30 p-3 rounded border border-border">
-            <p className="text-xs text-muted-foreground">
-              <strong>Tip:</strong> Archived campaigns keep all their data and can be restored anytime. 
-              Players won't be able to access archived campaigns until restored.
+        {!showComingSoon ? (
+          <div className="space-y-4 py-2">
+            <p className="text-foreground text-sm leading-relaxed">
+              Due to the free nature of the app, users are limited to running <strong>1 active campaign</strong> at a time.
             </p>
-          </div>
-        </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <TerminalButton
-            variant="secondary"
-            onClick={handleArchive}
-            className="flex-1 gap-2"
-          >
-            <Archive className="w-4 h-4" />
-            Archive a Campaign
-          </TerminalButton>
-          
-          <TerminalButton
-            onClick={handleUpgrade}
-            className="flex-1 gap-2"
-          >
-            <Unlock className="w-4 h-4" />
-            Upgrade ($2.99/mo)
-          </TerminalButton>
-        </div>
+            <div className="bg-muted/30 p-3 rounded border border-border space-y-2">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                You can archive campaigns you've created by clicking the <strong>Archive</strong> icon on your campaign row in the Campaign Directory, or via <strong>Campaign Settings</strong> inside a campaign dashboard.
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Archived campaigns can be reactivated at any time using the <strong>Restore</strong> icon in the <strong>Archived</strong> tab and will remain in your archive indefinitely — or until you delete them.
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Users are limited to archiving <strong>10 created campaigns</strong> at one time. Players can have as many active campaigns as they want and always play for free.
+              </p>
+            </div>
+
+            <p className="text-foreground text-sm leading-relaxed">
+              If you would like to increase your active and archived campaign limits by becoming a subscriber, please click the button below. In addition to increased campaign limits, you'll unlock a variety of customization options and quality-of-life improvements.
+            </p>
+
+            <p className="text-sm text-muted-foreground italic">
+              Thank you for your understanding — enjoy the Campaign Console!
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <TerminalButton
+                onClick={handleSubscriberClick}
+                className="flex-1 gap-2"
+              >
+                <Unlock className="w-4 h-4" />
+                Become a Subscriber
+              </TerminalButton>
+              <TerminalButton
+                variant="outline"
+                onClick={handleClose}
+                className="flex-1"
+              >
+                Got It
+              </TerminalButton>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 py-2">
+            <p className="text-foreground text-sm leading-relaxed">
+              Thank you for your interest in becoming a <strong>Campaign Console subscriber</strong>!
+            </p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              I am currently working on gauging interest in a <strong>$2.99/month</strong> subscription tier and developing a variety of exciting features available exclusively to subscribers.
+            </p>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Stay tuned for more info on the Campaign Console. Join the Discord to follow along and share your feedback!
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <TerminalButton
+                onClick={() => window.open("https://discord.gg/PmMn3NVt", "_blank")}
+                className="flex-1 gap-2"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Join the Discord
+              </TerminalButton>
+              <TerminalButton
+                variant="outline"
+                onClick={handleClose}
+                className="flex-1"
+              >
+                Close
+              </TerminalButton>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

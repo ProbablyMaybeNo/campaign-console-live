@@ -4,7 +4,8 @@ import { PlayersWidget } from "./widgets/PlayersWidget";
 import { PlayersManagerWidget } from "./widgets/PlayersManagerWidget";
 import { MessagesWidget } from "./widgets/MessagesWidget";
 import { NarrativeWidget } from "./widgets/NarrativeWidget";
-import { ScheduleWidget } from "./widgets/ScheduleWidget";
+import { CalendarManagerWidget } from "./widgets/CalendarManagerWidget";
+import { useCampaignDisplaySettings } from "@/hooks/useCampaignDisplaySettings";
 import { CampaignSettingsModal } from "@/components/campaigns/CampaignSettingsModal";
 import { MapManager } from "@/components/map/MapManager";
 import { ComponentsManager } from "./ComponentsManager";
@@ -83,9 +84,9 @@ const overlayConfigs: Record<Exclude<OverlayType, null>, OverlayConfig> = {
     icon: <MessageSquare className="w-4 h-4" />,
     size: "md",
   },
-  schedule: {
-    title: "Schedule",
-    subtitle: "Campaign rounds and match schedule",
+  calendar: {
+    title: "Calendar",
+    subtitle: "Events and round schedule",
     icon: <Calendar className="w-4 h-4" />,
     size: "lg",
   },
@@ -186,13 +187,9 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
         </OverlayPanel>
       );
 
-    case "schedule":
+    case "calendar":
       return (
-        <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
-          <div className="min-h-[300px]">
-            <ScheduleWidget campaignId={campaignId} isGM={isGM} />
-          </div>
-        </OverlayPanel>
+        <CalendarOverlay config={config} onClose={onClose} campaignId={campaignId} isGM={isGM} />
       );
 
     case "rules":
@@ -266,4 +263,34 @@ export function CampaignOverlays({ activeOverlay, onClose, campaignId, isGM }: C
     default:
       return null;
   }
+}
+
+// Calendar overlay with display settings integration
+function CalendarOverlay({ config, onClose, campaignId, isGM }: { config: OverlayConfig; onClose: () => void; campaignId: string; isGM: boolean }) {
+  const { displaySettings, updateDisplaySettings } = useCampaignDisplaySettings(campaignId);
+  const visibleRoundIds = (displaySettings?.visible_round_ids as string[]) || [];
+  const roundColors = (displaySettings?.round_colors as Record<string, string>) || {};
+
+  const handleVisibleRoundsChange = (roundIds: string[]) => {
+    updateDisplaySettings({ visible_round_ids: roundIds });
+  };
+
+  const handleRoundColorsChange = (colors: Record<string, string>) => {
+    updateDisplaySettings({ round_colors: colors });
+  };
+
+  return (
+    <OverlayPanel open={true} onClose={onClose} title={config.title} subtitle={config.subtitle} icon={config.icon} size={config.size}>
+      <div className="min-h-[300px]">
+        <CalendarManagerWidget
+          campaignId={campaignId}
+          isGM={isGM}
+          visibleRoundIds={visibleRoundIds}
+          onVisibleRoundsChange={handleVisibleRoundsChange}
+          roundColors={roundColors}
+          onRoundColorsChange={handleRoundColorsChange}
+        />
+      </div>
+    </OverlayPanel>
+  );
 }

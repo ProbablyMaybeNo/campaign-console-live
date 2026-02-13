@@ -56,7 +56,7 @@ export function PermissionsTab({ campaignId }: PermissionsTabProps) {
           <Info className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
           <div className="text-xs text-muted-foreground space-y-1">
             <p><strong className="text-foreground">Co-GM:</strong> Full control – can create, edit, and delete widgets; manage players</p>
-            <p><strong className="text-foreground">Assistant:</strong> Limited – can edit existing widgets but not create or delete; cannot remove players</p>
+            <p><strong className="text-foreground">Moderator:</strong> Limited – can edit existing widgets but not create or delete; cannot remove players</p>
           </div>
         </div>
       </div>

@@ -442,8 +442,8 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
             A unique Campaign ID will be auto-generated for players to join.
           </p>
 
-          {/* Support Button */}
-          <Link
+          {/* Support Button - hidden for now */}
+          {/* <Link
             to="/settings?tab=billing"
             className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded border border-[hsl(200,100%,70%)] bg-transparent font-mono text-sm font-medium uppercase tracking-wider transition-all hover:bg-[hsl(200,100%,70%)]/10"
             style={{
@@ -455,7 +455,7 @@ export function CreateCampaignModal({ open, onClose }: CreateCampaignModalProps)
           >
             <Heart className="w-4 h-4" />
             Support Campaign Console
-          </Link>
+          </Link> */}
 
           <div className="flex gap-3 pt-2">
             <TerminalButton

@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
 import { useCampaign, DisplaySettings } from "@/hooks/useCampaigns";
 import { useCampaignPlayers } from "@/hooks/useCampaignPlayers";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -40,8 +40,21 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
     };
   }, [campaign]);
 
-  const titleColor = campaign?.title_color || "hsl(142, 76%, 55%)";
-  const borderColor = campaign?.border_color || "hsl(142, 76%, 55%)";
+  // Read --console-accent reactively when theme changes
+  const [consoleAccent, setConsoleAccent] = useState("hsl(142, 76%, 55%)");
+  useEffect(() => {
+    const readAccent = () => {
+      const val = getComputedStyle(document.documentElement).getPropertyValue('--console-accent').trim();
+      if (val) setConsoleAccent(`hsl(${val})`);
+    };
+    readAccent();
+    const observer = new MutationObserver(readAccent);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const titleColor = campaign?.title_color || consoleAccent;
+  const borderColor = campaign?.border_color || consoleAccent;
 
   if (!campaign) return null;
 
@@ -58,8 +71,8 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
 
   return (
     <div className="w-full h-full flex flex-col p-2 min-[400px]:p-3 gap-1.5 min-[400px]:gap-2 overflow-hidden select-none relative">
-      {/* Donator Badge - positioned in top right corner */}
-      {hasDonated && (
+      {/* Donator Badge - hidden for now, can be re-enabled later */}
+      {/* {hasDonated && (
         <div 
           className="absolute top-1 right-1 min-[400px]:top-2 min-[400px]:right-2 z-20"
           title="Thank you for your support!"
@@ -73,7 +86,7 @@ export const CampaignConsoleWidget = memo(function CampaignConsoleWidget({
             }}
           />
         </div>
-      )}
+      )} */}
 
       {/* Decorative Frame with Corner Accents */}
       <div className="absolute inset-1.5 min-[400px]:inset-2 pointer-events-none">

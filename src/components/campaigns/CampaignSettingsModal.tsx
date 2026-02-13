@@ -137,8 +137,8 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
       status: status ? "active" : "inactive",
       title_color: titleColor,
       border_color: borderColor,
-      theme_id: isSupporter ? themeId : "dark",
-      banner_url: isSupporter ? (bannerUrl || undefined) : undefined,
+      theme_id: themeId,
+      banner_url: bannerUrl || undefined,
       display_settings: displaySettings,
     });
     
@@ -386,7 +386,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[300px] overflow-y-auto pr-1">
                   {THEMES.map((theme) => {
                     const ThemeIcon = theme.icon;
-                    const isLocked = theme.supporterOnly && !isSupporter;
+                    const isLocked = false; // theme.supporterOnly && !isSupporter; -- hidden for now
                     const isActive = themeId === theme.id;
                     
                     return (
@@ -461,22 +461,23 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
                     );
                   })}
                 </div>
-                {!isSupporter && (
+                {/* Hidden for now - supporter theme message */}
+                {/* {!isSupporter && (
                   <p className="text-xs text-muted-foreground">
                     🔒 9 OS-inspired themes available with Supporter subscription
                   </p>
-                )}
+                )} */}
               </div>
 
-              {/* Banner URL */}
-              <LockedFeature isLocked={!isSupporter} featureName="Banner Image">
+              {/* Banner - hidden for now, can be re-enabled later */}
+              {/* <LockedFeature isLocked={!isSupporter} featureName="Banner Image">
                 <TerminalInput
                   label="Banner Image URL"
                   placeholder="https://example.com/banner.jpg"
                   value={bannerUrl}
                   onChange={(e) => setBannerUrl(e.target.value)}
                 />
-              </LockedFeature>
+              </LockedFeature> */}
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
