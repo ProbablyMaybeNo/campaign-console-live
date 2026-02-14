@@ -1,85 +1,57 @@
 
 
-# Mobile Experience Enhancement Plan
+# Add Ghost/AI Players for Solo Campaign Play
 
-## Current State
+## Overview
 
-The mobile dashboard currently shows widgets as small square cards in a 2-column grid. Each card only displays the widget name, an icon, and a brief text hint (e.g. "3 rows", "Tap to view"). Tapping a card opens the full widget in a bottom sheet. The Campaign Directory page uses a desktop table layout that's cramped on small screens.
+GMs will be able to manually add "ghost" players to their campaigns -- useful for solo play, AI opponents, or placeholder slots. These players appear everywhere real players do (Player List widget, Players Manager, battle pairings) but aren't tied to a real user account.
 
-## What Changes
+## How It Works
 
-### 1. Inline Widget Previews (MobileWidgetCard)
-Replace the current "icon + tap to view" cards with actual content previews that vary by widget type:
+A new "Add Player" button appears in both the **Players Manager** overlay and the **Player List** widget header (GM-only). Tapping it opens a modal styled like the existing Player Settings overlay where the GM fills in the player's details (name, faction, points, warband link, etc.). The record is saved to `campaign_players` with a deterministic placeholder UUID and a new `is_ghost` flag.
 
-- **Counter**: Already shows the number -- keep as-is but make it more prominent
-- **Text**: Show the first 3-4 lines of text content directly in the card
-- **Image**: Show a thumbnail of the image
-- **Announcements**: Show the latest announcement snippet
-- **Table**: Show first 2-3 rows in a compact mini-table
-- **Dice Roller**: Show last roll result and a quick-roll button
-- **Sticker**: Show the sticker image inline
-- **Calendar**: Show next upcoming event date
-- **Activity Feed**: Show the latest 1-2 activity items
-- **Roll Recorder**: Show last recorded roll
-- **Card**: Show a truncated preview of card content
+## Database Changes
 
-Cards will no longer be forced to `aspect-square` -- they'll auto-size to fit their preview content with a sensible min-height. Tapping still opens the full widget sheet.
+Add a boolean column `is_ghost` (default `false`) to the `campaign_players` table. This lets the app distinguish real users from GM-created ghost players throughout the codebase.
 
-### 2. Single-Column Layout Option
-Switch from 2-column grid to single-column for content-heavy widgets (text, tables, announcements) so previews have room to breathe. Smaller widgets (counter, dice, sticker) stay in a 2-column sub-grid.
+Update the INSERT RLS policy to also allow campaign owners/GMs to insert rows (not just self-inserts). The current policy only allows `auth.uid() = user_id`, which blocks GM-created players. The new policy will be:
 
-### 3. Campaign Directory Mobile Redesign (Campaigns.tsx)
-Replace the desktop table with a mobile-friendly card list on small screens:
+```
+(auth.uid() = user_id) 
+OR is_campaign_owner(campaign_id, auth.uid())
+```
 
-- Each campaign becomes a tappable card showing: name, role badge (GM/Player), player count
-- Swipe or long-press for actions (archive, delete) instead of tiny icon buttons
-- Campaign actions (Create, Join) become a sticky bottom bar instead of buttons below the table
-- Remove the double-border frame on mobile (too cramped)
-- Single tap opens the campaign directly (no select-then-open pattern)
+This is safe because it's already how the policy's WITH CHECK is written -- it just needs the owner path to work for ghost players too.
 
-### 4. Bottom Navigation Bar Improvements
-- Add subtle active state indicators when an overlay is open
-- Add haptic-style press animations
-- Increase icon sizes slightly for better tap targets
+## New Files
 
-### 5. Header Refinements
-- Show truncated campaign name in the mobile dashboard header
-- Make the role badge more visually distinct
+| File | Purpose |
+|---|---|
+| `src/components/players/AddPlayerModal.tsx` | Modal form for GMs to create a ghost player. Fields: Name (required), Faction, Sub-Faction, Points, Warband Link, Additional Info. Generates a deterministic UUID for the `user_id` using the campaign ID + a random suffix. |
 
----
+## Modified Files
+
+| File | Change |
+|---|---|
+| `src/components/dashboard/widgets/PlayersManagerWidget.tsx` | Add an "Add Player" button in the header (next to player count). Import and render `AddPlayerModal`. |
+| `src/components/dashboard/widgets/PlayerListWidget.tsx` | Add an "Add Player" button in the header for GMs. Import and render `AddPlayerModal`. |
+| `src/components/dashboard/widgets/PlayersWidget.tsx` | Show ghost players with a "Bot" or "Ghost" badge instead of a user avatar. Add "Add Player" button for GMs. |
+| `src/hooks/useCampaignPlayers.ts` | Ghost players won't have profile entries, so handle `null` profile gracefully (already mostly handled). |
+| `src/hooks/usePlayerSettings.ts` | In `useAllPlayerSettings`, handle ghost players that have no `profiles_public` entry -- use `player_name` as the display name directly. |
+
+## UI Details
+
+- Ghost players display a distinct badge: a small "AI" or robot icon badge next to their name
+- The "Add Player" button uses the existing `TerminalButton` style with a `UserPlus` icon
+- The modal reuses the same field layout as the Player Settings overlay for consistency
+- GMs can edit ghost players via the existing Players Manager collapsible cards (already works since GMs can update any player)
+- GMs can delete ghost players via a delete button on the player card (new addition to `PlayersManagerWidget`)
 
 ## Technical Details
 
-### Files to Create
-| File | Purpose |
-|---|---|
-| `src/components/dashboard/MobileWidgetPreview.tsx` | New component that renders inline previews per widget type |
-| `src/components/campaigns/MobileCampaignList.tsx` | Mobile-specific campaign card list layout |
-
-### Files to Modify
-| File | Changes |
-|---|---|
-| `src/components/dashboard/MobileWidgetCard.tsx` | Replace icon+label layout with inline previews using MobileWidgetPreview; remove aspect-square constraint; add smart sizing per widget type |
-| `src/components/dashboard/MobileDashboard.tsx` | Switch from uniform 2-col grid to mixed layout (full-width for content widgets, 2-col for compact widgets); show campaign name in header |
-| `src/pages/Campaigns.tsx` | Detect mobile and render MobileCampaignList instead of table; single-tap navigation; sticky action bar |
-| `src/components/dashboard/MobileGMMenu.tsx` | Minor polish -- slightly larger touch targets |
-
-### Layout Strategy
-
-The widget grid will categorize widgets into two groups:
-
-**Full-width widgets** (single column): text, table, announcements, narrative_table, activity_feed, calendar, roll_recorder, image, map
-
-**Compact widgets** (2-column): counter, dice_roller, sticker, card, player_list
-
-This ensures content-heavy widgets get enough horizontal space for readable inline previews.
-
-### Campaign Directory Mobile Cards
-
-Each card will show:
-- Role icon (crown for GM, user for Player) and campaign name
-- Player count badge
-- Direct tap to navigate (eliminating the select-then-open pattern)
-- Archive button for GMs (small icon in corner)
-- Join code copy for GMs (long press or secondary action)
+- Ghost player `user_id` values are generated as `crypto.randomUUID()` -- these will never collide with real auth UIDs
+- The `is_ghost` column lets queries and UI logic identify these records without fragile UUID-pattern checks
+- Ghost players inherit all existing functionality: they appear in battle pairings, player lists, narrative tables, etc.
+- No changes needed to battle tracker or dice roller -- those already work with `campaign_players` records by ID
+- The existing "GMs and self can remove players" DELETE policy already covers GM deletion of ghost players
 
