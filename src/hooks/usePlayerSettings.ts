@@ -133,7 +133,8 @@ export function useAllPlayerSettings(campaignId: string | undefined) {
           sub_faction,
           current_points,
           warband_link,
-          additional_info
+          additional_info,
+          is_ghost
         `)
         .eq("campaign_id", campaignId);
 
@@ -175,7 +176,7 @@ export function useAllPlayerSettings(campaignId: string | undefined) {
 
       return players.map((player) => ({
         ...player,
-        profile_display_name: profileMap[player.user_id] || null,
+        profile_display_name: profileMap[player.user_id] || player.player_name || null,
         narrative_count: narrativeMap[player.user_id]?.count || 0,
         latest_narrative_title: narrativeMap[player.user_id]?.latestTitle || null,
       }));

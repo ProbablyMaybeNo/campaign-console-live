@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useCampaignPlayers, useCampaignOwner, CampaignPlayer } from "@/hooks/useCampaignPlayers";
 import { useAuth } from "@/hooks/useAuth";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
+import { TerminalButton } from "@/components/ui/TerminalButton";
 import { PlayerSettingsModal } from "@/components/players/PlayerSettingsModal";
-import { Users, Shield, Swords, Crown, ExternalLink, Settings } from "lucide-react";
+import { AddPlayerModal } from "@/components/players/AddPlayerModal";
+import { Users, Shield, Swords, Crown, ExternalLink, Settings, Bot, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,9 +19,20 @@ interface PlayersWidgetProps {
 }
 
 function PlayerAvatar({ player }: { player: CampaignPlayer }) {
+  const isGhost = (player as any).is_ghost;
   const initials = player.profile?.display_name
     ? player.profile.display_name.slice(0, 2).toUpperCase()
-    : player.user_id.slice(0, 2).toUpperCase();
+    : (player as any).player_name
+      ? (player as any).player_name.slice(0, 2).toUpperCase()
+      : player.user_id.slice(0, 2).toUpperCase();
+
+  if (isGhost) {
+    return (
+      <div className="w-8 h-8 rounded border border-secondary/30 bg-secondary/10 flex items-center justify-center">
+        <Bot className="w-4 h-4 text-secondary" />
+      </div>
+    );
+  }
 
   if (player.profile?.avatar_url) {
     return (
@@ -62,7 +75,7 @@ interface PlayerRowProps {
 }
 
 function PlayerRow({ player, isCurrentUser, onEditSettings }: PlayerRowProps) {
-  const displayName = player.profile?.display_name || `User ${player.user_id.slice(0, 8)}`;
+  const displayName = (player as any).player_name || player.profile?.display_name || `User ${player.user_id.slice(0, 8)}`;
 
   return (
     <div className="flex items-center gap-3 p-2 rounded hover:bg-primary/5 transition-colors group">
@@ -138,6 +151,8 @@ export function PlayersWidget({ campaignId }: PlayersWidgetProps) {
   const { data: players, isLoading: playersLoading } = useCampaignPlayers(campaignId);
   const { data: owner, isLoading: ownerLoading } = useCampaignOwner(campaignId);
   const [editingPlayer, setEditingPlayer] = useState<CampaignPlayer | null>(null);
+  const [addPlayerOpen, setAddPlayerOpen] = useState(false);
+  const isGM = owner?.user_id === user?.id;
 
   const isLoading = playersLoading || ownerLoading;
 
@@ -192,6 +207,16 @@ export function PlayersWidget({ campaignId }: PlayersWidgetProps) {
           <span className="ml-auto text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
             {allPlayers.length}
           </span>
+          {isGM && (
+            <TerminalButton
+              size="sm"
+              variant="outline"
+              onClick={() => setAddPlayerOpen(true)}
+            >
+              <UserPlus className="w-3 h-3 mr-1" />
+              Add
+            </TerminalButton>
+          )}
         </div>
         
         <div className="flex-1 overflow-y-auto space-y-1 pr-1 -mr-1" data-scrollable="true">
@@ -215,6 +240,12 @@ export function PlayersWidget({ campaignId }: PlayersWidgetProps) {
           currentWarbandLink={editingPlayer.warband_link}
         />
       )}
+
+      <AddPlayerModal
+        open={addPlayerOpen}
+        onClose={() => setAddPlayerOpen(false)}
+        campaignId={campaignId}
+      />
     </>
   );
 }

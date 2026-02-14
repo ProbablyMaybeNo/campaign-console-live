@@ -360,6 +360,7 @@ export type Database = {
           current_points: number | null
           faction: string | null
           id: string
+          is_ghost: boolean
           joined_at: string
           player_name: string | null
           role: string
@@ -373,6 +374,7 @@ export type Database = {
           current_points?: number | null
           faction?: string | null
           id?: string
+          is_ghost?: boolean
           joined_at?: string
           player_name?: string | null
           role?: string
@@ -386,6 +388,7 @@ export type Database = {
           current_points?: number | null
           faction?: string | null
           id?: string
+          is_ghost?: boolean
           joined_at?: string
           player_name?: string | null
           role?: string

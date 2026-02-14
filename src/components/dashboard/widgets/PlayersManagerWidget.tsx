@@ -24,7 +24,23 @@ import {
   Save,
   Loader2,
   BookOpen,
+  UserPlus,
+  Bot,
+  Trash2,
 } from "lucide-react";
+import { AddPlayerModal } from "@/components/players/AddPlayerModal";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Collapsible,
   CollapsibleContent,
@@ -41,10 +57,12 @@ function PlayerCard({
   player, 
   isOwner,
   campaignId,
+  isGM,
 }: { 
   player: PlayerWithProfile; 
   isOwner: boolean;
   campaignId: string;
+  isGM: boolean;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -103,6 +121,12 @@ function PlayerCard({
               <span className="text-sm font-mono text-foreground truncate">
                 {displayName}
               </span>
+              {(player as any).is_ghost && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-secondary/20 text-secondary border border-secondary/30">
+                  <Bot className="w-2.5 h-2.5" />
+                  AI
+                </span>
+              )}
               {isOwner && (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-accent/20 text-accent border border-accent/30">
                   <Crown className="w-2.5 h-2.5" />
@@ -221,25 +245,66 @@ function PlayerCard({
             />
           </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end pt-2 border-t border-border">
-            <TerminalButton
-              size="sm"
-              onClick={handleSave}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-3 h-3 mr-1" />
-                  Save Changes
-                </>
-              )}
-            </TerminalButton>
+          {/* Actions */}
+          <div className="flex justify-between pt-2 border-t border-border">
+            {isGM && (player as any).is_ghost && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <TerminalButton variant="destructive" size="sm">
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Remove
+                  </TerminalButton>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Remove Ghost Player</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Remove "{displayName}" from the campaign? This cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={async () => {
+                        const { error } = await supabase
+                          .from("campaign_players")
+                          .delete()
+                          .eq("id", player.id);
+                        if (error) {
+                          toast.error("Failed to remove player");
+                        } else {
+                          queryClient.invalidateQueries({ queryKey: ["all-player-settings", campaignId] });
+                          queryClient.invalidateQueries({ queryKey: ["campaign-players", campaignId] });
+                          toast.success(`Removed ${displayName}`);
+                        }
+                      }}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Remove
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <div className="ml-auto">
+              <TerminalButton
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3 h-3 mr-1" />
+                    Save Changes
+                  </>
+                )}
+              </TerminalButton>
+            </div>
           </div>
         </div>
       </CollapsibleContent>
@@ -250,6 +315,10 @@ function PlayerCard({
 export function PlayersManagerWidget({ campaignId }: PlayersManagerWidgetProps) {
   const { data: players, isLoading } = useAllPlayerSettings(campaignId);
   const { data: owner, isLoading: ownerLoading } = useCampaignOwner(campaignId);
+  const { user } = useAuth();
+  const [addPlayerOpen, setAddPlayerOpen] = useState(false);
+
+  const isGM = owner?.user_id === user?.id;
 
   if (isLoading || ownerLoading) {
     return (
@@ -259,44 +328,62 @@ export function PlayersManagerWidget({ campaignId }: PlayersManagerWidgetProps) 
     );
   }
 
-  if (!players || players.length === 0) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-4">
-        <Users className="w-8 h-8 mb-2 opacity-50" />
-        <p className="text-sm font-mono">No players in campaign</p>
-        <p className="text-xs mt-1">Share your Campaign ID to invite players</p>
-      </div>
-    );
-  }
-
   return (
-    <ScrollArea className="h-full">
-      <div className="space-y-3 pr-2">
-        <div className="flex items-center gap-2 pb-2 border-b border-primary/20">
-          <Users className="w-4 h-4 text-primary" />
-          <span className="text-xs font-mono text-primary uppercase tracking-wider">
-            Player Management
-          </span>
-          <span className="ml-auto text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-            {players.length} player{players.length !== 1 ? "s" : ""}
-          </span>
-        </div>
+    <>
+      <ScrollArea className="h-full">
+        <div className="space-y-3 pr-2">
+          <div className="flex items-center gap-2 pb-2 border-b border-primary/20">
+            <Users className="w-4 h-4 text-primary" />
+            <span className="text-xs font-mono text-primary uppercase tracking-wider">
+              Player Management
+            </span>
+            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {players?.length || 0} player{(players?.length || 0) !== 1 ? "s" : ""}
+            </span>
+            {isGM && (
+              <TerminalButton
+                size="sm"
+                variant="outline"
+                className="ml-auto"
+                onClick={() => setAddPlayerOpen(true)}
+              >
+                <UserPlus className="w-3 h-3 mr-1" />
+                Add Player
+              </TerminalButton>
+            )}
+          </div>
 
-        <p className="text-[10px] text-muted-foreground">
-          Click on a player to expand and edit their campaign settings.
-        </p>
+          <p className="text-[10px] text-muted-foreground">
+            Click on a player to expand and edit their campaign settings.
+          </p>
 
-        <div className="space-y-2">
-          {players.map((player) => (
-            <PlayerCard
-              key={player.id}
-              player={player}
-              isOwner={owner?.user_id === player.user_id}
-              campaignId={campaignId}
-            />
-          ))}
+          {(!players || players.length === 0) ? (
+            <div className="flex flex-col items-center justify-center text-muted-foreground py-8">
+              <Users className="w-8 h-8 mb-2 opacity-50" />
+              <p className="text-sm font-mono">No players in campaign</p>
+              <p className="text-xs mt-1">Share your Campaign ID to invite players</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {players.map((player) => (
+                <PlayerCard
+                  key={player.id}
+                  player={player}
+                  isOwner={owner?.user_id === player.user_id}
+                  campaignId={campaignId}
+                  isGM={isGM}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      </div>
-    </ScrollArea>
+      </ScrollArea>
+
+      <AddPlayerModal
+        open={addPlayerOpen}
+        onClose={() => setAddPlayerOpen(false)}
+        campaignId={campaignId}
+      />
+    </>
   );
 }

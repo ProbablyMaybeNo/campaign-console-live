@@ -30,7 +30,9 @@ export function useCampaignPlayers(campaignId: string | undefined) {
           campaign_id,
           role,
           joined_at,
-          warband_link
+          warband_link,
+          player_name,
+          is_ghost
         `)
         .eq("campaign_id", campaignId)
         .order("joined_at", { ascending: true });
@@ -38,14 +40,17 @@ export function useCampaignPlayers(campaignId: string | undefined) {
       if (playersError) throw playersError;
       if (!players || players.length === 0) return [];
 
-      // Fetch profiles for all players
-      const userIds = players.map((p) => p.user_id);
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, display_name, avatar_url")
-        .in("id", userIds);
-
-      if (profilesError) throw profilesError;
+      // Fetch profiles for non-ghost players
+      const realUserIds = players.filter((p) => !p.is_ghost).map((p) => p.user_id);
+      let profiles: { id: string; display_name: string | null; avatar_url: string | null }[] = [];
+      if (realUserIds.length > 0) {
+        const { data: profileData, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, display_name, avatar_url")
+          .in("id", realUserIds);
+        if (profilesError) throw profilesError;
+        profiles = profileData || [];
+      }
 
       // Fetch warband counts per user for this campaign
       const { data: warbands, error: warbandsError } = await supabase
@@ -69,7 +74,9 @@ export function useCampaignPlayers(campaignId: string | undefined) {
 
       return players.map((player) => ({
         ...player,
-        profile: profileMap[player.user_id] || null,
+        profile: player.is_ghost
+          ? { display_name: player.player_name || "Ghost Player", avatar_url: null }
+          : (profileMap[player.user_id] || null),
         warband_count: warbandCounts[player.user_id] || 0,
       }));
     },
