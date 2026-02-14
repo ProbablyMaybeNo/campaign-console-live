@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useAllPlayerSettings, usePlayerNarrativeEntriesById, PlayerSettings, PlayerNarrativeEntry } from "@/hooks/usePlayerSettings";
+import { AddPlayerModal } from "@/components/players/AddPlayerModal";
 import { TerminalLoader } from "@/components/ui/TerminalLoader";
 import { TerminalButton } from "@/components/ui/TerminalButton";
 import {
@@ -16,7 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ExternalLink, Users, Settings2, BookOpen } from "lucide-react";
+import { ExternalLink, Users, Settings2, BookOpen, UserPlus, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -132,6 +133,7 @@ export function PlayerListWidget({ component, isGM }: PlayerListWidgetProps) {
   const updateComponent = useUpdateComponent();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [viewingNarrativePlayer, setViewingNarrativePlayer] = useState<PlayerWithExtras | null>(null);
+  const [addPlayerOpen, setAddPlayerOpen] = useState(false);
 
   // Get enabled columns from config, default to name, faction, and points
   const enabledColumns: string[] = useMemo(() => {
@@ -173,8 +175,16 @@ export function PlayerListWidget({ component, isGM }: PlayerListWidgetProps) {
 
   const getCellValue = (player: PlayerWithExtras, columnKey: string): React.ReactNode => {
     switch (columnKey) {
-      case "name":
-        return player.player_name || player.profile_display_name || "—";
+      case "name": {
+        const name = player.player_name || player.profile_display_name || "—";
+        const isGhost = (player as any).is_ghost;
+        return isGhost ? (
+          <span className="inline-flex items-center gap-1.5">
+            {name}
+            <Bot className="w-3 h-3 text-secondary" />
+          </span>
+        ) : name;
+      }
       case "faction":
         return player.faction || "—";
       case "sub_faction":
@@ -260,40 +270,47 @@ export function PlayerListWidget({ component, isGM }: PlayerListWidgetProps) {
             </span>
           </div>
 
-          {isGM && (
-            <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <Settings2 className="w-4 h-4" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-56">
-                <div className="space-y-3">
-                  <h4 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-                    Visible Columns
-                  </h4>
-                  <div className="space-y-2">
-                    {ALL_COLUMNS.map((col) => (
-                      <div key={col.key} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`col-${col.key}`}
-                          checked={enabledColumns.includes(col.key)}
-                          onCheckedChange={() => handleToggleColumn(col.key)}
-                          disabled={enabledColumns.length === 1 && enabledColumns.includes(col.key)}
-                        />
-                        <Label
-                          htmlFor={`col-${col.key}`}
-                          className="text-sm font-mono cursor-pointer"
-                        >
-                          {col.label}
-                        </Label>
-                      </div>
-                    ))}
+          <div className="flex items-center gap-1">
+            {isGM && (
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setAddPlayerOpen(true)}>
+                <UserPlus className="w-4 h-4" />
+              </Button>
+            )}
+            {isGM && (
+              <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Settings2 className="w-4 h-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-56">
+                  <div className="space-y-3">
+                    <h4 className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+                      Visible Columns
+                    </h4>
+                    <div className="space-y-2">
+                      {ALL_COLUMNS.map((col) => (
+                        <div key={col.key} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`col-${col.key}`}
+                            checked={enabledColumns.includes(col.key)}
+                            onCheckedChange={() => handleToggleColumn(col.key)}
+                            disabled={enabledColumns.length === 1 && enabledColumns.includes(col.key)}
+                          />
+                          <Label
+                            htmlFor={`col-${col.key}`}
+                            className="text-sm font-mono cursor-pointer"
+                          >
+                            {col.label}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         </div>
 
         {/* Table */}
@@ -328,6 +345,12 @@ export function PlayerListWidget({ component, isGM }: PlayerListWidgetProps) {
         open={!!viewingNarrativePlayer}
         onClose={() => setViewingNarrativePlayer(null)}
         player={viewingNarrativePlayer}
+        campaignId={component.campaign_id}
+      />
+
+      <AddPlayerModal
+        open={addPlayerOpen}
+        onClose={() => setAddPlayerOpen(false)}
         campaignId={component.campaign_id}
       />
     </>
