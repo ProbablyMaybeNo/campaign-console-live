@@ -226,11 +226,12 @@ export function useCreateLegendItem() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ mapId, name, shape, color, campaignId }: { 
+    mutationFn: async ({ mapId, name, shape, color, iconUrl, campaignId }: { 
       mapId: string; 
       name: string; 
       shape: MarkerShape; 
       color: string;
+      iconUrl?: string;
       campaignId: string;
     }) => {
       // Get max order_index
@@ -251,6 +252,7 @@ export function useCreateLegendItem() {
           shape,
           color,
           order_index: orderIndex,
+          icon_url: iconUrl || null,
         })
         .select()
         .single();
@@ -272,17 +274,19 @@ export function useUpdateLegendItem() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ itemId, name, shape, color, campaignId }: { 
+    mutationFn: async ({ itemId, name, shape, color, iconUrl, campaignId }: { 
       itemId: string; 
       name?: string; 
       shape?: MarkerShape; 
       color?: string;
+      iconUrl?: string | null;
       campaignId: string;
     }) => {
-      const updates: Partial<MapLegendItem> = {};
+      const updates: Record<string, unknown> = {};
       if (name !== undefined) updates.name = name;
       if (shape !== undefined) updates.shape = shape;
       if (color !== undefined) updates.color = color;
+      if (iconUrl !== undefined) updates.icon_url = iconUrl;
       
       const { data, error } = await supabase
         .from('map_legend_items')

@@ -6,10 +6,27 @@ interface MarkerIconProps {
   color: string;
   size?: number;
   className?: string;
+  iconUrl?: string | null;
 }
 
-export const MarkerIcon = forwardRef<SVGSVGElement, MarkerIconProps>(
-  function MarkerIcon({ shape, color, size = 24, className = '' }, ref) {
+export const MarkerIcon = forwardRef<SVGSVGElement | HTMLImageElement, MarkerIconProps>(
+  function MarkerIcon({ shape, color, size = 24, className = '', iconUrl }, ref) {
+    // Custom uploaded icon
+    if (shape === 'custom' && iconUrl) {
+      return (
+        <img
+          ref={ref as React.Ref<HTMLImageElement>}
+          src={iconUrl}
+          alt="Custom marker"
+          width={size}
+          height={size}
+          className={`object-contain ${className}`}
+          draggable={false}
+          style={{ width: size, height: size }}
+        />
+      );
+    }
+
     const halfSize = size / 2;
     
     const getPath = () => {
@@ -39,7 +56,7 @@ export const MarkerIcon = forwardRef<SVGSVGElement, MarkerIconProps>(
     };
 
     return (
-      <svg ref={ref} width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
+      <svg ref={ref as React.Ref<SVGSVGElement>} width={size} height={size} viewBox={`0 0 ${size} ${size}`} className={className}>
         {getPath()}
       </svg>
     );

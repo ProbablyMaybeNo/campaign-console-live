@@ -318,7 +318,7 @@ export function MapCanvas({
                       onMouseEnter={() => !isDragging && setHoveredMarkerId(marker.id)}
                       onMouseLeave={() => setHoveredMarkerId(null)}
                     >
-                      <MarkerIcon shape={legend.shape} color={legend.color} size={32} />
+                      <MarkerIcon shape={legend.shape} color={legend.color} size={32} iconUrl={legend.icon_url} />
                       
                       {/* Drag indicator for GM */}
                       {isGM && placementMode === 'select' && isHovered && !isDragging && !isEditing && (
@@ -332,7 +332,7 @@ export function MapCanvas({
                         <div className="absolute left-1/2 -translate-x-1/2 top-9 bg-background border border-primary/30 rounded px-2 py-1.5 text-xs whitespace-nowrap shadow-lg z-20 pointer-events-none">
                           {/* Legend type name */}
                           <div className="font-medium text-primary flex items-center gap-1.5">
-                            <MarkerIcon shape={legend.shape} color={legend.color} size={12} />
+                            <MarkerIcon shape={legend.shape} color={legend.color} size={12} iconUrl={legend.icon_url} />
                             {legend.name}
                           </div>
                           {/* Custom label if set */}
