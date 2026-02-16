@@ -52,7 +52,7 @@ export function MarkerPalette({
             }`}
             title={`Place ${item.name}`}
           >
-            <MarkerIcon shape={item.shape} color={item.color} size={24} />
+            <MarkerIcon shape={item.shape} color={item.color} size={24} iconUrl={item.icon_url} />
           </button>
         ))
       )}

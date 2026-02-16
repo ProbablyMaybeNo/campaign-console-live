@@ -1,4 +1,4 @@
-export type MarkerShape = 'circle' | 'square' | 'triangle' | 'diamond' | 'star';
+export type MarkerShape = 'circle' | 'square' | 'triangle' | 'diamond' | 'star' | 'custom';
 export type MarkerVisibility = 'all' | 'gm_only';
 
 export interface CampaignMap {
@@ -16,6 +16,7 @@ export interface MapLegendItem {
   name: string;
   shape: MarkerShape;
   color: string;
+  icon_url: string | null;
   order_index: number;
   created_at: string;
 }

@@ -6,6 +6,7 @@ import { MapUploader } from './MapUploader';
 import { MapCanvas } from './MapCanvas';
 import { LegendEditor } from './LegendEditor';
 import { MarkerPalette } from './MarkerPalette';
+import { MarkerIcon } from './MarkerIcon';
 import { TerminalButton } from '@/components/ui/TerminalButton';
 import { useCreateComponent } from '@/hooks/useDashboardComponents';
 import { getSpawnPosition } from '@/lib/canvasPlacement';
@@ -308,10 +309,7 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
             <div className="flex flex-wrap gap-3 p-3 bg-muted/30 border border-border rounded-lg">
               {legendItems.map((item) => (
                 <div key={item.id} className="flex items-center gap-2 text-sm">
-                  <div
-                    className="w-4 h-4 rounded-sm border border-border"
-                    style={{ backgroundColor: item.color }}
-                  />
+                  <MarkerIcon shape={item.shape} color={item.color} size={16} iconUrl={item.icon_url} />
                   <span>{item.name}</span>
                 </div>
               ))}
@@ -322,15 +320,16 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
         <TabsContent value="legend">
           <LegendEditor
             legendItems={legendItems}
-            onAdd={(name, shape, color) => {
-              createLegendItem.mutate({ mapId: map.id, name, shape, color, campaignId });
+            onAdd={(name, shape, color, iconUrl) => {
+              createLegendItem.mutate({ mapId: map.id, name, shape, color, iconUrl, campaignId });
             }}
             onUpdate={(itemId, updates) => {
               updateLegendItem.mutate({ 
                 itemId, 
                 name: updates.name, 
                 shape: updates.shape as MarkerShape, 
-                color: updates.color, 
+                color: updates.color,
+                iconUrl: updates.icon_url,
                 campaignId 
               });
             }}
@@ -338,6 +337,7 @@ export function MapManager({ campaignId, isGM }: MapManagerProps) {
               deleteLegendItem.mutate({ itemId, campaignId });
             }}
             isGM={isGM}
+            campaignId={campaignId}
           />
         </TabsContent>
 
