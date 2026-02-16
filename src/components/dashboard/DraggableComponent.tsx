@@ -223,6 +223,7 @@ function DraggableComponentInner({
 
   const icon = getWidgetIcon(component.component_type);
   const isCampaignConsole = component.component_type === "campaign-console";
+  const isChromeless = ["sticker", "image", "text"].includes(component.component_type);
 
   // Memoize component content to prevent re-renders during drag
   const componentContent = useMemo(() => {
@@ -325,6 +326,68 @@ function DraggableComponentInner({
           )}
 
           {/* Component Content - full area */}
+          <div
+            className={`flex-1 text-xs text-muted-foreground ${
+              isOverlayDragging ? "overflow-hidden pointer-events-none" : "overflow-auto"
+            }`}
+          >
+            {isOverlayDragging ? (
+              <WidgetDragPreview component={component} mode="placeholder" className="h-full w-full" />
+            ) : (
+              componentContent
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Chromeless widgets: sticker, image, text — no title bar, border, or card background
+  if (isChromeless) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`draggable-component ${
+          isOverlayDragging ? "opacity-20" : isDragging ? "opacity-90" : ""
+        } ${isSelected ? "ring-2 ring-secondary ring-offset-2 ring-offset-background" : ""} ${
+          isMultiSelected ? "ring-2 ring-warning ring-offset-1 ring-offset-background" : ""
+        }`}
+        onClick={handleClick}
+      >
+        <div className="h-full flex flex-col rounded overflow-hidden relative">
+          {/* Corner Controls (GM only) */}
+          {isGM && (
+            <>
+              <div
+                className="absolute top-1 left-1 z-10 cursor-grab active:cursor-grabbing p-1 rounded bg-card/60 hover:bg-card border border-border/50 touch-none opacity-0 hover:opacity-100 transition-opacity"
+                {...listeners}
+                {...attributes}
+              >
+                <GripVertical className="w-3 h-3 text-primary opacity-60 hover:opacity-100" />
+              </div>
+              <IconButton
+                variant="destructive"
+                size="default"
+                onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label={`Delete ${component.name} widget`}
+                className="absolute top-1 right-1 z-10 opacity-0 hover:opacity-100 transition-opacity"
+              >
+                <X className="w-3 h-3" />
+              </IconButton>
+              <div
+                className="absolute -bottom-1 -right-1 w-8 h-8 cursor-se-resize group z-10 flex items-center justify-center"
+                onMouseDown={handleResizeStart}
+                aria-label="Resize widget"
+                role="button"
+                tabIndex={0}
+              >
+                <Maximize2 className="w-4 h-4 text-primary/50 group-hover:text-primary group-hover:drop-shadow-[0_0_4px_hsl(var(--primary))] rotate-90 relative z-10 transition-all opacity-0 group-hover:opacity-100" />
+              </div>
+            </>
+          )}
+
           <div
             className={`flex-1 text-xs text-muted-foreground ${
               isOverlayDragging ? "overflow-hidden pointer-events-none" : "overflow-auto"
