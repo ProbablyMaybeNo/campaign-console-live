@@ -72,26 +72,26 @@ export const StickerWidget = memo(function StickerWidget({ component, isGM }: St
   };
 
   return (
-    <div className="h-full flex flex-col items-center justify-center relative">
-      {/* Sticker Display */}
+    <div className="h-full w-full flex items-center justify-center relative">
+      {/* Sticker Display — scales to fill container */}
       <div
-        className="flex items-center justify-center transition-transform hover:scale-105"
+        className="flex items-center justify-center w-full h-full"
         style={{ 
           color: color,
           filter: `drop-shadow(0 0 12px ${color}50)`,
         }}
       >
-        <DynamicIcon name={icon} size={pixelSize} />
+        <DynamicIcon name={icon} style={{ width: "100%", height: "100%" }} />
       </div>
 
       {/* Edit button for GM */}
       {isGM && (
-        <div className="absolute bottom-1 right-1">
+        <div className="absolute bottom-1 right-1 opacity-0 hover:opacity-100 transition-opacity">
           <TerminalButton 
             variant="ghost" 
             size="sm" 
             onClick={() => setShowPicker(true)}
-            className="h-7 w-7 p-0"
+            className="h-7 w-7 p-0 bg-card/60"
           >
             <Pencil className="w-3 h-3" />
           </TerminalButton>
