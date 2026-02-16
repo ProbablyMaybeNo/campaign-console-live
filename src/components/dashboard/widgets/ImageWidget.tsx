@@ -159,53 +159,26 @@ export function ImageWidget({ component, isGM }: ImageWidgetProps) {
     );
   }
 
-  // Image is set - display it
+  // Image is set - display it edge-to-edge (chromeless)
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 relative group overflow-hidden rounded">
-        <img
-          src={imageUrl}
-          alt={caption || "Component image"}
-          className="w-full h-full object-contain bg-black/20"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "/placeholder.svg";
-          }}
-        />
-        {isGM && (
-          <button
-            onClick={handleRemoveImage}
-            className="absolute top-2 right-2 bg-destructive/80 text-destructive-foreground p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
-            title="Remove image"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
-      </div>
-
-      {/* Caption */}
-      <div className="pt-2 border-t border-border mt-2">
-        {captionEdit && isGM ? (
-          <input
-            autoFocus
-            type="text"
-            defaultValue={caption}
-            placeholder="Add caption..."
-            className="w-full bg-input border border-primary rounded px-2 py-1 text-xs"
-            onBlur={(e) => handleCaptionSave(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCaptionSave((e.target as HTMLInputElement).value);
-              if (e.key === "Escape") setCaptionEdit(false);
-            }}
-          />
-        ) : (
-          <p
-            className={`text-xs text-muted-foreground text-center ${isGM ? "cursor-pointer hover:text-foreground" : ""}`}
-            onClick={() => isGM && setCaptionEdit(true)}
-          >
-            {caption || (isGM ? "Click to add caption" : "")}
-          </p>
-        )}
-      </div>
+    <div className="h-full w-full relative group">
+      <img
+        src={imageUrl}
+        alt={caption || "Component image"}
+        className="w-full h-full object-contain"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = "/placeholder.svg";
+        }}
+      />
+      {isGM && (
+        <button
+          onClick={handleRemoveImage}
+          className="absolute top-2 right-2 bg-destructive/80 text-destructive-foreground p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Remove image"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
     </div>
   );
 }
