@@ -5,4 +5,4 @@ Disallow: /campaign/
 Disallow: /settings
 Disallow: /admin/
 
-Sitemap: https://campaignconsole.xyz/sitemap.xml
+Sitemap: https://vcnodroausotjqabjqcf.supabase.co/functions/v1/sitemap
