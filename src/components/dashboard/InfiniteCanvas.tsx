@@ -442,16 +442,44 @@ export function InfiniteCanvas({
     };
   }, [isGM]);
 
-  // Prevent scroll on canvas - only allow scroll within focused components
+  // Handle wheel events: zoom when on canvas, allow scroll inside scrollable widgets
   const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
     const target = e.target as HTMLElement;
     const scrollableParent = target.closest('[data-scrollable="true"]');
     
-    if (!scrollableParent) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }, []);
+    if (scrollableParent) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const ref = transformRef.current;
+    const container = containerRef.current;
+    if (!ref || !container) return;
+
+    const state = ref.instance?.transformState;
+    if (!state) return;
+
+    const currentScale = state.scale ?? scale;
+    const positionX = state.positionX ?? 0;
+    const positionY = state.positionY ?? 0;
+
+    // Determine zoom direction from deltaY
+    const direction = e.deltaY < 0 ? 1 : -1;
+    const newScale = Math.max(0.3, Math.min(2, Math.round((currentScale + direction * ZOOM_STEP) * 10) / 10));
+
+    if (newScale === currentScale) return;
+
+    // Zoom toward cursor position
+    const rect = container.getBoundingClientRect();
+    const cursorX = e.clientX - rect.left;
+    const cursorY = e.clientY - rect.top;
+    const scaleFactor = newScale / currentScale;
+    const newPositionX = cursorX - (cursorX - positionX) * scaleFactor;
+    const newPositionY = cursorY - (cursorY - positionY) * scaleFactor;
+
+    const clamped = clampTransform(newPositionX, newPositionY, newScale, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
+    ref.setTransform(clamped.positionX, clamped.positionY, newScale, 100, "easeOut");
+  }, [scale, canvasDimensions.width, canvasDimensions.height]);
 
   const handleCanvasClick = useCallback(() => {
     onComponentSelect(null);
