@@ -21,6 +21,7 @@ import {
   Sticker,
   Lock,
   Swords,
+  Layers,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
