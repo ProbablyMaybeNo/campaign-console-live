@@ -72,7 +72,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
   const [borderColor, setBorderColor] = useState("#22c55e");
   const [themeId, setThemeId] = useState("dark");
   const [bannerUrl, setBannerUrl] = useState("");
-  const [displaySettings, setDisplaySettings] = useState<DisplaySettings>({
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettings & { allow_player_annotations?: boolean }>({
     showId: true,
     showPoints: true,
     showPlayers: true,
@@ -80,6 +80,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
     showDates: true,
     showStatus: true,
     showGameSystem: true,
+    allow_player_annotations: false,
   });
   const [copiedJoinCode, setCopiedJoinCode] = useState(false);
 
@@ -114,6 +115,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
           showDates: ds.showDates ?? true,
           showStatus: ds.showStatus ?? true,
           showGameSystem: ds.showGameSystem ?? true,
+          allow_player_annotations: (ds as any).allow_player_annotations ?? false,
         });
       }
     }
@@ -556,6 +558,25 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
                       </Label>
                     </div>
                   ))}
+                </div>
+
+                {/* Annotation permissions */}
+                <div className="pt-3 border-t border-border/30">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                    Canvas Annotations
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="allow_player_annotations"
+                      checked={displaySettings.allow_player_annotations ?? false}
+                      onCheckedChange={(checked) =>
+                        setDisplaySettings((prev) => ({ ...prev, allow_player_annotations: checked }))
+                      }
+                    />
+                    <Label htmlFor="allow_player_annotations" className="text-xs">
+                      Allow players to add text & shapes to canvas
+                    </Label>
+                  </div>
                 </div>
               </div>
             </TabsContent>
