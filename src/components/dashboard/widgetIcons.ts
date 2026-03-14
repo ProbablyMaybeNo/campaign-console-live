@@ -21,6 +21,7 @@ export const WIDGET_ICONS: Record<string, string> = {
   text: "📝",
   sticker: "⭐",
   battle_tracker: "⚔️",
+  card_deck: "🃏",
 };
 
 export function getWidgetIcon(componentType: DashboardComponent["component_type"] | string) {

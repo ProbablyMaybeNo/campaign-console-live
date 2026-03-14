@@ -18,6 +18,7 @@ import { RollRecorderWidget } from "./widgets/RollRecorderWidget";
 import { AnnouncementsWidget } from "./widgets/AnnouncementsWidget";
 import { TextWidget } from "./widgets/TextWidget";
 import { StickerWidget } from "./widgets/StickerWidget";
+import { CardDeckWidget } from "./widgets/CardDeckWidget";
 import { BattleTrackerWidget } from "./widgets/BattleTrackerWidget";
 import { WidgetDragPreview } from "./WidgetDragPreview";
 import { getWidgetIcon } from "./widgetIcons";
@@ -264,6 +265,8 @@ function DraggableComponentInner({
         return <StickerWidget component={component} isGM={isGM} />;
       case "battle_tracker":
         return <BattleTrackerWidget campaignId={campaignId} isGM={isGM} />;
+      case "card_deck":
+        return <CardDeckWidget component={component} isGM={isGM} campaignId={campaignId} />;
       default:
         return (
           <div className="text-center py-8">

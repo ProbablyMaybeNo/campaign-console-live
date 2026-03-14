@@ -21,6 +21,7 @@ import {
   Sticker,
   Lock,
   Swords,
+  Layers,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -61,6 +62,7 @@ const COMPONENT_TYPES: ComponentTypeConfig[] = [
   { type: "announcements", label: "Announce", icon: Megaphone, description: "GM notice board" },
   { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget" },
   { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker" },
+  { type: "card_deck", label: "Card Deck", icon: Layers, description: "Draw random cards from custom decks" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {
@@ -162,6 +164,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "battle_tracker") {
       width = 420;
       height = 450;
+    } else if (selectedType === "card_deck") {
+      width = 350;
+      height = 400;
     }
 
     // Spawn at canvas center with slight offset to not overlap existing components
@@ -352,6 +357,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
               {selectedType === "battle_tracker" && (
                 <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
                   Displays active pairings, match history, and allows players to submit battle reports. GMs manage rounds via the Battles overlay.
+                </p>
+              )}
+
+              {selectedType === "card_deck" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Create decks of cards (text or images) and draw randomly. GMs configure decks via the widget's settings button. Build custom decks by copying cards from multiple sources.
                 </p>
               )}
 
