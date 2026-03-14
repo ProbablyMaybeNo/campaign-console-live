@@ -69,9 +69,10 @@ export function CardDeckWidget({ component, isGM, campaignId }: CardDeckWidgetPr
 
   const persist = useCallback(
     (patch: Partial<CardDeckConfig>) => {
+      const merged = { ...config, ...patch };
       updateComponent.mutate({
         id: component.id,
-        config: { ...config, ...patch } as unknown as Record<string, unknown>,
+        config: JSON.parse(JSON.stringify(merged)),
       });
     },
     [updateComponent, component.id, config]
