@@ -360,6 +360,12 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
                 </p>
               )}
 
+              {selectedType === "card_deck" && (
+                <p className="text-xs text-muted-foreground bg-muted/30 p-3 rounded">
+                  Create decks of cards (text or images) and draw randomly. GMs configure decks via the widget's settings button. Build custom decks by copying cards from multiple sources.
+                </p>
+              )}
+
               {/* Preview */}
               <div className="border border-dashed border-border/50 p-4 bg-muted/10 rounded">
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Preview</p>
