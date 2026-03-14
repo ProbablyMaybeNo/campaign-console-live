@@ -13,10 +13,13 @@ import { createGrabPointPreservingModifier } from "./dragOverlayModifiers";
 import { AnimatePresence } from "framer-motion";
 import { DraggableComponent } from "./DraggableComponent";
 import { WidgetDragPreview } from "./WidgetDragPreview";
-import { CanvasControls } from "./CanvasControls";
+import { CanvasControls, AnnotationTool } from "./CanvasControls";
 import { CanvasGrid } from "./CanvasGrid";
+import { AnnotationLayer } from "./AnnotationLayer";
 import { DashboardComponent } from "@/hooks/useDashboardComponents";
 import { useDebouncedComponentUpdate } from "@/hooks/useDebouncedComponentUpdate";
+import { useCanvasAnnotations, useCreateAnnotation } from "@/hooks/useCanvasAnnotations";
+import { useAuth } from "@/hooks/useAuth";
 import { getCanvasDimensions, getInitialTransform, getTransformForComponent, clampTransform } from "@/lib/canvasPlacement";
 
 interface InfiniteCanvasProps {
