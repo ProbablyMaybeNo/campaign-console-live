@@ -559,6 +559,25 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
                     </div>
                   ))}
                 </div>
+
+                {/* Annotation permissions */}
+                <div className="pt-3 border-t border-border/30">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-medium mb-2">
+                    Canvas Annotations
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="allow_player_annotations"
+                      checked={displaySettings.allow_player_annotations ?? false}
+                      onCheckedChange={(checked) =>
+                        setDisplaySettings((prev) => ({ ...prev, allow_player_annotations: checked }))
+                      }
+                    />
+                    <Label htmlFor="allow_player_annotations" className="text-xs">
+                      Allow players to add text & shapes to canvas
+                    </Label>
+                  </div>
+                </div>
               </div>
             </TabsContent>
 
