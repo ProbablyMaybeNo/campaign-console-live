@@ -34,7 +34,7 @@ interface InfiniteCanvasProps {
 }
 
 const ZOOM_STEP = 0.1;
-const GRID_SIZE = 40; // Matches the visual grid in CanvasGrid
+const GRID_SIZE = 40;
 const INITIAL_SCALE = 1.0;
 
 export function InfiniteCanvas({
@@ -61,9 +61,6 @@ export function InfiniteCanvas({
   const [shiftHeld, setShiftHeld] = useState(false);
 
   // DragOverlay state
-  // NOTE: we keep the overlay active for a short "handoff" after drop so the real
-  // widget doesn't flash at its old position for 1 frame before the optimistic
-  // cache update propagates through React Query.
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [pendingDrop, setPendingDrop] = useState<
     { id: string; x: number; y: number } | null
@@ -73,9 +70,15 @@ export function InfiniteCanvas({
   const [marquee, setMarquee] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
   const marqueeStartRef = useRef<{ canvasX: number; canvasY: number } | null>(null);
 
-  // Drop coordinates are derived from @dnd-kit’s translated rect (which already includes
-  // modifiers like grab-point preservation), then converted from viewport → canvas
-  // space using current pan/zoom.
+  // Annotation tool state
+  const [activeTool, setActiveTool] = useState<AnnotationTool>(null);
+  const [annotationColor, setAnnotationColor] = useState("#22c55e");
+  const drawStartRef = useRef<{ canvasX: number; canvasY: number } | null>(null);
+  const [drawPreview, setDrawPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  // Annotations data
+  const { data: annotations = [] } = useCanvasAnnotations(campaignId);
+  const createAnnotation = useCreateAnnotation();
 
   // Track which campaign we've centered on to handle campaign switching
   const centeredCampaignRef = useRef<string | null>(null);
@@ -101,10 +104,8 @@ export function InfiniteCanvas({
       });
     };
 
-    // Initial size
     updateSize();
 
-    // Use ResizeObserver for container size changes
     const resizeObserver = new ResizeObserver(updateSize);
     resizeObserver.observe(container);
 
@@ -124,9 +125,7 @@ export function InfiniteCanvas({
     const container = containerRef.current;
     if (!ref || !container) return;
 
-    // Small delay to ensure TransformWrapper is fully initialized
     const timer = setTimeout(() => {
-      // If we have an anchor component (Campaign Console), center on it
       if (anchorComponent) {
         const { positionX, positionY } = getTransformForComponent(
           container.clientWidth,
@@ -138,30 +137,19 @@ export function InfiniteCanvas({
           INITIAL_SCALE
         );
         const clamped = clampTransform(
-          positionX,
-          positionY,
-          INITIAL_SCALE,
-          container.clientWidth,
-          container.clientHeight,
-          canvasDimensions.width,
-          canvasDimensions.height
+          positionX, positionY, INITIAL_SCALE,
+          container.clientWidth, container.clientHeight,
+          canvasDimensions.width, canvasDimensions.height
         );
         ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
       } else {
-        // No anchor - show top-center of canvas
         const { positionX, positionY } = getInitialTransform(
-          container.clientWidth,
-          container.clientHeight,
-          INITIAL_SCALE
+          container.clientWidth, container.clientHeight, INITIAL_SCALE
         );
         const clamped = clampTransform(
-          positionX,
-          positionY,
-          INITIAL_SCALE,
-          container.clientWidth,
-          container.clientHeight,
-          canvasDimensions.width,
-          canvasDimensions.height
+          positionX, positionY, INITIAL_SCALE,
+          container.clientWidth, container.clientHeight,
+          canvasDimensions.width, canvasDimensions.height
         );
         ref.setTransform(clamped.positionX, clamped.positionY, INITIAL_SCALE, 0);
       }
@@ -171,12 +159,9 @@ export function InfiniteCanvas({
     return () => clearTimeout(timer);
   }, [isReady, anchorComponent, canvasDimensions.width, canvasDimensions.height]);
 
-  // Reduce activation distance for faster drag start (3px instead of 8px)
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 3,
-      },
+      activationConstraint: { distance: 3 },
     })
   );
 
@@ -184,7 +169,20 @@ export function InfiniteCanvas({
     return Math.round(value / GRID_SIZE) * GRID_SIZE;
   }, []);
 
-  // Handle drag start - set interaction mode for paint reduction
+  // Helper to convert viewport coords to canvas coords
+  const viewportToCanvas = useCallback((clientX: number, clientY: number, container: HTMLElement) => {
+    const ref = transformRef.current;
+    const state = ref?.instance?.transformState;
+    if (!state) return null;
+    const rect = container.getBoundingClientRect();
+    const viewportX = clientX - rect.left;
+    const viewportY = clientY - rect.top;
+    return {
+      canvasX: (viewportX - state.positionX) / state.scale,
+      canvasY: (viewportY - state.positionY) / state.scale,
+    };
+  }, []);
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setPendingDrop(null);
     setIsAnyDragging(true);
@@ -197,7 +195,6 @@ export function InfiniteCanvas({
       const componentId = active.id as string;
       const component = components.find((c) => c.id === componentId);
 
-      // If we can't resolve the component (or user isn't GM), just clean up.
       if (!component || !isGM) {
         setIsAnyDragging(false);
         setActiveDragId(null);
@@ -205,7 +202,6 @@ export function InfiniteCanvas({
         return;
       }
 
-      // Delta is in viewport pixels; divide by scale to get canvas-coordinate movement.
       const deltaX = delta.x / scale;
       const deltaY = delta.y / scale;
 
@@ -213,13 +209,11 @@ export function InfiniteCanvas({
       const newY = snapPosition(component.position_y + deltaY);
 
       console.log('[DnD Drop]', {
-        delta,
-        scale,
+        delta, scale,
         oldPos: { x: component.position_x, y: component.position_y },
         newPos: { x: newX, y: newY },
       });
 
-      // No meaningful move → don't keep the overlay around.
       if (newX === component.position_x && newY === component.position_y) {
         setIsAnyDragging(false);
         setActiveDragId(null);
@@ -227,18 +221,14 @@ export function InfiniteCanvas({
         return;
       }
 
-      // Keep overlay + placeholder active until the optimistic cache update
-      // has propagated and the widget has re-rendered at its final snapped position.
       setPendingDrop({ id: componentId, x: newX, y: newY });
 
-      // Move the dragged widget
       debouncedUpdate({
         id: componentId,
         position_x: newX,
         position_y: newY,
       });
 
-      // Also move all other multi-selected widgets by the same delta
       if (multiSelectedIds.size > 1 && multiSelectedIds.has(componentId)) {
         components.forEach((c) => {
           if (c.id !== componentId && multiSelectedIds.has(c.id)) {
@@ -251,7 +241,7 @@ export function InfiniteCanvas({
         });
       }
 
-      flushNow(); // Flush immediately on drag end
+      flushNow();
     },
     [components, isGM, scale, debouncedUpdate, flushNow, snapPosition, multiSelectedIds]
   );
@@ -262,7 +252,6 @@ export function InfiniteCanvas({
     setPendingDrop(null);
   }, []);
 
-  // Resolve the drag-end "handoff" once the underlying widget reflects the snapped position.
   useEffect(() => {
     if (!pendingDrop) return;
 
@@ -274,7 +263,6 @@ export function InfiniteCanvas({
       return;
     }
 
-    // Safety valve: avoid getting stuck if something unexpected happens.
     const t = setTimeout(() => {
       setActiveDragId(null);
       setIsAnyDragging(false);
@@ -284,61 +272,43 @@ export function InfiniteCanvas({
     return () => clearTimeout(t);
   }, [pendingDrop, components]);
 
-  // Recenter on the anchor component (Campaign Console) or top of canvas
   const handleRecenter = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
     if (!ref || !container) return;
 
     const targetScale = INITIAL_SCALE;
-    
-    // If we have an anchor component, center on it
     const targetComponent = anchorComponent || components[0];
     if (targetComponent) {
       const { positionX, positionY } = getTransformForComponent(
-        container.clientWidth,
-        container.clientHeight,
-        targetComponent.position_x,
-        targetComponent.position_y,
-        targetComponent.width,
-        targetComponent.height,
-        targetScale
+        container.clientWidth, container.clientHeight,
+        targetComponent.position_x, targetComponent.position_y,
+        targetComponent.width, targetComponent.height, targetScale
       );
       const clamped = clampTransform(positionX, positionY, targetScale, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
       ref.setTransform(clamped.positionX, clamped.positionY, targetScale, 200, "easeOut");
     } else {
-      // No components - show top of canvas
-      const { positionX, positionY } = getInitialTransform(
-        container.clientWidth,
-        container.clientHeight,
-        targetScale
-      );
+      const { positionX, positionY } = getInitialTransform(container.clientWidth, container.clientHeight, targetScale);
       const clamped = clampTransform(positionX, positionY, targetScale, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
       ref.setTransform(clamped.positionX, clamped.positionY, targetScale, 200, "easeOut");
     }
   }, [anchorComponent, components, canvasDimensions.width, canvasDimensions.height]);
 
-  // Zoom toward viewport center with clamping
   const handleZoomIn = useCallback(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
     if (!ref || !container) return;
-    
-    // Access state through instance property
     const state = ref.instance?.transformState;
     if (!state) return;
-    
     const currentScale = state.scale ?? scale;
     const positionX = state.positionX ?? 0;
     const positionY = state.positionY ?? 0;
     const newScale = Math.min(2, Math.round((currentScale + ZOOM_STEP) * 10) / 10);
-    
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
     const scaleFactor = newScale / currentScale;
     const newPositionX = centerX - (centerX - positionX) * scaleFactor;
     const newPositionY = centerY - (centerY - positionY) * scaleFactor;
-    
     const clamped = clampTransform(newPositionX, newPositionY, newScale, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
     ref.setTransform(clamped.positionX, clamped.positionY, newScale, 150, "easeOut");
   }, [scale, canvasDimensions.width, canvasDimensions.height]);
@@ -347,22 +317,17 @@ export function InfiniteCanvas({
     const ref = transformRef.current;
     const container = containerRef.current;
     if (!ref || !container) return;
-    
-    // Access state through instance property
     const state = ref.instance?.transformState;
     if (!state) return;
-    
     const currentScale = state.scale ?? scale;
     const positionX = state.positionX ?? 0;
     const positionY = state.positionY ?? 0;
     const newScale = Math.max(0.3, Math.round((currentScale - ZOOM_STEP) * 10) / 10);
-    
     const centerX = container.clientWidth / 2;
     const centerY = container.clientHeight / 2;
     const scaleFactor = newScale / currentScale;
     const newPositionX = centerX - (centerX - positionX) * scaleFactor;
     const newPositionY = centerY - (centerY - positionY) * scaleFactor;
-    
     const clamped = clampTransform(newPositionX, newPositionY, newScale, container.clientWidth, container.clientHeight, canvasDimensions.width, canvasDimensions.height);
     ref.setTransform(clamped.positionX, clamped.positionY, newScale, 150, "easeOut");
   }, [scale, canvasDimensions.width, canvasDimensions.height]);
@@ -373,30 +338,20 @@ export function InfiniteCanvas({
 
   const handleTransform = useCallback((ref: ReactZoomPanPinchRef) => {
     const state = ref.instance?.transformState;
-    if (state) {
-      setScale(state.scale);
-    }
+    if (state) setScale(state.scale);
   }, []);
 
   const handlePanningStart = useCallback(() => setIsPanning(true), []);
-  
-  // No auto-snap on panning stop - let user pan freely
-  // The visible boundary border shows the canvas limits
-  const handlePanningStop = useCallback(() => {
-    setIsPanning(false);
-  }, []);
+  const handlePanningStop = useCallback(() => setIsPanning(false), []);
 
   // Auto-center when anchor component first appears or on campaign switch
   useEffect(() => {
     const ref = transformRef.current;
     const container = containerRef.current;
     if (!ref || !container) return;
-
-    // Only center if we have an anchor and haven't centered this campaign yet
     if (!anchorComponent) return;
     if (centeredCampaignRef.current === campaignId) return;
 
-    // Wait for layout to stabilize
     const frame = requestAnimationFrame(() => {
       if (!transformRef.current?.instance?.transformState) return;
       centeredCampaignRef.current = campaignId;
@@ -460,11 +415,10 @@ export function InfiniteCanvas({
     };
   }, [isGM]);
 
-  // Handle wheel events: zoom when on canvas, allow scroll inside scrollable widgets
+  // Handle wheel events
   const handleCanvasWheel = useCallback((e: React.WheelEvent) => {
     const target = e.target as HTMLElement;
     const scrollableParent = target.closest('[data-scrollable="true"]');
-    
     if (scrollableParent) return;
 
     e.preventDefault();
@@ -481,13 +435,11 @@ export function InfiniteCanvas({
     const positionX = state.positionX ?? 0;
     const positionY = state.positionY ?? 0;
 
-    // Determine zoom direction from deltaY
     const direction = e.deltaY < 0 ? 1 : -1;
     const newScale = Math.max(0.3, Math.min(2, Math.round((currentScale + direction * ZOOM_STEP) * 10) / 10));
 
     if (newScale === currentScale) return;
 
-    // Zoom toward cursor position
     const rect = container.getBoundingClientRect();
     const cursorX = e.clientX - rect.left;
     const cursorY = e.clientY - rect.top;
@@ -499,88 +451,163 @@ export function InfiniteCanvas({
     ref.setTransform(clamped.positionX, clamped.positionY, newScale, 100, "easeOut");
   }, [scale, canvasDimensions.width, canvasDimensions.height]);
 
-  const handleCanvasClick = useCallback(() => {
-    onComponentSelect(null);
-  }, [onComponentSelect]);
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    // If text tool is active and we click on empty canvas, create a text annotation
+    if (activeTool === 'text' && canAnnotate) {
+      const container = containerRef.current;
+      if (!container) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('[data-draggable-component]') || target.closest('[data-annotation]')) return;
 
-  // Handle resize COMMIT - only called once on mouseup
-  // Updates cache + triggers debounced DB write, then flushes immediately
+      const coords = viewportToCanvas(e.clientX, e.clientY, container);
+      if (!coords) return;
+
+      const snappedX = snapPosition(coords.canvasX);
+      const snappedY = snapPosition(coords.canvasY);
+
+      createAnnotation.mutate({
+        campaign_id: campaignId,
+        annotation_type: 'text',
+        position_x: snappedX,
+        position_y: snappedY,
+        width: 200,
+        height: 40,
+        color: annotationColor,
+        font_size: 16,
+        content: '',
+      });
+      return;
+    }
+
+    onComponentSelect(null);
+  }, [onComponentSelect, activeTool, canAnnotate, campaignId, annotationColor, viewportToCanvas, snapPosition, createAnnotation]);
+
+  // Handle resize COMMIT
   const handleComponentResize = useCallback(
     (id: string, width: number, height: number) => {
       const snappedWidth = Math.round(width / GRID_SIZE) * GRID_SIZE;
       const snappedHeight = Math.round(height / GRID_SIZE) * GRID_SIZE;
-      
-      // Single cache update + DB write at resize end
-      debouncedUpdate({
-        id,
-        width: snappedWidth,
-        height: snappedHeight,
-      });
-      
-      // Flush immediately since this is resize end
+      debouncedUpdate({ id, width: snappedWidth, height: snappedHeight });
       flushNow();
     },
     [debouncedUpdate, flushNow]
   );
 
-  // Handle resize start/end for canvas-wide interaction tracking
-  const handleResizeStart = useCallback(() => {
-    setIsAnyResizing(true);
-  }, []);
-
-  const handleResizeEnd = useCallback(() => {
-    setIsAnyResizing(false);
-    // Flush already happens in handleComponentResize
-  }, []);
+  const handleResizeStart = useCallback(() => setIsAnyResizing(true), []);
+  const handleResizeEnd = useCallback(() => setIsAnyResizing(false), []);
 
   const activeDragComponent = useMemo(() => {
     if (!activeDragId) return null;
     return components.find((c) => c.id === activeDragId) ?? null;
   }, [activeDragId, components]);
 
-  // Marquee selection handlers (Shift + left-drag on empty canvas)
+  // Marquee + drawing handlers
   const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!isGM || !e.shiftKey || e.button !== 0) return;
-    
-    // Don't start marquee if clicking on a widget
+    const container = containerRef.current;
+    if (!container) return;
     const target = e.target as HTMLElement;
+
+    // Drawing tool: line or rectangle
+    if ((activeTool === 'line' || activeTool === 'rectangle') && canAnnotate && e.button === 0) {
+      if (target.closest('[data-draggable-component]') || target.closest('[data-annotation]')) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const coords = viewportToCanvas(e.clientX, e.clientY, container);
+      if (!coords) return;
+
+      drawStartRef.current = { canvasX: snapPosition(coords.canvasX), canvasY: snapPosition(coords.canvasY) };
+      setDrawPreview({ x: snapPosition(coords.canvasX), y: snapPosition(coords.canvasY), w: 0, h: 0 });
+      return;
+    }
+
+    // Marquee selection
+    if (!isGM || !e.shiftKey || e.button !== 0) return;
     if (target.closest('[data-draggable-component]')) return;
 
     e.preventDefault();
     e.stopPropagation();
 
-    const ref = transformRef.current;
-    const state = ref?.instance?.transformState;
-    if (!state) return;
+    const coords = viewportToCanvas(e.clientX, e.clientY, container);
+    if (!coords) return;
 
-    // Convert viewport coords to canvas coords
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const viewportX = e.clientX - rect.left;
-    const viewportY = e.clientY - rect.top;
-    const canvasX = (viewportX - state.positionX) / state.scale;
-    const canvasY = (viewportY - state.positionY) / state.scale;
-
-    marqueeStartRef.current = { canvasX, canvasY };
-    setMarquee({ startX: canvasX, startY: canvasY, currentX: canvasX, currentY: canvasY });
-  }, [isGM]);
+    marqueeStartRef.current = coords;
+    setMarquee({ startX: coords.canvasX, startY: coords.canvasY, currentX: coords.canvasX, currentY: coords.canvasY });
+  }, [isGM, activeTool, canAnnotate, viewportToCanvas, snapPosition]);
 
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Drawing preview
+    if (drawStartRef.current && drawPreview) {
+      const coords = viewportToCanvas(e.clientX, e.clientY, container);
+      if (!coords) return;
+      const snappedX = snapPosition(coords.canvasX);
+      const snappedY = snapPosition(coords.canvasY);
+      setDrawPreview({
+        x: Math.min(drawStartRef.current.canvasX, snappedX),
+        y: Math.min(drawStartRef.current.canvasY, snappedY),
+        w: Math.abs(snappedX - drawStartRef.current.canvasX),
+        h: Math.abs(snappedY - drawStartRef.current.canvasY),
+      });
+      return;
+    }
+
+    // Marquee
     if (!marquee || !marqueeStartRef.current) return;
 
-    const ref = transformRef.current;
-    const state = ref?.instance?.transformState;
-    if (!state) return;
+    const coords = viewportToCanvas(e.clientX, e.clientY, container);
+    if (!coords) return;
 
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const viewportX = e.clientX - rect.left;
-    const viewportY = e.clientY - rect.top;
-    const canvasX = (viewportX - state.positionX) / state.scale;
-    const canvasY = (viewportY - state.positionY) / state.scale;
+    setMarquee(prev => prev ? { ...prev, currentX: coords.canvasX, currentY: coords.canvasY } : null);
+  }, [marquee, drawPreview, viewportToCanvas, snapPosition]);
 
-    setMarquee(prev => prev ? { ...prev, currentX: canvasX, currentY: canvasY } : null);
-  }, [marquee]);
+  const handleCanvasMouseUp = useCallback((e: React.MouseEvent) => {
+    // Finish drawing
+    if (drawStartRef.current && drawPreview && canAnnotate) {
+      const container = containerRef.current;
+      if (container) {
+        const coords = viewportToCanvas(e.clientX, e.clientY, container);
+        if (coords) {
+          const endX = snapPosition(coords.canvasX);
+          const endY = snapPosition(coords.canvasY);
+          const startX = drawStartRef.current.canvasX;
+          const startY = drawStartRef.current.canvasY;
 
-  const handleCanvasMouseUp = useCallback(() => {
+          // Only create if there's meaningful size
+          if (Math.abs(endX - startX) > 10 || Math.abs(endY - startY) > 10) {
+            if (activeTool === 'line') {
+              createAnnotation.mutate({
+                campaign_id: campaignId,
+                annotation_type: 'line',
+                position_x: startX,
+                position_y: startY,
+                end_x: endX,
+                end_y: endY,
+                color: annotationColor,
+              });
+            } else if (activeTool === 'rectangle') {
+              createAnnotation.mutate({
+                campaign_id: campaignId,
+                annotation_type: 'rectangle',
+                position_x: Math.min(startX, endX),
+                position_y: Math.min(startY, endY),
+                width: Math.abs(endX - startX),
+                height: Math.abs(endY - startY),
+                color: annotationColor,
+              });
+            }
+          }
+        }
+      }
+
+      drawStartRef.current = null;
+      setDrawPreview(null);
+      return;
+    }
+
+    // Marquee
     if (!marquee || !onMarqueeSelect) {
       setMarquee(null);
       marqueeStartRef.current = null;
@@ -592,16 +619,10 @@ export function InfiniteCanvas({
     const top = Math.min(marquee.startY, marquee.currentY);
     const bottom = Math.max(marquee.startY, marquee.currentY);
 
-    // Only select if marquee has meaningful size (>10px canvas units)
     if (right - left > 10 && bottom - top > 10) {
       const hitIds = components
         .filter(c => {
-          const cx = c.position_x;
-          const cy = c.position_y;
-          const cw = c.width;
-          const ch = c.height;
-          // Widget overlaps the marquee rectangle
-          return cx + cw > left && cx < right && cy + ch > top && cy < bottom;
+          return c.position_x + c.width > left && c.position_x < right && c.position_y + c.height > top && c.position_y < bottom;
         })
         .map(c => c.id);
 
@@ -610,9 +631,8 @@ export function InfiniteCanvas({
 
     setMarquee(null);
     marqueeStartRef.current = null;
-  }, [marquee, components, onMarqueeSelect]);
+  }, [marquee, components, onMarqueeSelect, drawPreview, activeTool, canAnnotate, campaignId, annotationColor, viewportToCanvas, snapPosition, createAnnotation]);
 
-  // Compute marquee rect for rendering (in canvas coordinates)
   const marqueeRect = useMemo(() => {
     if (!marquee) return null;
     return {
@@ -623,16 +643,24 @@ export function InfiniteCanvas({
     };
   }, [marquee]);
 
+  // Cursor style based on active tool
+  const cursorClass = useMemo(() => {
+    if (activeTool === 'text') return 'cursor-text';
+    if (activeTool === 'line' || activeTool === 'rectangle') return 'cursor-crosshair';
+    if (shiftHeld && isGM) return 'cursor-crosshair';
+    return '';
+  }, [activeTool, shiftHeld, isGM]);
+
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full overflow-hidden bg-background ${shiftHeld && isGM ? 'cursor-crosshair' : ''}`}
+      className={`relative w-full h-full overflow-hidden bg-background ${cursorClass}`}
       onWheel={handleCanvasWheel}
       onClick={handleCanvasClick}
       onMouseDown={handleCanvasMouseDown}
       onMouseMove={handleCanvasMouseMove}
       onMouseUp={handleCanvasMouseUp}
-      onMouseLeave={handleCanvasMouseUp}
+      onMouseLeave={() => { handleCanvasMouseUp({} as React.MouseEvent); }}
     >
       {/* Canvas Controls */}
       <CanvasControls
@@ -643,6 +671,11 @@ export function InfiniteCanvas({
         onRecenter={handleRecenter}
         saveStatus={saveStatus}
         onRetry={retrySave}
+        activeTool={activeTool}
+        onToolChange={canAnnotate ? setActiveTool : undefined}
+        annotationColor={annotationColor}
+        onColorChange={canAnnotate ? setAnnotationColor : undefined}
+        canAnnotate={canAnnotate}
       />
 
       {/* DnD Context wraps everything - DragOverlay is OUTSIDE TransformWrapper */}
@@ -668,7 +701,7 @@ export function InfiniteCanvas({
           panning={{
             velocityDisabled: false,
             excluded: ["draggable-component"],
-            disabled: shiftHeld,
+            disabled: shiftHeld || activeTool !== null,
           }}
           wheel={{
             disabled: true,
@@ -707,6 +740,50 @@ export function InfiniteCanvas({
                 }}
               />
             )}
+
+            {/* Draw preview for line/rect tools */}
+            {drawPreview && activeTool === 'rectangle' && (
+              <div
+                className="absolute pointer-events-none z-40"
+                style={{
+                  left: drawPreview.x,
+                  top: drawPreview.y,
+                  width: drawPreview.w,
+                  height: drawPreview.h,
+                  border: `2px dashed ${annotationColor}`,
+                  borderRadius: 2,
+                  opacity: 0.7,
+                }}
+              />
+            )}
+            {drawPreview && activeTool === 'line' && drawStartRef.current && (
+              <svg
+                className="absolute inset-0 pointer-events-none z-40"
+                width={canvasDimensions.width}
+                height={canvasDimensions.height}
+              >
+                <line
+                  x1={drawStartRef.current.canvasX}
+                  y1={drawStartRef.current.canvasY}
+                  x2={drawPreview.x + drawPreview.w}
+                  y2={drawPreview.y + drawPreview.h}
+                  stroke={annotationColor}
+                  strokeWidth={2}
+                  strokeDasharray="6 4"
+                  opacity={0.7}
+                />
+              </svg>
+            )}
+
+            {/* Annotation layer */}
+            <AnnotationLayer
+              annotations={annotations}
+              campaignId={campaignId}
+              userId={user?.id}
+              isGM={isGM}
+              activeTool={activeTool}
+              scale={scale}
+            />
 
             {/* Draggable components inside the scaled canvas */}
             {components.map((component) => (
