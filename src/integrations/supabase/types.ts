@@ -574,6 +574,78 @@ export type Database = {
           },
         ]
       }
+      canvas_annotations: {
+        Row: {
+          annotation_type: string
+          campaign_id: string
+          color: string
+          content: string | null
+          created_at: string
+          creator_id: string
+          end_x: number | null
+          end_y: number | null
+          font_size: number | null
+          height: number
+          id: string
+          is_locked: boolean
+          position_x: number
+          position_y: number
+          updated_at: string
+          width: number
+        }
+        Insert: {
+          annotation_type?: string
+          campaign_id: string
+          color?: string
+          content?: string | null
+          created_at?: string
+          creator_id: string
+          end_x?: number | null
+          end_y?: number | null
+          font_size?: number | null
+          height?: number
+          id?: string
+          is_locked?: boolean
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+          width?: number
+        }
+        Update: {
+          annotation_type?: string
+          campaign_id?: string
+          color?: string
+          content?: string | null
+          created_at?: string
+          creator_id?: string
+          end_x?: number | null
+          end_y?: number | null
+          font_size?: number | null
+          height?: number
+          id?: string
+          is_locked?: boolean
+          position_x?: number
+          position_y?: number
+          updated_at?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canvas_annotations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canvas_annotations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_components: {
         Row: {
           campaign_id: string
