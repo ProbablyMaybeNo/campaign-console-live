@@ -550,6 +550,8 @@ export function InfiniteCanvas({
         y: Math.min(drawStartRef.current.canvasY, snappedY),
         w: Math.abs(snappedX - drawStartRef.current.canvasX),
         h: Math.abs(snappedY - drawStartRef.current.canvasY),
+        endX: snappedX,
+        endY: snappedY,
       });
       return;
     }
