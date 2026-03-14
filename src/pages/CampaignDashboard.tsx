@@ -558,6 +558,7 @@ export default function CampaignDashboard() {
             multiSelectedIds={multiSelect.selectedIds}
             onComponentSelect={handleComponentSelect}
             onMarqueeSelect={multiSelect.selectByIds}
+            canAnnotate={effectiveIsGM || !!(campaign?.display_settings as any)?.allow_player_annotations}
           />
 
           {/* GM: Quick Actions FAB + Help */}
