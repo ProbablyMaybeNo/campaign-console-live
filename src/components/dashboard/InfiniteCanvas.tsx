@@ -45,7 +45,9 @@ export function InfiniteCanvas({
   selectedComponentId,
   multiSelectedIds = new Set(),
   onMarqueeSelect,
+  canAnnotate = false,
 }: InfiniteCanvasProps) {
+  const { user } = useAuth();
   const transformRef = useRef<ReactZoomPanPinchRef>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isPanning, setIsPanning] = useState(false);
