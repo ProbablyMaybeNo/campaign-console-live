@@ -164,6 +164,9 @@ export function AddComponentModal({ open, onOpenChange, campaignId }: AddCompone
     } else if (selectedType === "battle_tracker") {
       width = 420;
       height = 450;
+    } else if (selectedType === "card_deck") {
+      width = 350;
+      height = 400;
     }
 
     // Spawn at canvas center with slight offset to not overlap existing components
