@@ -115,6 +115,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
           showDates: ds.showDates ?? true,
           showStatus: ds.showStatus ?? true,
           showGameSystem: ds.showGameSystem ?? true,
+          allow_player_annotations: (ds as any).allow_player_annotations ?? false,
         });
       }
     }
