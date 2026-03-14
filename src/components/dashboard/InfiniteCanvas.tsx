@@ -767,8 +767,8 @@ export function InfiniteCanvas({
                 <line
                   x1={drawStartRef.current.canvasX}
                   y1={drawStartRef.current.canvasY}
-                  x2={drawPreview.x + drawPreview.w}
-                  y2={drawPreview.y + drawPreview.h}
+                  x2={drawPreview.endX ?? drawPreview.x + drawPreview.w}
+                  y2={drawPreview.endY ?? drawPreview.y + drawPreview.h}
                   stroke={annotationColor}
                   strokeWidth={2}
                   strokeDasharray="6 4"
