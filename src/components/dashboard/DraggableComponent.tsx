@@ -18,6 +18,7 @@ import { RollRecorderWidget } from "./widgets/RollRecorderWidget";
 import { AnnouncementsWidget } from "./widgets/AnnouncementsWidget";
 import { TextWidget } from "./widgets/TextWidget";
 import { StickerWidget } from "./widgets/StickerWidget";
+import { CardDeckWidget } from "./widgets/CardDeckWidget";
 import { BattleTrackerWidget } from "./widgets/BattleTrackerWidget";
 import { WidgetDragPreview } from "./WidgetDragPreview";
 import { getWidgetIcon } from "./widgetIcons";
