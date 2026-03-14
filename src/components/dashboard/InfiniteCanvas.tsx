@@ -30,6 +30,7 @@ interface InfiniteCanvasProps {
   selectedComponentId: string | null;
   multiSelectedIds?: Set<string>;
   onMarqueeSelect?: (ids: string[]) => void;
+  canAnnotate?: boolean;
 }
 
 const ZOOM_STEP = 0.1;
