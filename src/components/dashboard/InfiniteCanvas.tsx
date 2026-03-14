@@ -406,7 +406,7 @@ export function InfiniteCanvas({
     return () => cancelAnimationFrame(frame);
   }, [anchorComponent?.id, campaignId, handleRecenter]);
 
-  // Keyboard shortcuts for zoom and navigation
+  // Keyboard shortcuts for zoom, navigation, and annotation tools
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -427,12 +427,24 @@ export function InfiniteCanvas({
       } else if (e.key === 'Home') {
         e.preventDefault();
         handleRecenter();
+      } else if (e.key === 'Escape') {
+        setActiveTool(null);
+        setDrawPreview(null);
+        drawStartRef.current = null;
+      } else if (canAnnotate) {
+        if (e.key === 't' || e.key === 'T') {
+          setActiveTool(prev => prev === 'text' ? null : 'text');
+        } else if (e.key === 'l' || e.key === 'L') {
+          setActiveTool(prev => prev === 'line' ? null : 'line');
+        } else if (e.key === 'r' || e.key === 'R') {
+          setActiveTool(prev => prev === 'rectangle' ? null : 'rectangle');
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleZoomIn, handleZoomOut, handleReset, handleRecenter]);
+  }, [handleZoomIn, handleZoomOut, handleReset, handleRecenter, canAnnotate]);
 
   // Track Shift key for marquee selection (disables panning)
   useEffect(() => {
