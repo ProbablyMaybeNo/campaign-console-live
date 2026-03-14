@@ -72,7 +72,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
   const [borderColor, setBorderColor] = useState("#22c55e");
   const [themeId, setThemeId] = useState("dark");
   const [bannerUrl, setBannerUrl] = useState("");
-  const [displaySettings, setDisplaySettings] = useState<DisplaySettings>({
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettings & { allow_player_annotations?: boolean }>({
     showId: true,
     showPoints: true,
     showPlayers: true,
@@ -80,6 +80,7 @@ export function CampaignSettingsModal({ open, onClose, campaignId }: CampaignSet
     showDates: true,
     showStatus: true,
     showGameSystem: true,
+    allow_player_annotations: false,
   });
   const [copiedJoinCode, setCopiedJoinCode] = useState(false);
 
