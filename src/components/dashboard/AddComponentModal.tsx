@@ -62,6 +62,7 @@ const COMPONENT_TYPES: ComponentTypeConfig[] = [
   { type: "announcements", label: "Announce", icon: Megaphone, description: "GM notice board" },
   { type: "text", label: "Text", icon: FileText, description: "Markdown notes widget" },
   { type: "sticker", label: "Sticker", icon: Sticker, description: "Decorative icon marker" },
+  { type: "card_deck", label: "Card Deck", icon: Layers, description: "Draw random cards from custom decks" },
 ];
 
 export function AddComponentModal({ open, onOpenChange, campaignId }: AddComponentModalProps) {

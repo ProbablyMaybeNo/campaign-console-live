@@ -265,6 +265,8 @@ function DraggableComponentInner({
         return <StickerWidget component={component} isGM={isGM} />;
       case "battle_tracker":
         return <BattleTrackerWidget campaignId={campaignId} isGM={isGM} />;
+      case "card_deck":
+        return <CardDeckWidget component={component} isGM={isGM} campaignId={campaignId} />;
       default:
         return (
           <div className="text-center py-8">
