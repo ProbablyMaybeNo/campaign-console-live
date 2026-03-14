@@ -71,7 +71,7 @@ export function CardDeckWidget({ component, isGM, campaignId }: CardDeckWidgetPr
     (patch: Partial<CardDeckConfig>) => {
       updateComponent.mutate({
         id: component.id,
-        config: { ...config, ...patch },
+        config: { ...config, ...patch } as unknown as Record<string, unknown>,
       });
     },
     [updateComponent, component.id, config]
