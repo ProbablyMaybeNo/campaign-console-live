@@ -74,7 +74,7 @@ export function InfiniteCanvas({
   const [activeTool, setActiveTool] = useState<AnnotationTool>(null);
   const [annotationColor, setAnnotationColor] = useState("#22c55e");
   const drawStartRef = useRef<{ canvasX: number; canvasY: number } | null>(null);
-  const [drawPreview, setDrawPreview] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [drawPreview, setDrawPreview] = useState<{ x: number; y: number; w: number; h: number; endX?: number; endY?: number } | null>(null);
 
   // Annotations data
   const { data: annotations = [] } = useCanvasAnnotations(campaignId);
