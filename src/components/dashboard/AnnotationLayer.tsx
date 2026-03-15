@@ -1,6 +1,23 @@
 import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { CanvasAnnotation, useUpdateAnnotation, useDeleteAnnotation } from "@/hooks/useCanvasAnnotations";
-import { Trash2, Lock, Unlock, Move, GripVertical } from "lucide-react";
+import { Trash2, Lock, Unlock, GripVertical, Check, Palette } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+const ANNOTATION_COLORS = [
+  "#22c55e", "#3b82f6", "#ef4444", "#eab308", "#8b5cf6",
+  "#06b6d4", "#f97316", "#ec4899", "#ffffff",
+];
+
+const FONT_SIZES = [
+  { label: "S", value: 12 },
+  { label: "M", value: 18 },
+  { label: "L", value: 28 },
+  { label: "XL", value: 40 },
+];
 
 const GRID_SIZE = 40;
 const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
@@ -149,6 +166,51 @@ const AnnotationItem = memo(function AnnotationItem({
         {/* Controls */}
         {canEdit && showControls && (
           <div className="absolute -top-6 right-0 flex items-center gap-0.5 bg-card/95 border border-border rounded px-0.5 py-0.5 z-30">
+            {/* Font size buttons */}
+            {FONT_SIZES.map((fs) => (
+              <button
+                key={fs.label}
+                className={`px-1 py-0.5 text-[9px] font-mono rounded ${
+                  annotation.font_size === fs.value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+                onClick={() => updateAnnotation.mutate({ id: annotation.id, font_size: fs.value })}
+                title={`Font size ${fs.label}`}
+              >
+                {fs.label}
+              </button>
+            ))}
+            <div className="w-px h-3 bg-border mx-0.5" />
+            {/* Color picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-0.5 hover:bg-muted rounded" title="Color">
+                  <Palette className="w-3 h-3" style={{ color: annotation.color }} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="top" align="end">
+                <div className="flex flex-wrap gap-1 max-w-[140px]">
+                  {ANNOTATION_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      className={`w-5 h-5 rounded-full border-2 ${
+                        annotation.color === c ? "border-primary scale-110" : "border-transparent"
+                      }`}
+                      style={{ background: c }}
+                      onClick={() => updateAnnotation.mutate({ id: annotation.id, color: c })}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className="w-5 h-5 rounded cursor-pointer border-0 p-0"
+                    value={annotation.color}
+                    onChange={(e) => updateAnnotation.mutate({ id: annotation.id, color: e.target.value })}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+            <div className="w-px h-3 bg-border mx-0.5" />
             <button
               className="p-0.5 hover:bg-muted rounded"
               onClick={handleToggleLock}
@@ -171,25 +233,33 @@ const AnnotationItem = memo(function AnnotationItem({
         )}
 
         {isEditing ? (
-          <textarea
-            ref={editRef}
-            className="w-full bg-transparent border border-primary/50 rounded p-1 resize-both outline-none font-mono"
-            style={{
-              color: annotation.color,
-              fontSize: annotation.font_size,
-              minHeight: annotation.height,
-            }}
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            onBlur={handleFinishEdit}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setEditContent(annotation.content);
-                setIsEditing(false);
-              }
-              e.stopPropagation();
-            }}
-          />
+          <div className="relative">
+            <textarea
+              ref={editRef}
+              className="w-full bg-transparent border border-primary/50 rounded p-1 resize-both outline-none font-mono"
+              style={{
+                color: annotation.color,
+                fontSize: annotation.font_size,
+                minHeight: annotation.height,
+              }}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setEditContent(annotation.content);
+                  setIsEditing(false);
+                }
+                e.stopPropagation();
+              }}
+            />
+            <button
+              className="absolute bottom-1 right-1 flex items-center gap-1 bg-primary text-primary-foreground rounded px-2 py-0.5 text-[10px] font-mono hover:bg-primary/80 z-30"
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onClick={(e) => { e.stopPropagation(); handleFinishEdit(); }}
+            >
+              <Check className="w-3 h-3" /> Done
+            </button>
+          </div>
         ) : (
           <div
             className="whitespace-pre-wrap break-words font-mono cursor-text select-none"
