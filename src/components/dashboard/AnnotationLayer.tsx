@@ -37,26 +37,157 @@ interface AnnotationItemProps {
   userId: string | undefined;
   isGM: boolean;
   scale: number;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onDeselect: () => void;
 }
 
+/* ─── Shared toolbar for all annotation types ─── */
+function AnnotationToolbar({
+  annotation,
+  canEdit,
+  isLocked,
+  showFontSizes,
+  onToggleLock,
+  onDelete,
+}: {
+  annotation: CanvasAnnotation;
+  canEdit: boolean;
+  isLocked: boolean;
+  showFontSizes: boolean;
+  onToggleLock: () => void;
+  onDelete: () => void;
+}) {
+  const updateAnnotation = useUpdateAnnotation();
+  if (!canEdit) return null;
+
+  return (
+    <div
+      className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card/95 border border-border rounded-md px-1.5 py-1 z-40 shadow-lg"
+      style={{ bottom: "calc(100% + 6px)" }}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      {/* Drag handle */}
+      {!isLocked && (
+        <div className="flex items-center gap-0.5 text-muted-foreground cursor-grab active:cursor-grabbing annotation-drag-handle">
+          <GripVertical className="w-4 h-4" />
+        </div>
+      )}
+
+      {!isLocked && (
+        <div className="w-px h-5 bg-border mx-0.5" />
+      )}
+
+      {/* Font size buttons (text only) */}
+      {showFontSizes && (
+        <>
+          {FONT_SIZES.map((fs) => (
+            <button
+              key={fs.label}
+              className={`min-w-[28px] min-h-[28px] flex items-center justify-center text-[11px] font-mono rounded transition-colors ${
+                annotation.font_size === fs.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+              onClick={() => updateAnnotation.mutate({ id: annotation.id, font_size: fs.value })}
+              title={`Font size ${fs.label}`}
+            >
+              {fs.label}
+            </button>
+          ))}
+          <div className="w-px h-5 bg-border mx-0.5" />
+        </>
+      )}
+
+      {/* Color picker */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <button
+            className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors"
+            title="Change color"
+          >
+            <Palette className="w-4 h-4" style={{ color: annotation.color }} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2" side="top" align="center" sideOffset={8}>
+          <div className="flex flex-wrap gap-1.5 max-w-[160px]">
+            {ANNOTATION_COLORS.map((c) => (
+              <button
+                key={c}
+                className={`w-6 h-6 rounded-full border-2 transition-all ${
+                  annotation.color === c ? "border-primary scale-110" : "border-transparent hover:border-border"
+                }`}
+                style={{ background: c }}
+                onClick={() => updateAnnotation.mutate({ id: annotation.id, color: c })}
+              />
+            ))}
+            <div className="flex items-center gap-1 w-full mt-1">
+              <input
+                type="color"
+                className="w-6 h-6 rounded cursor-pointer border-0 p-0"
+                value={annotation.color}
+                onChange={(e) => updateAnnotation.mutate({ id: annotation.id, color: e.target.value })}
+              />
+              <span className="text-[10px] text-muted-foreground font-mono">Custom</span>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      <div className="w-px h-5 bg-border mx-0.5" />
+
+      {/* Lock */}
+      <button
+        className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors"
+        onClick={onToggleLock}
+        title={isLocked ? "Unlock" : "Lock in place"}
+        aria-label={isLocked ? "Unlock annotation" : "Lock annotation"}
+      >
+        {isLocked ? (
+          <Lock className="w-4 h-4 text-primary" />
+        ) : (
+          <Unlock className="w-4 h-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {/* Delete */}
+      <button
+        className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-destructive/20 rounded transition-colors"
+        onClick={onDelete}
+        title="Delete"
+        aria-label="Delete annotation"
+      >
+        <Trash2 className="w-4 h-4 text-destructive" />
+      </button>
+    </div>
+  );
+}
+
+/* ─── Annotation Item ─── */
 const AnnotationItem = memo(function AnnotationItem({
   annotation,
   campaignId,
   userId,
   isGM,
   scale,
+  isSelected,
+  onSelect,
+  onDeselect,
 }: AnnotationItemProps) {
   const updateAnnotation = useUpdateAnnotation();
   const deleteAnnotation = useDeleteAnnotation();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(annotation.content);
   const [isDragging, setIsDragging] = useState(false);
-  const [showControls, setShowControls] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const editRef = useRef<HTMLTextAreaElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const canEdit = userId === annotation.creator_id || isGM;
   const isLocked = annotation.is_locked;
+  const showToolbar = isSelected || isHovered;
 
   useEffect(() => {
     if (isEditing && editRef.current) {
@@ -65,32 +196,50 @@ const AnnotationItem = memo(function AnnotationItem({
     }
   }, [isEditing]);
 
-  const handleDragStart = useCallback(
-    (e: React.PointerEvent) => {
+  // Click outside to deselect
+  useEffect(() => {
+    if (!isSelected) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onDeselect();
+      }
+    };
+    // Delay to avoid immediate deselection from the click that selected it
+    const timer = setTimeout(() => {
+      document.addEventListener("mousedown", handleClickOutside);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isSelected, onDeselect]);
+
+  const handleSelect = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (canEdit) onSelect(annotation.id);
+  }, [canEdit, annotation.id, onSelect]);
+
+  /* ── Drag (shared) ── */
+  const startDrag = useCallback(
+    (e: React.PointerEvent, origX: number, origY: number) => {
       if (isLocked || !canEdit) return;
       e.preventDefault();
       e.stopPropagation();
-      const el = e.currentTarget as HTMLElement;
-      el.setPointerCapture(e.pointerId);
-      dragRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        origX: annotation.position_x,
-        origY: annotation.position_y,
-      };
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      dragRef.current = { startX: e.clientX, startY: e.clientY, origX, origY };
       setIsDragging(true);
     },
-    [annotation.position_x, annotation.position_y, isLocked, canEdit]
+    [isLocked, canEdit]
   );
 
-  const handleDragMove = useCallback(
+  const moveDrag = useCallback(
     (e: React.PointerEvent) => {
       if (!dragRef.current || !isDragging) return;
       e.preventDefault();
       e.stopPropagation();
       const dx = (e.clientX - dragRef.current.startX) / scale;
       const dy = (e.clientY - dragRef.current.startY) / scale;
-      const el = e.currentTarget.closest("[data-annotation]") as HTMLElement;
+      const el = containerRef.current;
       if (el) {
         el.style.left = `${snap(dragRef.current.origX + dx)}px`;
         el.style.top = `${snap(dragRef.current.origY + dy)}px`;
@@ -99,7 +248,7 @@ const AnnotationItem = memo(function AnnotationItem({
     [isDragging, scale]
   );
 
-  const handleDragEnd = useCallback(
+  const endDragBasic = useCallback(
     (e: React.PointerEvent) => {
       if (!dragRef.current) return;
       e.preventDefault();
@@ -116,9 +265,34 @@ const AnnotationItem = memo(function AnnotationItem({
     [annotation.id, annotation.position_x, annotation.position_y, scale, updateAnnotation]
   );
 
+  const endDragLine = useCallback(
+    (e: React.PointerEvent) => {
+      if (!dragRef.current) return;
+      const dx = (e.clientX - dragRef.current.startX) / scale;
+      const dy = (e.clientY - dragRef.current.startY) / scale;
+      const snappedNewX = snap(dragRef.current.origX + dx);
+      const snappedNewY = snap(dragRef.current.origY + dy);
+      const shiftX = snappedNewX - annotation.position_x;
+      const shiftY = snappedNewY - annotation.position_y;
+      if (shiftX !== 0 || shiftY !== 0) {
+        updateAnnotation.mutate({
+          id: annotation.id,
+          position_x: annotation.position_x + shiftX,
+          position_y: annotation.position_y + shiftY,
+          end_x: (annotation.end_x ?? annotation.position_x + 120) + shiftX,
+          end_y: (annotation.end_y ?? annotation.position_y) + shiftY,
+        });
+      }
+      dragRef.current = null;
+      setIsDragging(false);
+    },
+    [annotation, scale, updateAnnotation]
+  );
+
   const handleDelete = useCallback(() => {
     deleteAnnotation.mutate({ id: annotation.id, campaignId });
-  }, [annotation.id, campaignId, deleteAnnotation]);
+    onDeselect();
+  }, [annotation.id, campaignId, deleteAnnotation, onDeselect]);
 
   const handleToggleLock = useCallback(() => {
     updateAnnotation.mutate({ id: annotation.id, is_locked: !isLocked });
@@ -131,104 +305,142 @@ const AnnotationItem = memo(function AnnotationItem({
     }
   }, [editContent, annotation.content, annotation.id, updateAnnotation]);
 
-  // Text annotation
+  // Selection outline style
+  const selectionOutline = isSelected
+    ? "ring-2 ring-primary/60 ring-offset-1 ring-offset-transparent"
+    : isHovered && canEdit
+    ? "ring-1 ring-primary/30"
+    : "";
+
+  /* ── Drag handle bindings for toolbar ── */
+  const toolbarDragProps = annotation.annotation_type === "line"
+    ? {
+        onPointerDown: (e: React.PointerEvent) => startDrag(e, annotation.position_x, annotation.position_y),
+        onPointerMove: moveDrag,
+        onPointerUp: endDragLine,
+      }
+    : {
+        onPointerDown: (e: React.PointerEvent) => startDrag(e, annotation.position_x, annotation.position_y),
+        onPointerMove: moveDrag,
+        onPointerUp: endDragBasic,
+      };
+
+  // ── TEXT ──
   if (annotation.annotation_type === "text") {
     return (
       <div
+        ref={containerRef}
         data-annotation
-        className="absolute group"
+        className={`absolute rounded ${selectionOutline} transition-shadow`}
         style={{
           left: annotation.position_x,
           top: annotation.position_y,
           width: annotation.width,
           minHeight: annotation.height,
-          zIndex: 25,
-          cursor: isLocked ? "default" : "default",
+          zIndex: isSelected ? 30 : 25,
+          cursor: isLocked ? "default" : "pointer",
+          // Extend hover zone above for toolbar access
+          paddingTop: showToolbar && canEdit ? 40 : 0,
+          marginTop: showToolbar && canEdit ? -40 : 0,
         }}
-        onMouseEnter={() => setShowControls(true)}
-        onMouseLeave={() => { if (!isEditing) setShowControls(false); }}
-        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={handleSelect}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {/* Drag handle */}
-        {canEdit && showControls && !isLocked && (
-          <div
-            className="absolute -top-6 left-0 flex items-center gap-1 bg-card/95 border border-border rounded px-1 py-0.5 z-30 cursor-grab active:cursor-grabbing"
-            onPointerDown={handleDragStart}
-            onPointerMove={handleDragMove}
-            onPointerUp={handleDragEnd}
-          >
-            <GripVertical className="w-3 h-3 text-muted-foreground" />
-            <span className="text-[10px] text-muted-foreground font-mono">MOVE</span>
-          </div>
-        )}
-
-        {/* Controls */}
-        {canEdit && showControls && (
-          <div className="absolute -top-6 right-0 flex items-center gap-0.5 bg-card/95 border border-border rounded px-0.5 py-0.5 z-30">
-            {/* Font size buttons */}
-            {FONT_SIZES.map((fs) => (
-              <button
-                key={fs.label}
-                className={`px-1 py-0.5 text-[9px] font-mono rounded ${
-                  annotation.font_size === fs.value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-                onClick={() => updateAnnotation.mutate({ id: annotation.id, font_size: fs.value })}
-                title={`Font size ${fs.label}`}
-              >
-                {fs.label}
-              </button>
-            ))}
-            <div className="w-px h-3 bg-border mx-0.5" />
-            {/* Color picker */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="p-0.5 hover:bg-muted rounded" title="Color">
-                  <Palette className="w-3 h-3" style={{ color: annotation.color }} />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" side="top" align="end">
-                <div className="flex flex-wrap gap-1 max-w-[140px]">
-                  {ANNOTATION_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      className={`w-5 h-5 rounded-full border-2 ${
-                        annotation.color === c ? "border-primary scale-110" : "border-transparent"
-                      }`}
-                      style={{ background: c }}
-                      onClick={() => updateAnnotation.mutate({ id: annotation.id, color: c })}
-                    />
-                  ))}
-                  <input
-                    type="color"
-                    className="w-5 h-5 rounded cursor-pointer border-0 p-0"
-                    value={annotation.color}
-                    onChange={(e) => updateAnnotation.mutate({ id: annotation.id, color: e.target.value })}
-                  />
+        {/* Toolbar */}
+        {showToolbar && canEdit && (
+          <div style={{ position: "relative", height: 0 }}>
+            <div
+              className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card/95 border border-border rounded-md px-1.5 py-1 z-40 shadow-lg"
+              style={{ bottom: 6, whiteSpace: "nowrap" }}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {/* Drag handle */}
+              {!isLocked && (
+                <div
+                  className="min-w-[28px] min-h-[28px] flex items-center justify-center text-muted-foreground cursor-grab active:cursor-grabbing rounded hover:bg-muted transition-colors"
+                  {...toolbarDragProps}
+                >
+                  <GripVertical className="w-4 h-4" />
                 </div>
-              </PopoverContent>
-            </Popover>
-            <div className="w-px h-3 bg-border mx-0.5" />
-            <button
-              className="p-0.5 hover:bg-muted rounded"
-              onClick={handleToggleLock}
-              title={isLocked ? "Unlock" : "Lock"}
-            >
-              {isLocked ? (
-                <Lock className="w-3 h-3 text-primary" />
-              ) : (
-                <Unlock className="w-3 h-3 text-muted-foreground" />
               )}
-            </button>
-            <button
-              className="p-0.5 hover:bg-destructive/20 rounded"
-              onClick={handleDelete}
-              title="Delete"
-            >
-              <Trash2 className="w-3 h-3 text-destructive" />
-            </button>
+              {!isLocked && <div className="w-px h-5 bg-border mx-0.5" />}
+
+              {/* Font sizes */}
+              {FONT_SIZES.map((fs) => (
+                <button
+                  key={fs.label}
+                  className={`min-w-[28px] min-h-[28px] flex items-center justify-center text-[11px] font-mono rounded transition-colors ${
+                    annotation.font_size === fs.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                  onClick={() => updateAnnotation.mutate({ id: annotation.id, font_size: fs.value })}
+                  title={`Font size ${fs.label}`}
+                >
+                  {fs.label}
+                </button>
+              ))}
+              <div className="w-px h-5 bg-border mx-0.5" />
+
+              {/* Color */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors"
+                    title="Change color"
+                  >
+                    <Palette className="w-4 h-4" style={{ color: annotation.color }} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top" align="center" sideOffset={8}>
+                  <div className="flex flex-wrap gap-1.5 max-w-[160px]">
+                    {ANNOTATION_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        className={`w-6 h-6 rounded-full border-2 transition-all ${
+                          annotation.color === c ? "border-primary scale-110" : "border-transparent hover:border-border"
+                        }`}
+                        style={{ background: c }}
+                        onClick={() => updateAnnotation.mutate({ id: annotation.id, color: c })}
+                      />
+                    ))}
+                    <div className="flex items-center gap-1 w-full mt-1">
+                      <input
+                        type="color"
+                        className="w-6 h-6 rounded cursor-pointer border-0 p-0"
+                        value={annotation.color}
+                        onChange={(e) => updateAnnotation.mutate({ id: annotation.id, color: e.target.value })}
+                      />
+                      <span className="text-[10px] text-muted-foreground font-mono">Custom</span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <div className="w-px h-5 bg-border mx-0.5" />
+
+              {/* Lock */}
+              <button
+                className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors"
+                onClick={handleToggleLock}
+                title={isLocked ? "Unlock" : "Lock in place"}
+                aria-label={isLocked ? "Unlock" : "Lock"}
+              >
+                {isLocked ? <Lock className="w-4 h-4 text-primary" /> : <Unlock className="w-4 h-4 text-muted-foreground" />}
+              </button>
+
+              {/* Delete */}
+              <button
+                className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-destructive/20 rounded transition-colors"
+                onClick={handleDelete}
+                title="Delete"
+                aria-label="Delete annotation"
+              >
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </button>
+            </div>
           </div>
         )}
 
@@ -253,11 +465,11 @@ const AnnotationItem = memo(function AnnotationItem({
               }}
             />
             <button
-              className="absolute bottom-1 right-1 flex items-center gap-1 bg-primary text-primary-foreground rounded px-2 py-0.5 text-[10px] font-mono hover:bg-primary/80 z-30"
+              className="absolute bottom-1 right-1 flex items-center gap-1 bg-primary text-primary-foreground rounded px-2.5 py-1 text-xs font-mono hover:bg-primary/80 z-30"
               onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
               onClick={(e) => { e.stopPropagation(); handleFinishEdit(); }}
             >
-              <Check className="w-3 h-3" /> Done
+              <Check className="w-3.5 h-3.5" /> Done
             </button>
           </div>
         ) : (
@@ -281,20 +493,21 @@ const AnnotationItem = memo(function AnnotationItem({
           </div>
         )}
 
-        {/* Resize handle for text */}
-        {canEdit && !isLocked && showControls && (
+        {/* Resize handle */}
+        {canEdit && !isLocked && showToolbar && (
           <TextResizeHandle annotation={annotation} scale={scale} />
         )}
       </div>
     );
   }
 
-  // Rectangle annotation
+  // ── RECTANGLE ──
   if (annotation.annotation_type === "rectangle") {
     return (
       <div
+        ref={containerRef}
         data-annotation
-        className="absolute group"
+        className={`absolute rounded ${selectionOutline} transition-shadow`}
         style={{
           left: annotation.position_x,
           top: annotation.position_y,
@@ -302,39 +515,76 @@ const AnnotationItem = memo(function AnnotationItem({
           height: annotation.height,
           border: `2px solid ${annotation.color}`,
           borderRadius: 2,
-          zIndex: 20,
+          zIndex: isSelected ? 25 : 20,
           boxShadow: `0 0 6px ${annotation.color}40`,
+          cursor: isLocked ? "default" : "pointer",
+          paddingTop: showToolbar && canEdit ? 40 : 0,
+          marginTop: showToolbar && canEdit ? -40 : 0,
         }}
-        onMouseEnter={() => setShowControls(true)}
-        onMouseLeave={() => setShowControls(false)}
-        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={handleSelect}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {canEdit && showControls && !isLocked && (
-          <div
-            className="absolute -top-6 left-0 flex items-center gap-1 bg-card/95 border border-border rounded px-1 py-0.5 z-30 cursor-grab active:cursor-grabbing"
-            onPointerDown={handleDragStart}
-            onPointerMove={handleDragMove}
-            onPointerUp={handleDragEnd}
-          >
-            <GripVertical className="w-3 h-3 text-muted-foreground" />
-          </div>
-        )}
-        {canEdit && showControls && (
-          <div className="absolute -top-6 right-0 flex items-center gap-0.5 bg-card/95 border border-border rounded px-0.5 py-0.5 z-30">
-            <button className="p-0.5 hover:bg-muted rounded" onClick={handleToggleLock}>
-              {isLocked ? <Lock className="w-3 h-3 text-primary" /> : <Unlock className="w-3 h-3 text-muted-foreground" />}
-            </button>
-            <button className="p-0.5 hover:bg-destructive/20 rounded" onClick={handleDelete}>
-              <Trash2 className="w-3 h-3 text-destructive" />
-            </button>
+        {showToolbar && canEdit && (
+          <div style={{ position: "relative", height: 0 }}>
+            <div
+              className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card/95 border border-border rounded-md px-1.5 py-1 z-40 shadow-lg"
+              style={{ bottom: 6, whiteSpace: "nowrap" }}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {!isLocked && (
+                <div
+                  className="min-w-[28px] min-h-[28px] flex items-center justify-center text-muted-foreground cursor-grab active:cursor-grabbing rounded hover:bg-muted transition-colors"
+                  {...toolbarDragProps}
+                >
+                  <GripVertical className="w-4 h-4" />
+                </div>
+              )}
+              {!isLocked && <div className="w-px h-5 bg-border mx-0.5" />}
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors" title="Change color">
+                    <Palette className="w-4 h-4" style={{ color: annotation.color }} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top" align="center" sideOffset={8}>
+                  <div className="flex flex-wrap gap-1.5 max-w-[160px]">
+                    {ANNOTATION_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        className={`w-6 h-6 rounded-full border-2 transition-all ${
+                          annotation.color === c ? "border-primary scale-110" : "border-transparent hover:border-border"
+                        }`}
+                        style={{ background: c }}
+                        onClick={() => updateAnnotation.mutate({ id: annotation.id, color: c })}
+                      />
+                    ))}
+                    <div className="flex items-center gap-1 w-full mt-1">
+                      <input type="color" className="w-6 h-6 rounded cursor-pointer border-0 p-0" value={annotation.color}
+                        onChange={(e) => updateAnnotation.mutate({ id: annotation.id, color: e.target.value })} />
+                      <span className="text-[10px] text-muted-foreground font-mono">Custom</span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <div className="w-px h-5 bg-border mx-0.5" />
+              <button className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors" onClick={handleToggleLock} title={isLocked ? "Unlock" : "Lock"} aria-label={isLocked ? "Unlock" : "Lock"}>
+                {isLocked ? <Lock className="w-4 h-4 text-primary" /> : <Unlock className="w-4 h-4 text-muted-foreground" />}
+              </button>
+              <button className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-destructive/20 rounded transition-colors" onClick={handleDelete} title="Delete" aria-label="Delete annotation">
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </button>
+            </div>
           </div>
         )}
       </div>
     );
   }
 
-  // Line annotation
+  // ── LINE ──
   if (annotation.annotation_type === "line") {
     const x1 = annotation.position_x;
     const y1 = annotation.position_y;
@@ -344,75 +594,87 @@ const AnnotationItem = memo(function AnnotationItem({
     const minY = Math.min(y1, y2);
     const w = Math.abs(x2 - x1) || 2;
     const h = Math.abs(y2 - y1) || 2;
-    const pad = 12;
+    const pad = 16;
 
     return (
       <div
+        ref={containerRef}
         data-annotation
-        className="absolute group"
+        className={`absolute rounded ${selectionOutline} transition-shadow`}
         style={{
           left: minX - pad,
           top: minY - pad,
           width: w + pad * 2,
           height: h + pad * 2,
-          zIndex: 20,
+          zIndex: isSelected ? 25 : 20,
+          cursor: isLocked ? "default" : "pointer",
+          paddingTop: showToolbar && canEdit ? 40 : 0,
+          marginTop: showToolbar && canEdit ? -40 : 0,
         }}
-        onMouseEnter={() => setShowControls(true)}
-        onMouseLeave={() => setShowControls(false)}
-        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={handleSelect}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {canEdit && showControls && !isLocked && (
-          <div
-            className="absolute -top-6 left-0 flex items-center gap-1 bg-card/95 border border-border rounded px-1 py-0.5 z-30 cursor-grab active:cursor-grabbing"
-            onPointerDown={(e) => {
-              if (isLocked || !canEdit) return;
-              e.preventDefault();
-              e.stopPropagation();
-              const el = e.currentTarget as HTMLElement;
-              el.setPointerCapture(e.pointerId);
-              dragRef.current = { startX: e.clientX, startY: e.clientY, origX: x1, origY: y1 };
-              setIsDragging(true);
-            }}
-            onPointerMove={(e) => {
-              if (!dragRef.current || !isDragging) return;
-              e.preventDefault();
-              // visual feedback handled by parent re-render
-            }}
-            onPointerUp={(e) => {
-              if (!dragRef.current) return;
-              const dx = (e.clientX - dragRef.current.startX) / scale;
-              const dy = (e.clientY - dragRef.current.startY) / scale;
-              const snappedDx = snap(dx + dragRef.current.origX) - dragRef.current.origX;
-              const snappedDy = snap(dy + dragRef.current.origY) - dragRef.current.origY;
-              updateAnnotation.mutate({
-                id: annotation.id,
-                position_x: annotation.position_x + snappedDx,
-                position_y: annotation.position_y + snappedDy,
-                end_x: (annotation.end_x ?? annotation.position_x + 120) + snappedDx,
-                end_y: (annotation.end_y ?? annotation.position_y) + snappedDy,
-              });
-              dragRef.current = null;
-              setIsDragging(false);
-            }}
-          >
-            <GripVertical className="w-3 h-3 text-muted-foreground" />
-          </div>
-        )}
-        {canEdit && showControls && (
-          <div className="absolute -top-6 right-0 flex items-center gap-0.5 bg-card/95 border border-border rounded px-0.5 py-0.5 z-30">
-            <button className="p-0.5 hover:bg-muted rounded" onClick={handleToggleLock}>
-              {isLocked ? <Lock className="w-3 h-3 text-primary" /> : <Unlock className="w-3 h-3 text-muted-foreground" />}
-            </button>
-            <button className="p-0.5 hover:bg-destructive/20 rounded" onClick={handleDelete}>
-              <Trash2 className="w-3 h-3 text-destructive" />
-            </button>
+        {showToolbar && canEdit && (
+          <div style={{ position: "relative", height: 0 }}>
+            <div
+              className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-card/95 border border-border rounded-md px-1.5 py-1 z-40 shadow-lg"
+              style={{ bottom: 6, whiteSpace: "nowrap" }}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {!isLocked && (
+                <div
+                  className="min-w-[28px] min-h-[28px] flex items-center justify-center text-muted-foreground cursor-grab active:cursor-grabbing rounded hover:bg-muted transition-colors"
+                  {...toolbarDragProps}
+                >
+                  <GripVertical className="w-4 h-4" />
+                </div>
+              )}
+              {!isLocked && <div className="w-px h-5 bg-border mx-0.5" />}
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors" title="Change color">
+                    <Palette className="w-4 h-4" style={{ color: annotation.color }} />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" side="top" align="center" sideOffset={8}>
+                  <div className="flex flex-wrap gap-1.5 max-w-[160px]">
+                    {ANNOTATION_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        className={`w-6 h-6 rounded-full border-2 transition-all ${
+                          annotation.color === c ? "border-primary scale-110" : "border-transparent hover:border-border"
+                        }`}
+                        style={{ background: c }}
+                        onClick={() => updateAnnotation.mutate({ id: annotation.id, color: c })}
+                      />
+                    ))}
+                    <div className="flex items-center gap-1 w-full mt-1">
+                      <input type="color" className="w-6 h-6 rounded cursor-pointer border-0 p-0" value={annotation.color}
+                        onChange={(e) => updateAnnotation.mutate({ id: annotation.id, color: e.target.value })} />
+                      <span className="text-[10px] text-muted-foreground font-mono">Custom</span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <div className="w-px h-5 bg-border mx-0.5" />
+              <button className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-muted rounded transition-colors" onClick={handleToggleLock} title={isLocked ? "Unlock" : "Lock"} aria-label={isLocked ? "Unlock" : "Lock"}>
+                {isLocked ? <Lock className="w-4 h-4 text-primary" /> : <Unlock className="w-4 h-4 text-muted-foreground" />}
+              </button>
+              <button className="min-w-[28px] min-h-[28px] flex items-center justify-center hover:bg-destructive/20 rounded transition-colors" onClick={handleDelete} title="Delete" aria-label="Delete annotation">
+                <Trash2 className="w-4 h-4 text-destructive" />
+              </button>
+            </div>
           </div>
         )}
         <svg
           width={w + pad * 2}
           height={h + pad * 2}
-          className="absolute inset-0 pointer-events-none"
+          className="absolute pointer-events-none"
+          style={{ top: showToolbar && canEdit ? 40 : 0, left: 0 }}
         >
           <line
             x1={x1 - minX + pad}
@@ -431,7 +693,7 @@ const AnnotationItem = memo(function AnnotationItem({
   return null;
 });
 
-// Resize handle sub-component for text annotations
+/* ─── Resize handle for text ─── */
 function TextResizeHandle({
   annotation,
   scale,
@@ -444,7 +706,8 @@ function TextResizeHandle({
 
   return (
     <div
-      className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-primary/60 border border-primary rounded-sm"
+      className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize bg-primary/60 border border-primary rounded-sm hover:bg-primary/80 transition-colors"
+      style={{ touchAction: "none" }}
       onPointerDown={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -460,7 +723,6 @@ function TextResizeHandle({
         if (!dragRef.current) return;
         e.preventDefault();
         const dx = (e.clientX - dragRef.current.startX) / scale;
-        const dy = (e.clientY - dragRef.current.startY) / scale;
         const parent = (e.currentTarget as HTMLElement).closest("[data-annotation]") as HTMLElement;
         if (parent) {
           parent.style.width = `${Math.max(80, snap(dragRef.current.origW + dx))}px`;
@@ -479,6 +741,7 @@ function TextResizeHandle({
   );
 }
 
+/* ─── Annotation Layer (manages selection state) ─── */
 export const AnnotationLayer = memo(function AnnotationLayer({
   annotations,
   campaignId,
@@ -487,6 +750,21 @@ export const AnnotationLayer = memo(function AnnotationLayer({
   activeTool,
   scale,
 }: AnnotationLayerProps) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Deselect when switching tools
+  useEffect(() => {
+    if (activeTool) setSelectedId(null);
+  }, [activeTool]);
+
+  const handleSelect = useCallback((id: string) => {
+    setSelectedId((prev) => (prev === id ? null : id));
+  }, []);
+
+  const handleDeselect = useCallback(() => {
+    setSelectedId(null);
+  }, []);
+
   return (
     <>
       {annotations.map((a) => (
@@ -497,6 +775,9 @@ export const AnnotationLayer = memo(function AnnotationLayer({
           userId={userId}
           isGM={isGM}
           scale={scale}
+          isSelected={selectedId === a.id}
+          onSelect={handleSelect}
+          onDeselect={handleDeselect}
         />
       ))}
     </>
