@@ -66,6 +66,14 @@ const sidebarItems: {
 ];
 
 export default function CampaignDashboard() {
+  return (
+    <UndoStackProvider>
+      <CampaignDashboardInner />
+    </UndoStackProvider>
+  );
+}
+
+function CampaignDashboardInner() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useCampaign(campaignId);
