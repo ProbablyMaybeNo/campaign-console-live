@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUndoStack } from "@/hooks/useUndoStack";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -62,6 +63,7 @@ export function useDashboardComponents(campaignId: string | undefined) {
 
 export function useCreateComponent() {
   const queryClient = useQueryClient();
+  const { pushUndo } = useUndoStack();
 
   return useMutation({
     mutationFn: async (input: CreateComponentInput): Promise<DashboardComponent> => {
@@ -87,6 +89,13 @@ export function useCreateComponent() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["dashboard-components", data.campaign_id] });
       toast.success("Component added");
+      pushUndo({
+        label: `Add ${data.name}`,
+        undo: async () => {
+          await supabase.from("dashboard_components").delete().eq("id", data.id);
+          queryClient.invalidateQueries({ queryKey: ["dashboard-components", data.campaign_id] });
+        },
+      });
     },
     onError: (error: Error) => {
       toast.error(`Failed to add component: ${error.message}`);
@@ -96,11 +105,28 @@ export function useCreateComponent() {
 
 export function useUpdateComponent() {
   const queryClient = useQueryClient();
+  const { pushUndo } = useUndoStack();
 
   return useMutation({
-    mutationFn: async (input: UpdateComponentInput): Promise<DashboardComponent> => {
+    mutationFn: async (input: UpdateComponentInput): Promise<{ data: DashboardComponent; previous: Partial<DashboardComponent> }> => {
       const { id, ...updates } = input;
       
+      // Read current state for undo (from cache first, then DB)
+      let previous: Partial<DashboardComponent> = {};
+      const allQueries = queryClient.getQueriesData<DashboardComponent[]>({ queryKey: ["dashboard-components"] });
+      for (const [, comps] of allQueries) {
+        const found = comps?.find((c) => c.id === id);
+        if (found) {
+          // Only capture the fields we're about to change
+          const prev: Record<string, any> = { id };
+          for (const key of Object.keys(updates)) {
+            prev[key] = (found as any)[key];
+          }
+          previous = prev as Partial<DashboardComponent>;
+          break;
+        }
+      }
+
       const { data, error } = await supabase
         .from("dashboard_components")
         .update(updates)
@@ -109,14 +135,12 @@ export function useUpdateComponent() {
         .single();
 
       if (error) throw error;
-      return data;
+      return { data, previous };
     },
     // Optimistic update for immediate UI response
     onMutate: async (input) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["dashboard-components"] });
 
-      // Find and update the component in all campaign caches
       const allQueries = queryClient.getQueriesData<DashboardComponent[]>({ 
         queryKey: ["dashboard-components"] 
       });
@@ -134,8 +158,21 @@ export function useUpdateComponent() {
 
       return { previousData };
     },
+    onSuccess: ({ data, previous }) => {
+      if (previous && Object.keys(previous).length > 1) {
+        pushUndo({
+          label: `Edit ${data.name}`,
+          undo: async () => {
+            const { id, ...restoreFields } = previous as UpdateComponentInput;
+            if (id) {
+              await supabase.from("dashboard_components").update(restoreFields).eq("id", id);
+              queryClient.invalidateQueries({ queryKey: ["dashboard-components", data.campaign_id] });
+            }
+          },
+        });
+      }
+    },
     onError: (error: Error, _input, context) => {
-      // Rollback on error
       if (context?.previousData) {
         context.previousData.forEach(({ queryKey, data }) => {
           queryClient.setQueryData(queryKey, data);
@@ -143,24 +180,29 @@ export function useUpdateComponent() {
       }
       toast.error(`Failed to update component: ${error.message}`);
     },
-    onSettled: (_data, _error, input) => {
-      // Optionally refetch to ensure consistency (disabled for performance)
-      // queryClient.invalidateQueries({ queryKey: ["dashboard-components"] });
+    onSettled: () => {
+      // Optionally refetch for consistency
     },
   });
 }
 
 export function useDeleteComponent() {
   const queryClient = useQueryClient();
+  const { pushUndo } = useUndoStack();
 
   return useMutation({
-    mutationFn: async ({ id, campaignId }: { id: string; campaignId: string }): Promise<void> => {
+    mutationFn: async ({ id, campaignId }: { id: string; campaignId: string }): Promise<{ campaignId: string; deleted: DashboardComponent | null }> => {
+      // Read the full component before deleting for undo
+      const cached = queryClient.getQueryData<DashboardComponent[]>(["dashboard-components", campaignId]);
+      const deleted = cached?.find((c) => c.id === id) || null;
+
       const { error } = await supabase
         .from("dashboard_components")
         .delete()
         .eq("id", id);
 
       if (error) throw error;
+      return { campaignId, deleted };
     },
     // Optimistic delete
     onMutate: async ({ id, campaignId }) => {
@@ -175,8 +217,20 @@ export function useDeleteComponent() {
 
       return { previousData, campaignId };
     },
+    onSuccess: ({ campaignId, deleted }) => {
+      toast.success("Component removed");
+      if (deleted) {
+        pushUndo({
+          label: `Delete ${deleted.name}`,
+          undo: async () => {
+            const { id, created_at, updated_at, ...rest } = deleted;
+            await supabase.from("dashboard_components").insert({ ...rest });
+            queryClient.invalidateQueries({ queryKey: ["dashboard-components", campaignId] });
+          },
+        });
+      }
+    },
     onError: (error: Error, _variables, context) => {
-      // Rollback on error
       if (context?.previousData) {
         queryClient.setQueryData(
           ["dashboard-components", context.campaignId],
@@ -184,9 +238,6 @@ export function useDeleteComponent() {
         );
       }
       toast.error(`Failed to remove component: ${error.message}`);
-    },
-    onSuccess: () => {
-      toast.success("Component removed");
     },
   });
 }

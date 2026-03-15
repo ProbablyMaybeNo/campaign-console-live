@@ -25,6 +25,7 @@ import { MobileDashboard } from "@/components/dashboard/MobileDashboard";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
+import { UndoStackProvider } from "@/hooks/useUndoStack";
 import { HelpButton } from "@/components/help/HelpButton";
 import { 
   ArrowLeft, 
@@ -65,6 +66,14 @@ const sidebarItems: {
 ];
 
 export default function CampaignDashboard() {
+  return (
+    <UndoStackProvider>
+      <CampaignDashboardInner />
+    </UndoStackProvider>
+  );
+}
+
+function CampaignDashboardInner() {
   const { campaignId } = useParams<{ campaignId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: campaign, isLoading: campaignLoading, error: campaignError } = useCampaign(campaignId);
