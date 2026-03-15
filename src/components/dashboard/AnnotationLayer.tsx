@@ -233,25 +233,33 @@ const AnnotationItem = memo(function AnnotationItem({
         )}
 
         {isEditing ? (
-          <textarea
-            ref={editRef}
-            className="w-full bg-transparent border border-primary/50 rounded p-1 resize-both outline-none font-mono"
-            style={{
-              color: annotation.color,
-              fontSize: annotation.font_size,
-              minHeight: annotation.height,
-            }}
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            onBlur={handleFinishEdit}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                setEditContent(annotation.content);
-                setIsEditing(false);
-              }
-              e.stopPropagation();
-            }}
-          />
+          <div className="relative">
+            <textarea
+              ref={editRef}
+              className="w-full bg-transparent border border-primary/50 rounded p-1 resize-both outline-none font-mono"
+              style={{
+                color: annotation.color,
+                fontSize: annotation.font_size,
+                minHeight: annotation.height,
+              }}
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setEditContent(annotation.content);
+                  setIsEditing(false);
+                }
+                e.stopPropagation();
+              }}
+            />
+            <button
+              className="absolute bottom-1 right-1 flex items-center gap-1 bg-primary text-primary-foreground rounded px-2 py-0.5 text-[10px] font-mono hover:bg-primary/80 z-30"
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onClick={(e) => { e.stopPropagation(); handleFinishEdit(); }}
+            >
+              <Check className="w-3 h-3" /> Done
+            </button>
+          </div>
         ) : (
           <div
             className="whitespace-pre-wrap break-words font-mono cursor-text select-none"
