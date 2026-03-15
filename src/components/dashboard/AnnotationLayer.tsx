@@ -166,6 +166,51 @@ const AnnotationItem = memo(function AnnotationItem({
         {/* Controls */}
         {canEdit && showControls && (
           <div className="absolute -top-6 right-0 flex items-center gap-0.5 bg-card/95 border border-border rounded px-0.5 py-0.5 z-30">
+            {/* Font size buttons */}
+            {FONT_SIZES.map((fs) => (
+              <button
+                key={fs.label}
+                className={`px-1 py-0.5 text-[9px] font-mono rounded ${
+                  annotation.font_size === fs.value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+                onClick={() => updateAnnotation.mutate({ id: annotation.id, font_size: fs.value })}
+                title={`Font size ${fs.label}`}
+              >
+                {fs.label}
+              </button>
+            ))}
+            <div className="w-px h-3 bg-border mx-0.5" />
+            {/* Color picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-0.5 hover:bg-muted rounded" title="Color">
+                  <Palette className="w-3 h-3" style={{ color: annotation.color }} />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="top" align="end">
+                <div className="flex flex-wrap gap-1 max-w-[140px]">
+                  {ANNOTATION_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      className={`w-5 h-5 rounded-full border-2 ${
+                        annotation.color === c ? "border-primary scale-110" : "border-transparent"
+                      }`}
+                      style={{ background: c }}
+                      onClick={() => updateAnnotation.mutate({ id: annotation.id, color: c })}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className="w-5 h-5 rounded cursor-pointer border-0 p-0"
+                    value={annotation.color}
+                    onChange={(e) => updateAnnotation.mutate({ id: annotation.id, color: e.target.value })}
+                  />
+                </div>
+              </PopoverContent>
+            </Popover>
+            <div className="w-px h-3 bg-border mx-0.5" />
             <button
               className="p-0.5 hover:bg-muted rounded"
               onClick={handleToggleLock}
