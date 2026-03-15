@@ -1,6 +1,23 @@
 import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { CanvasAnnotation, useUpdateAnnotation, useDeleteAnnotation } from "@/hooks/useCanvasAnnotations";
-import { Trash2, Lock, Unlock, Move, GripVertical } from "lucide-react";
+import { Trash2, Lock, Unlock, GripVertical, Check, Palette } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
+const ANNOTATION_COLORS = [
+  "#22c55e", "#3b82f6", "#ef4444", "#eab308", "#8b5cf6",
+  "#06b6d4", "#f97316", "#ec4899", "#ffffff",
+];
+
+const FONT_SIZES = [
+  { label: "S", value: 12 },
+  { label: "M", value: 18 },
+  { label: "L", value: 28 },
+  { label: "XL", value: 40 },
+];
 
 const GRID_SIZE = 40;
 const snap = (v: number) => Math.round(v / GRID_SIZE) * GRID_SIZE;
