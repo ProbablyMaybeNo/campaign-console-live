@@ -25,6 +25,7 @@ import { MobileDashboard } from "@/components/dashboard/MobileDashboard";
 import { useGMKeyboardShortcuts } from "@/hooks/useGMKeyboardShortcuts";
 import { useUndoDelete } from "@/hooks/useUndoDelete";
 import { useMultiSelect } from "@/hooks/useMultiSelect";
+import { UndoStackProvider } from "@/hooks/useUndoStack";
 import { HelpButton } from "@/components/help/HelpButton";
 import { 
   ArrowLeft, 
